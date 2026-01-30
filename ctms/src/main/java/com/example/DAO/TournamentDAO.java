@@ -1,7 +1,7 @@
 package com.example.DAO;
 
-import com.example.Utils.DBContext;
 import java.sql.*;
+import com.example.util.DBContext;
 
 public class TournamentDAO extends DBContext {
     public int countAllTournaments() {

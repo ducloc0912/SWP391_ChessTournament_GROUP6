@@ -1,8 +1,5 @@
 package com.example.DAO;
 
-import com.example.Model.User;
-import com.example.Utils.DBContext;
-
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -12,6 +9,9 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.example.model.User;
+import com.example.util.DBContext;
 
 public class UserDAO extends DBContext {
 

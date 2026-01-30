@@ -1,14 +1,14 @@
-package com.example.Controller;
-
-import com.example.DAO.UserDAO;
-import com.example.DAO.TournamentDAO;
-import com.example.DAO.MatchDAO;
+package com.example.controller;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 
 import java.io.IOException;
+
+import com.example.DAO.MatchDAO;
+import com.example.DAO.TournamentDAO;
+import com.example.DAO.UserDAO;
 
 @WebServlet(name = "DashboardSummaryServlet", urlPatterns = {"/api/dashboard/summary"})
 public class DashboardSummaryServlet extends HttpServlet {

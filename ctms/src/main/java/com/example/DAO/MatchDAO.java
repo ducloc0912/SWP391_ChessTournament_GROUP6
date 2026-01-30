@@ -1,7 +1,7 @@
 package com.example.DAO;
 
-import com.example.Utils.DBContext;
 import java.sql.*;
+import com.example.util.DBContext;
 
 public class MatchDAO extends DBContext {
     public int countOngoingMatches() {
