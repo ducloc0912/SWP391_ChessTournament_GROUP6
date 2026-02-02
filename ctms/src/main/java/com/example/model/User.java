@@ -1,4 +1,4 @@
-package com.example.Model;
+package com.example.model;
 import java.sql.Timestamp;
 import java.math.BigDecimal;
 
@@ -6,32 +6,36 @@ import java.math.BigDecimal;
 public class User {
 
     private int userId;
+    private String username;
     private String firstName;
     private String lastName;
+    private Timestamp birthDate;
+
     private String email;
     private String phoneNumber;
     private String address;
+
     private Timestamp lastLogin;
     private Timestamp createAt;
+
     private boolean isActive;
     private String password;
     private String avatar;
+
     private BigDecimal balance;
     private Integer rank;
 
-    
     public User() {
     }
 
-    
-    public User(int userId, String firstName, String lastName, String email,
-            String phoneNumber, String address, Timestamp lastLogin,
-            Timestamp createAt, boolean isActive, String password,
-            String avatar, BigDecimal balance, Integer rank) {
-
+    public User(int userId, String username, String firstName, String lastName, Timestamp birthDate, String email, String phoneNumber,
+            String address, Timestamp lastLogin, Timestamp createAt, boolean isActive, String password, String avatar,
+            BigDecimal balance, Integer rank) {
         this.userId = userId;
+        this.username = username;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.birthDate = birthDate;
         this.email = email;
         this.phoneNumber = phoneNumber;
         this.address = address;
@@ -44,14 +48,20 @@ public class User {
         this.rank = rank;
     }
 
-   
-
     public int getUserId() {
         return userId;
     }
 
     public void setUserId(int userId) {
         this.userId = userId;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public String getFirstName() {
@@ -68,6 +78,14 @@ public class User {
 
     public void setLastName(String lastName) {
         this.lastName = lastName;
+    }
+
+    public Timestamp getBirthDate() {
+        return birthDate;
+    }
+
+    public void setBirthDate(Timestamp birthDate) {
+        this.birthDate = birthDate;
     }
 
     public String getEmail() {
@@ -114,8 +132,8 @@ public class User {
         return isActive;
     }
 
-    public void setActive(boolean active) {
-        isActive = active;
+    public void setActive(boolean isActive) {
+        this.isActive = isActive;
     }
 
     public String getPassword() {
@@ -149,4 +167,6 @@ public class User {
     public void setRank(Integer rank) {
         this.rank = rank;
     }
+
+    
 }

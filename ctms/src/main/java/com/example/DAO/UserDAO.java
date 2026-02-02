@@ -19,6 +19,7 @@ public class UserDAO extends DBContext {
     private User mapRow(ResultSet rs) throws SQLException {
         User u = new User();
         u.setUserId(rs.getInt("user_id"));
+        u.setUsername(rs.getString("username"));
         u.setFirstName(rs.getString("first_name"));
         u.setLastName(rs.getString("last_name"));
         u.setEmail(rs.getString("email"));
@@ -32,8 +33,8 @@ public class UserDAO extends DBContext {
         u.setActive(rs.getBoolean("is_active"));
         u.setPassword(rs.getString("password"));
 
-        // DB column name: avarta (typo)
-        u.setAvatar(rs.getString("avarta"));
+        // DB column name: avatar (typo)
+        u.setAvatar(rs.getString("avatar"));
 
         u.setBalance(rs.getBigDecimal("balance"));
 
@@ -43,8 +44,8 @@ public class UserDAO extends DBContext {
 
     // 1) GET by ID
     public User getUserById(int userId) {
-        String sql = "SELECT user_id, first_name, last_name, email, phone_number, address, " +
-                "last_login, create_at, is_active, password, avarta, balance, rank " +
+        String sql = "SELECT user_id, username, first_name, last_name, email, phone_number, address, " +
+                "last_login, create_at, is_active, password, avatar, balance, rank " +
                 "FROM Users WHERE user_id = ?";
 
         try (Connection conn = getConnection();
