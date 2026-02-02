@@ -1,50 +1,31 @@
-package com.example.Model;
-import java.sql.Timestamp;
-import java.math.BigDecimal;
-
+package com.example.model;
 
 public class User {
 
     private int userId;
     private String firstName;
     private String lastName;
+    private String username;
+    private String phone;
     private String email;
-    private String phoneNumber;
     private String address;
-    private Timestamp lastLogin;
-    private Timestamp createAt;
-    private boolean isActive;
     private String password;
-    private String avatar;
-    private BigDecimal balance;
-    private Integer rank;
+    private boolean active;
+    private int roleId;
 
-    
-    public User() {
-    }
+    public User() {}
 
-    
-    public User(int userId, String firstName, String lastName, String email,
-            String phoneNumber, String address, Timestamp lastLogin,
-            Timestamp createAt, boolean isActive, String password,
-            String avatar, BigDecimal balance, Integer rank) {
-
-        this.userId = userId;
+    // constructor dùng cho REGISTER (KHÔNG XÓA)
+    public User(String firstName, String lastName, String username,
+                String phone, String email, String address, String password) {
         this.firstName = firstName;
         this.lastName = lastName;
+        this.username = username;
+        this.phone = phone;
         this.email = email;
-        this.phoneNumber = phoneNumber;
         this.address = address;
-        this.lastLogin = lastLogin;
-        this.createAt = createAt;
-        this.isActive = isActive;
         this.password = password;
-        this.avatar = avatar;
-        this.balance = balance;
-        this.rank = rank;
     }
-
-   
 
     public int getUserId() {
         return userId;
@@ -70,20 +51,28 @@ public class User {
         this.lastName = lastName;
     }
 
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
     public String getEmail() {
         return email;
     }
 
     public void setEmail(String email) {
         this.email = email;
-    }
-
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
     }
 
     public String getAddress() {
@@ -94,30 +83,6 @@ public class User {
         this.address = address;
     }
 
-    public Timestamp getLastLogin() {
-        return lastLogin;
-    }
-
-    public void setLastLogin(Timestamp lastLogin) {
-        this.lastLogin = lastLogin;
-    }
-
-    public Timestamp getCreateAt() {
-        return createAt;
-    }
-
-    public void setCreateAt(Timestamp createAt) {
-        this.createAt = createAt;
-    }
-
-    public boolean isActive() {
-        return isActive;
-    }
-
-    public void setActive(boolean active) {
-        isActive = active;
-    }
-
     public String getPassword() {
         return password;
     }
@@ -126,27 +91,21 @@ public class User {
         this.password = password;
     }
 
-    public String getAvatar() {
-        return avatar;
+    public boolean isActive() {
+        return active;
     }
 
-    public void setAvatar(String avatar) {
-        this.avatar = avatar;
+    public void setActive(boolean active) {
+        this.active = active;
     }
 
-    public BigDecimal getBalance() {
-        return balance;
+    public int getRoleId() {
+        return roleId;
     }
 
-    public void setBalance(BigDecimal balance) {
-        this.balance = balance;
+    public void setRoleId(int roleId) {
+        this.roleId = roleId;
     }
 
-    public Integer getRank() {
-        return rank;
-    }
-
-    public void setRank(Integer rank) {
-        this.rank = rank;
-    }
+    
 }
