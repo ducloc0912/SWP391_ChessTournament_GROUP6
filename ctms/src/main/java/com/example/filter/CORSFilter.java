@@ -30,8 +30,6 @@ public class CORSFilter implements Filter {
         HttpServletResponse res = (HttpServletResponse) response;
 
         String origin = req.getHeader("Origin");
-
-        // ✅ CHỈ set header khi origin hợp lệ
         if (origin != null && ALLOWED_ORIGINS.contains(origin)) {
             res.setHeader("Access-Control-Allow-Origin", origin); 
             res.setHeader("Vary", "Origin");
