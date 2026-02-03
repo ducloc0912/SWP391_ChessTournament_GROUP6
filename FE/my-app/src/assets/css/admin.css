@@ -186,7 +186,6 @@ button:disabled {
   transition: background 180ms ease, color 180ms ease;
   color: #475569;
 }
-
 .sidebarAction:hover {
   background: #ffffff;
   color: #0f172a;
@@ -377,7 +376,7 @@ button:disabled {
 }
 .alertWarn {
   background: #fffbeb;
-  border-color: #fde68a;
+border-color: #fde68a;
   color: #92400e;
 }
 .alertErr {
@@ -576,11 +575,344 @@ button:disabled {
 .legendPill {
   margin-left: auto;
   font-size: 12px;
-  font-weight: 900;
+font-weight: 900;
   background: #f1f5f9;
   color: #475569;
   padding: 4px 8px;
   border-radius: 10px;
+}
+
+/* ====== Account list ====== */
+/* ===== Account List UI (scoped) ===== */
+.al-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* alerts */
+.al-alert {
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 14px;
+  border: 1px solid transparent;
+}
+.al-warn {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+.al-err {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+/* cards */
+.al-gridCards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.al-cardStat {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.al-cardStat:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+}
+
+.al-cardTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.al-iconBubble {
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+}
+
+.al-statMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.al-statLabel {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.al-statValue {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+/* toolbar */
+.al-toolbar {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 1fr 220px 120px;
+  gap: 12px;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+}
+
+.al-search {
+  position: relative;
+}
+
+.al-searchIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.al-input {
+  width: 100%;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0 14px 0 44px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+.al-input:focus {
+  border-color: rgba(245, 158, 11, 0.8);
+  box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.12);
+  background: #ffffff;
+}
+
+.al-select {
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0 12px;
+  font-size: 14px;
+  outline: none;
+}
+.al-select:hover {
+  background: #ffffff;
+}
+
+.al-btnGhost {
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 800;
+  color: #475569;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, transform 80ms ease;
+}
+.al-btnGhost:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+.al-btnGhost:active {
+  transform: translateY(1px);
+}
+
+/* table card */
+.al-tableCard {
+background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+}
+
+.al-tableScroll {
+  overflow-x: auto;
+}
+
+.al-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.al-table thead th {
+  text-align: left;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  background: #fafbff;
+  border-bottom: 1px solid #eef2f7;
+  padding: 12px 14px;
+  white-space: nowrap;
+}
+
+.al-table tbody td {
+  padding: 14px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.al-table tbody tr:hover {
+  background: #fbfdff;
+}
+
+.al-thCheck,
+.al-tdCheck {
+  width: 46px;
+}
+
+.al-thAction,
+.al-tdAction {
+  width: 90px;
+  text-align: right;
+}
+
+.al-thNum {
+  width: 110px;
+  text-align: right;
+}
+
+.al-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.al-muted {
+  color: #475569;
+}
+
+.al-email {
+  color: #64748b;
+}
+
+/* user cell */
+.al-userCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.al-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  background: #eef2ff;
+  color: #4338ca;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+}
+
+.al-username {
+  font-weight: 900;
+}
+
+/* pills */
+.al-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+/* status */
+.al-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+.al-statusOk {
+  background: #ecfdf5;
+  color: #059669;
+}
+.al-statusBad {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.al-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+.al-dotOk {
+  background: #10b981;
+}
+.al-dotBad {
+  background: #ef4444;
+}
+
+/* action button */
+.al-iconBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, transform 80ms ease;
+}
+.al-iconBtn:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+.al-iconBtn:active {
+  transform: translateY(1px);
+}
+
+.al-empty {
+  padding: 18px !important;
+  text-align: center;
+  color: #64748b !important;
+}
+
+/* responsive */
+@media (max-width: 1200px) {
+  .al-gridCards {
+    grid-template-columns: 1fr;
+  }
+  .al-toolbar {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ====== RESPONSIVE ====== */
