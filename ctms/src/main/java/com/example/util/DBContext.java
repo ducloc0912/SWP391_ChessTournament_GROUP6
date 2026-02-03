@@ -20,26 +20,24 @@ public class DBContext {
         try {
             Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
             conn = DriverManager.getConnection(DB_URL, USER, PASSWORD);
-            System.out.println("✅ Connected to SQL Server successfully!");
+            System.out.println(" Connected to SQL Server successfully!");
         } catch (ClassNotFoundException e) {
-            System.out.println("❌ JDBC Driver not found!");
+            System.out.println(" JDBC Driver not found!");
             e.printStackTrace();
         } catch (SQLException e) {
-            System.out.println("❌ Connection failed!");
+            System.out.println(" Connection failed!");
             e.printStackTrace();
         }
         return conn;
     }
-
-    // 🔥 MAIN để test kết nối
     public static void main(String[] args) {
         Connection conn = null;
         try {
             conn = getConnection();
             if (conn != null) {
-                System.out.println("🎉 KẾT NỐI DATABASE THÀNH CÔNG!");
+                System.out.println(" KẾT NỐI DATABASE THÀNH CÔNG!");
             } else {
-                System.out.println("❌ KẾT NỐI DATABASE THẤT BẠI!");
+                System.out.println(" KẾT NỐI DATABASE THẤT BẠI!");
             }
         } catch (Exception e) {
             e.printStackTrace();

@@ -36,3 +36,8 @@ export const NAVIGATION_ITEMS = [
   { id: "reports", label: "Báo cáo", icon: ICONS.Reports },
   { id: "notif", label: "Tin tức & Thông báo", icon: ICONS.Notif },
 ];
+export const ROLES = {
+  PLAYER: 'PLAYER',
+  LEADER: 'LEADER',
+  REFEREE: 'REFEREE'
+};
