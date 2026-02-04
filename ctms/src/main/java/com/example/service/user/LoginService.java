@@ -38,7 +38,7 @@ public class LoginService {
     result.put("success", true);
     result.put("user", user);
     result.put("role", role);
-  ` result.put("email", user.getEmail());
+    result.put("email", user.getEmail());
 
     return result;
 }

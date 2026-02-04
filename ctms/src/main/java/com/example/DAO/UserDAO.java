@@ -926,4 +926,21 @@ public boolean changePasswordWithVerify(int userId, String currentPassword, Stri
         return false;
     }
 }
+
+public boolean updateUserAvatar(int userId, String avatarDataUri) {
+        String sql = "UPDATE Users SET avatar = ? WHERE user_id = ?";
+
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, avatarDataUri);
+            ps.setInt(2, userId);
+
+            return ps.executeUpdate() > 0;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }
