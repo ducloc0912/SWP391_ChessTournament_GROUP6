@@ -1,22 +1,38 @@
 package com.example.controller.admin;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.imageio.ImageIO;
 
 import com.example.DAO.UserDAO;
 import com.example.model.User;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.Part;
 
 @WebServlet("/api/admin/user-update/*")
+@MultipartConfig(
+        fileSizeThreshold = 1024 * 1024,      // 1MB buffer
+        maxFileSize = 10L * 1024 * 1024,      // 10MB
+        maxRequestSize = 12L * 1024 * 1024    // 12MB (room for form fields)
+)
 public class AdminUpdateServlet extends HttpServlet {
+
+    private static final long MAX_AVATAR_BYTES = 10L * 1024 * 1024;
 
     private final UserDAO userDAO = new UserDAO();
     private final Gson gson = new GsonBuilder()
@@ -51,13 +67,18 @@ public class AdminUpdateServlet extends HttpServlet {
 
             int userId = Integer.parseInt(parts[1]);
 
-            // ===== Read body: JSON OR FORM =====
+            // ===== Detect content type =====
             String contentType = req.getContentType();
+            boolean isJson = contentType != null && contentType.toLowerCase().contains("application/json");
+            boolean isMultipart = contentType != null && contentType.toLowerCase().startsWith("multipart/");
             Map body = null;
-            if (contentType != null && contentType.toLowerCase().contains("application/json")) {
+
+            // JSON only: read body
+            if (isJson) {
                 body = gson.fromJson(req.getReader(), Map.class);
             }
 
+            // ===== Read fields: JSON or FORM or MULTIPART =====
             String username = readField(req, body, "username");
             String firstName = readField(req, body, "firstName");
             String lastName  = readField(req, body, "lastName");
@@ -73,6 +94,18 @@ public class AdminUpdateServlet extends HttpServlet {
                     String d = bdRaw.length() >= 10 ? bdRaw.substring(0, 10) : bdRaw;
                     birthday = java.sql.Date.valueOf(d);
                 } catch (Exception ignore) {}
+            }
+
+            // ===== Handle avatar (multipart only) =====
+            boolean okAvatar = true;
+            if (isMultipart) {
+                Part avatarPart = safeGetPart(req, "avatar"); // FE field name must be "avatar"
+                if (avatarPart != null && avatarPart.getSize() > 0) {
+                    String avatarDataUri = validateAndConvertAvatarToDataUri(avatarPart);
+                    // ✅ Bạn cần implement hàm này trong DAO
+                    okAvatar = userDAO.updateUserAvatar(userId, avatarDataUri);
+                    if (!okAvatar) throw new RuntimeException("Update avatar failed");
+                }
             }
 
             boolean ok1 = userDAO.updateUserAdminBasic(
@@ -93,7 +126,6 @@ public class AdminUpdateServlet extends HttpServlet {
             boolean ok3 = true;
 
             if (wantsPass) {
-                // basic validate
                 if (newPassword.isEmpty() || confirmNewPassword.isEmpty()) {
                     throw new RuntimeException("Missing password fields");
                 }
@@ -101,7 +133,6 @@ public class AdminUpdateServlet extends HttpServlet {
                     throw new RuntimeException("Confirm password not match");
                 }
 
-                // Lấy role + userId đang đăng nhập
                 HttpSession session = req.getSession(false);
                 String role = session == null ? null : (String) session.getAttribute("role");
 
@@ -111,7 +142,6 @@ public class AdminUpdateServlet extends HttpServlet {
                     if (uObj instanceof User) {
                         sessionUserId = ((User) uObj).getUserId();
                     } else if (uObj != null) {
-                        // fallback nếu bạn lưu kiểu khác
                         try { sessionUserId = Integer.parseInt(String.valueOf(uObj)); } catch (Exception ignore) {}
                     }
                 }
@@ -120,11 +150,9 @@ public class AdminUpdateServlet extends HttpServlet {
                 boolean changingOtherUser = sessionUserId > 0 && sessionUserId != userId;
 
                 if (isAdmin && changingOtherUser) {
-                    // ✅ Admin đổi pass cho user khác: set trực tiếp, KHÔNG cần current
                     userDAO.updatePassword(userId, newPassword);
                     ok3 = true;
                 } else {
-                    // ✅ user tự đổi pass: bắt buộc verify current
                     if (currentPassword.isEmpty()) {
                         throw new RuntimeException("Missing current password");
                     }
@@ -151,7 +179,7 @@ public class AdminUpdateServlet extends HttpServlet {
     }
 
     private String readField(HttpServletRequest req, Map body, String key) {
-        String v = req.getParameter(key); // form
+        String v = req.getParameter(key); // form OR multipart text fields
         if (v != null) return v;
 
         if (body != null && body.get(key) != null) return String.valueOf(body.get(key)); // json
@@ -160,5 +188,68 @@ public class AdminUpdateServlet extends HttpServlet {
 
     private String safeTrim(String s) {
         return s == null ? "" : s.trim();
+    }
+
+    private Part safeGetPart(HttpServletRequest req, String name) {
+        try {
+            return req.getPart(name);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Validate jpg/png:
+     * - <= 10MB
+     * - magic bytes match
+     * - ImageIO can decode (true image)
+     * Return data URI: data:image/png;base64,...
+     */
+    private String validateAndConvertAvatarToDataUri(Part part) throws IOException, ServletException {
+        long size = part.getSize();
+        if (size <= 0) throw new RuntimeException("Avatar file is empty");
+        if (size > MAX_AVATAR_BYTES) throw new RuntimeException("Avatar must be <= 10MB");
+
+        byte[] bytes;
+        try (InputStream is = part.getInputStream()) {
+            bytes = is.readAllBytes();
+        }
+
+        String type = detectImageTypeByMagic(bytes);
+        if (type == null) {
+            throw new RuntimeException("Avatar must be JPG or PNG (invalid file signature)");
+        }
+
+        // must be decodable image
+        BufferedImage img = ImageIO.read(new ByteArrayInputStream(bytes));
+        if (img == null) {
+            throw new RuntimeException("File is not a valid image");
+        }
+
+        // Optional: limit dimension if you want
+        // if (img.getWidth() > 4000 || img.getHeight() > 4000) throw new RuntimeException("Image too large");
+
+        String b64 = Base64.getEncoder().encodeToString(bytes);
+        return "data:image/" + type + ";base64," + b64;
+    }
+
+    /**
+     * Return "jpeg" or "png" if magic bytes match; else null.
+     */
+    private String detectImageTypeByMagic(byte[] b) {
+        if (b == null || b.length < 12) return null;
+
+        // PNG: 89 50 4E 47 0D 0A 1A 0A
+        if ((b[0] & 0xFF) == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47
+                && b[4] == 0x0D && b[5] == 0x0A && b[6] == 0x1A && b[7] == 0x0A) {
+            return "png";
+        }
+
+        // JPG/JPEG: FF D8 FF
+        if ((b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF) {
+            return "jpeg";
+        }
+
+        return null;
     }
 }
