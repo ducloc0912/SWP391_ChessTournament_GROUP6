@@ -1,150 +1,195 @@
-/* Container */
-.register-container {
-  display: flex;
-  height: 100vh;
-  width: 100%;
+/* =========================
+   RESET
+========================= */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+
   font-family: "Segoe UI", sans-serif;
 }
-.error {
-  color: red;
-  font-size: 12px;
-  margin-top: 4px;
+
+/* =========================
+   CONTAINER
+========================= */
+.register-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
 }
 
-/* LEFT SIDE */
+/* =========================
+   LEFT IMAGE
+========================= */
 .register-left {
   flex: 1;
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
   position: relative;
 }
 
-.register-left::before {
+.register-left::after {
   content: "";
   position: absolute;
   inset: 0;
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.35),
+    rgba(0, 0, 0, 0.1)
+  );
 }
 
-/* RIGHT SIDE */
+/* =========================
+   RIGHT
+========================= */
 .register-right {
   flex: 1;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start; /* ✅ QUAN TRỌNG */
+  padding-top: 40px; /* ✅ đẩy card xuống */
   background: #f5f6fa;
 }
 
+/* =========================
+   FORM CARD
+========================= */
 .form-card {
-  width: 80%;
-  max-width: 550px;
-  background: white;
-  padding: 40px;
+  width: 520px;
+  max-height: 92vh;
+  background: #ffffff;
+  padding: 32px 36px;
   border-radius: 16px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
 .form-card h1 {
-  margin-bottom: 20px;
+  margin-top: 0;
+  padding-top: 4px;
+  margin-bottom: 18px;
+  font-size: 26px;
+  font-weight: 600;
+  color: #111827;
 }
 
-/* Avatar */
-.avatar-section {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-
-.avatar-preview {
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  object-fit: cover;
-  cursor: pointer;
-  border: 3px solid #ddd;
-  transition: 0.3s;
-}
-
-.avatar-preview:hover {
-  border-color: #3b82f6;
-}
-
-/* Grid Form */
+/* =========================
+   GRID FORM
+========================= */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 15px;
+  gap: 14px;
+}
+
+.form-grid label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .form-grid input {
-  padding: 12px;
-  border-radius: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 10px;
   border: 1px solid #ddd;
-  transition: 0.3s;
+  font-size: 14px;
 }
 
 .form-grid input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
-/* Checkbox */
 .checkbox {
-  margin-top: 15px;
+  margin-top: 16px;
   display: flex;
-  gap: 10px;
+  align-items: center; /* ✅ cùng 1 hàng */
+  gap: 8px;
   font-size: 14px;
+  color: #374151;
 }
 
-/* Button */
+.checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.checkbox span {
+  line-height: 1.4;
+}
+
+.checkbox a {
+  color: #1d4ed8; /* ✅ xanh đậm */
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.checkbox a:hover {
+  text-decoration: underline;
+}
+/* =========================
+   BUTTON
+========================= */
 .register-btn {
-  margin-top: 20px;
+  margin-top: 18px;
   width: 100%;
   padding: 14px;
   border: none;
   border-radius: 12px;
   background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: white;
-  font-weight: bold;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
-  transition: 0.3s;
+  transition: 0.25s;
 }
 
 .register-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 15px rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.35);
 }
 
-.register-btn:disabled {
-  background: #ccc;
-  cursor: not-allowed;
+/* =========================
+   ERROR MESSAGE
+========================= */
+.error {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #dc2626;
 }
 
-/* Footer */
+/* =========================
+   LOGIN TEXT (OPTIONAL)
+========================= */
 .login-text {
-  margin-top: 18px;
+  margin-top: 16px;
   text-align: center;
   font-size: 14px;
 }
 
-.login-text span {
-  color: #3b82f6;
-  cursor: pointer;
+.login-text a {
+  color: #2563eb;
   font-weight: 600;
+  text-decoration: none;
+}
+.login-text {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 14px;
+  color: #374151;
 }
 
-/* Fade animation */
-.fade-in {
-  animation: fadeIn 0.6s ease-in-out;
+.login-text a {
+  color: #1d4ed8; /* xanh đậm */
+  font-weight: 700; /* in đậm */
+  text-decoration: none;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.login-text a:hover {
+  text-decoration: underline;
 }
