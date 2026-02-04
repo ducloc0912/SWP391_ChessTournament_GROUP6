@@ -160,6 +160,19 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
     };
   }, [avatarPreview]);
 
+  // Avatar
+  const [avatarUrl, setAvatarUrl] = useState(""); // current avatar (from server)
+  const [avatarFile, setAvatarFile] = useState(null); // new file
+  const [avatarPreview, setAvatarPreview] = useState(""); // preview URL
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    // cleanup preview url
+    return () => {
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    };
+  }, [avatarPreview]);
+
   const nameSplit = useMemo(() => {
     const s = (fullName || "").trim().replace(/\s+/g, " ");
     if (!s) return { firstName: "", lastName: "" };
