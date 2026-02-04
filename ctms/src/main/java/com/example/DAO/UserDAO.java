@@ -13,8 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.example.model.User;
-import com.example.model.UserRole;
+import com.example.model.entity.User;
+import com.example.model.entity.UserRole;
 import com.example.util.DBContext;
 
 public class UserDAO extends DBContext {
@@ -50,7 +50,7 @@ public class UserDAO extends DBContext {
                 user.setAddress(rs.getString("address"));
                 user.setPassword(rs.getString("password"));
                 user.setAvatar(rs.getString("avatar"));
-                user.setActive(rs.getBoolean("is_active"));
+                user.setIsActive(rs.getBoolean("is_active"));
                 user.setBalance(rs.getBigDecimal("balance"));
                 user.setRank((Integer) rs.getObject("rank"));
 
@@ -211,9 +211,7 @@ private User mapRow(ResultSet rs) throws SQLException {
 
         u.setUserId(rs.getInt("user_id"));
 
-        // birthday (DATE) -> java.util.Date
-        java.sql.Date bd = rs.getDate("birthday");
-        u.setBirthday(bd != null ? new java.util.Date(bd.getTime()) : null);
+        u.setBirthday(rs.getTimestamp("birthday"));
 
         u.setUsername(rs.getString("username"));
         u.setFirstName(rs.getString("first_name"));
@@ -222,15 +220,11 @@ private User mapRow(ResultSet rs) throws SQLException {
         u.setPhoneNumber(rs.getString("phone_number"));
         u.setAddress(rs.getString("address"));
 
-        // last_login (DATETIME) -> java.util.Date
-        Timestamp lastLoginTs = rs.getTimestamp("last_login");
-        u.setLastLogin(lastLoginTs != null ? new java.util.Date(lastLoginTs.getTime()) : null);
+        u.setLastLogin(rs.getTimestamp("last_login"));
 
-        // create_at (DATETIME) -> java.util.Date
-        Timestamp createdAtTs = rs.getTimestamp("create_at");
-        u.setCreatedAt(createdAtTs != null ? new java.util.Date(createdAtTs.getTime()) : null);
+        u.setCreateAt(rs.getTimestamp("create_at"));
 
-        u.setActive(rs.getBoolean("is_active"));
+        u.setIsActive(rs.getBoolean("is_active"));
         u.setPassword(rs.getString("password"));
         u.setAvatar(rs.getString("avatar"));
 
@@ -343,7 +337,7 @@ e.printStackTrace();
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     UserRole urObj = new UserRole();
-urObj.setUserId(rs.getInt("user_id"));
+                    urObj.setUserId(rs.getInt("user_id"));
                     urObj.setUsername(rs.getString("username"));
                     urObj.setEmail(rs.getString("email"));
 

@@ -1,7 +1,7 @@
 package com.example.model.entity;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.sql.Timestamp;
 
 import com.example.model.enums.TournamentFormat;
 import com.example.model.enums.TournamentStatus;
@@ -17,6 +17,23 @@ public class Tournament {
     private Integer minPlayer;
     private BigDecimal entryFee;
     private BigDecimal prizePool;
+    private TournamentStatus status;
+    private Timestamp registrationDeadline;
+    private Timestamp startDate;
+    private Timestamp endDate;
+    private Integer createBy;
+    private Timestamp createAt;
+    private String notes;
+    private int currentPlayers;
+
+    public int getCurrentPlayers() {
+        return currentPlayers;
+    }
+
+    public void setCurrentPlayers(int currentPlayers) {
+        this.currentPlayers = currentPlayers;
+    }
+
     public Integer getTournamentId() {
         return tournamentId;
     }
@@ -105,27 +122,27 @@ public class Tournament {
         this.status = status;
     }
 
-    public LocalDateTime getRegistrationDeadline() {
+    public Timestamp getRegistrationDeadline() {
         return registrationDeadline;
     }
 
-    public void setRegistrationDeadline(LocalDateTime registrationDeadline) {
+    public void setRegistrationDeadline(Timestamp registrationDeadline) {
         this.registrationDeadline = registrationDeadline;
     }
 
-    public LocalDateTime getStartDate() {
+    public Timestamp getStartDate() {
         return startDate;
     }
 
-    public void setStartDate(LocalDateTime startDate) {
+    public void setStartDate(Timestamp startDate) {
         this.startDate = startDate;
     }
 
-    public LocalDateTime getEndDate() {
+    public Timestamp getEndDate() {
         return endDate;
     }
 
-    public void setEndDate(LocalDateTime endDate) {
+    public void setEndDate(Timestamp endDate) {
         this.endDate = endDate;
     }
 
@@ -137,11 +154,11 @@ public class Tournament {
         this.createBy = createBy;
     }
 
-    public LocalDateTime getCreateAt() {
+    public Timestamp getCreateAt() {
         return createAt;
     }
 
-    public void setCreateAt(LocalDateTime createAt) {
+    public void setCreateAt(Timestamp createAt) {
         this.createAt = createAt;
     }
 
@@ -153,21 +170,13 @@ public class Tournament {
         this.notes = notes;
     }
 
-    private TournamentStatus status;
-    private LocalDateTime registrationDeadline;
-    private LocalDateTime startDate;
-    private LocalDateTime endDate;
-    private Integer createBy;
-    private LocalDateTime createAt;
-    private String notes;
-
     public Tournament() {}
 
     public Tournament(Integer tournamentId, String tournamentName, String description, String location,
                       TournamentFormat format, String categories, Integer maxPlayer, Integer minPlayer,
                       BigDecimal entryFee, BigDecimal prizePool, TournamentStatus status,
-                      LocalDateTime registrationDeadline, LocalDateTime startDate, LocalDateTime endDate,
-                      Integer createBy, LocalDateTime createAt, String notes) {
+                      Timestamp registrationDeadline, Timestamp startDate, Timestamp endDate,
+                      Integer createBy, Timestamp createAt, String notes) {
         this.tournamentId = tournamentId;
         this.tournamentName = tournamentName;
         this.description = description;

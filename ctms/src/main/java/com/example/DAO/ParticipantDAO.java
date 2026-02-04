@@ -3,7 +3,8 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.example.model.Participant;
+import com.example.model.entity.Participant;
+import com.example.model.enums.ParticipantStatus; 
 import com.example.util.DBContext;
 
 public class ParticipantDAO extends DBContext {
@@ -16,8 +17,8 @@ public class ParticipantDAO extends DBContext {
         p.setUserId(rs.getInt("user_id"));
         p.setTitleAtRegistration(rs.getString("title_at_registration"));
         p.setSeed((Integer) rs.getObject("seed"));
-        p.setStatus(rs.getString("status"));
-        p.setPaid(rs.getBoolean("is_paid"));
+        p.setStatus(ParticipantStatus.valueOf(rs.getString("status")));
+        p.setIsPaid(rs.getBoolean("is_paid"));
         p.setPaymentDate(rs.getTimestamp("payment_date"));
         p.setRegistrationDate(rs.getTimestamp("registration_date"));
         p.setNotes(rs.getString("notes"));
@@ -91,8 +92,8 @@ try (Connection conn = getConnection();
             } else {
                 ps.setNull(4, Types.INTEGER);
             }
-            ps.setString(5, p.getStatus());
-            ps.setBoolean(6, p.isPaid());
+            ps.setString(5, p.getStatus().name());
+            ps.setBoolean(6, p.getIsPaid());
             ps.setTimestamp(7, p.getPaymentDate());
             ps.setString(8, p.getNotes());
             return ps.executeUpdate() > 0;
@@ -117,8 +118,8 @@ try (Connection conn = getConnection();
             } else {
                 ps.setNull(2, Types.INTEGER);
             }
-            ps.setString(3, p.getStatus());
-            ps.setBoolean(4, p.isPaid());
+            ps.setString(3, p.getStatus().name());
+            ps.setBoolean(4, p.getIsPaid());
             ps.setTimestamp(5, p.getPaymentDate());
             ps.setString(6, p.getNotes());
             ps.setInt(7, p.getParticipantId());

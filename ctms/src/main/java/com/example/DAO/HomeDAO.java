@@ -7,15 +7,15 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.example.model.Tournaments;
-import com.example.model.User;
+import com.example.model.entity.Tournament;
+import com.example.model.entity.User;
 import com.example.util.DBContext;
 
 public class HomeDAO extends DBContext {
 
     // 1. Lấy 3 giải đấu sắp tới (Ngày bắt đầu > Hiện tại)
-    public List<Tournaments> getUpcomingTournaments() {
-        List<Tournaments> list = new ArrayList<>();
+    public List<Tournament> getUpcomingTournaments() {
+        List<Tournament> list = new ArrayList<>();
         // SQL Server syntax: TOP 3
         String sql = "SELECT TOP 3 * FROM Tournaments " +
                      "WHERE start_date > GETDATE() " +
@@ -26,7 +26,7 @@ public class HomeDAO extends DBContext {
              ResultSet rs = ps.executeQuery()) {
             
             while (rs.next()) {
-                Tournaments t = new Tournaments();
+                Tournament t = new Tournament();
                 t.setTournamentId(rs.getInt("tournament_id"));
                 t.setTournamentName(rs.getString("tournament_name"));
                 t.setDescription(rs.getString("description"));

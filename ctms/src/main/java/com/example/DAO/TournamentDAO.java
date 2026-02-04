@@ -8,7 +8,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.example.model.Tournaments;
+import com.example.model.entity.Tournament;
+import com.example.model.enums.TournamentFormat;
+import com.example.model.enums.TournamentStatus;
 import com.example.util.DBContext;
 
 public class TournamentDAO extends DBContext {
@@ -60,7 +62,7 @@ public class TournamentDAO extends DBContext {
     // =========================
     // CREATE TOURNAMENT
     // =========================
-    public boolean createTournament(Tournaments t) {
+    public boolean createTournament(Tournament t) {
         String sql = """
             INSERT INTO Tournaments
             (tournament_name, description, location, format, categories,
@@ -76,7 +78,7 @@ public class TournamentDAO extends DBContext {
             ps.setString(1, t.getTournamentName());
             ps.setString(2, t.getDescription());
             ps.setString(3, t.getLocation());
-            ps.setString(4, t.getFormat());
+            ps.setString(4, t.getFormat().name());
             ps.setString(5, t.getCategories());
             ps.setInt(6, t.getMaxPlayer());
             ps.setInt(7, t.getMinPlayer());
@@ -99,7 +101,7 @@ public class TournamentDAO extends DBContext {
     // =========================
     // GET TOURNAMENT BY ID
     // =========================
-    public Tournaments getTournamentById(int id) {
+    public Tournament getTournamentById(int id) {
         String sql = "SELECT * FROM Tournaments WHERE tournament_id = ?";
 
         try (Connection conn = DBContext.getConnection();
@@ -120,8 +122,8 @@ public class TournamentDAO extends DBContext {
 // =========================
     // GET ALL TOURNAMENTS
     // =========================
-    public List<Tournaments> getAllTournaments() {
-        List<Tournaments> list = new ArrayList<>();
+    public List<Tournament> getAllTournaments() {
+        List<Tournament> list = new ArrayList<>();
         String sql = "SELECT * FROM Tournaments";
 
         try (Connection conn = DBContext.getConnection();
@@ -141,7 +143,7 @@ public class TournamentDAO extends DBContext {
     // =========================
     // UPDATE TOURNAMENT
     // =========================
-    public boolean updateTournament(Tournaments t) {
+    public boolean updateTournament(Tournament t) {
         String sql = """
             UPDATE Tournaments SET
                 tournament_name = ?,
@@ -166,7 +168,7 @@ public class TournamentDAO extends DBContext {
             ps.setString(1, t.getTournamentName());
             ps.setString(2, t.getDescription());
             ps.setString(3, t.getLocation());
-            ps.setString(4, t.getFormat());
+            ps.setString(4, t.getFormat().name());
             ps.setString(5, t.getCategories());
             ps.setInt(6, t.getMaxPlayer());
             ps.setInt(7, t.getMinPlayer());
@@ -209,20 +211,20 @@ public class TournamentDAO extends DBContext {
         return false;
     }
 
-private Tournaments mapResultSetToTournament(ResultSet rs) throws SQLException {
-        Tournaments t = new Tournaments();
+private Tournament mapResultSetToTournament(ResultSet rs) throws SQLException {
+        Tournament t = new Tournament();
 
         t.setTournamentId(rs.getInt("tournament_id"));
         t.setTournamentName(rs.getString("tournament_name"));
         t.setDescription(rs.getString("description"));
         t.setLocation(rs.getString("location"));
-        t.setFormat(rs.getString("format"));
+        t.setFormat(TournamentFormat.valueOf(rs.getString("format")));
         t.setCategories(rs.getString("categories"));
         t.setMaxPlayer(rs.getInt("max_player"));
         t.setMinPlayer(rs.getInt("min_player"));
         t.setEntryFee(rs.getBigDecimal("entry_fee"));
         t.setPrizePool(rs.getBigDecimal("prize_pool"));
-        t.setStatus(rs.getString("status"));
+        t.setStatus(TournamentStatus.valueOf(rs.getString("status")));
 
         t.setRegistrationDeadline(rs.getTimestamp("registration_deadline"));
         t.setStartDate(rs.getTimestamp("start_date"));
