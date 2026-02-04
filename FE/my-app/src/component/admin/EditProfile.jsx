@@ -45,6 +45,29 @@ function normalizeRoleKeyFromServer(roleName) {
   return "player";
 }
 
+// ===== Validation helpers =====
+function isBlankOrSpaces(s) {
+  return !String(s ?? "").trim();
+}
+
+function isValidPhoneVN(s) {
+  // 10 digits, starts with 0
+  return /^0\d{9}$/.test(String(s ?? "").trim());
+}
+
+function isNameValid(s) {
+  // not empty, no digits
+  const v = String(s ?? "").trim().replace(/\s+/g, " ");
+  if (!v) return false;
+  return !/\d/.test(v);
+}
+
+function hasDiacritics(s) {
+  // detect Vietnamese/Unicode combining marks or any non-ascii letters (common "dấu")
+  // If you want STRICT "no dấu" for password => forbid any non-ASCII character.
+  return /[^\x00-\x7F]/.test(String(s ?? ""));
+}
+
 export default function EditProfile({ userId: userIdProp, onBack }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -125,26 +148,61 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  const validateBeforeUpdate = () => {
+    // Full name: not empty spaces, not digits
+    if (!isNameValid(fullName)) {
+      throw new Error("Họ và tên không được để trống và không được chứa số.");
+    }
+
+    // Address: not just spaces
+    if (isBlankOrSpaces(address)) {
+      throw new Error("Địa chỉ không được để trống (không chỉ là khoảng trắng).");
+    }
+
+    // Phone: 10 digits start 0
+    if (!isValidPhoneVN(phoneNumber)) {
+      throw new Error("Số điện thoại phải đúng 10 chữ số và bắt đầu bằng số 0.");
+    }
+
+    // Username: optional rule? (keep light)
+    if (isBlankOrSpaces(username)) {
+      throw new Error("Username không được để trống.");
+    }
+  };
+
+  const validatePasswordNoDiacritics = (pwd, fieldLabel) => {
+    if (hasDiacritics(pwd)) {
+      throw new Error(`${fieldLabel} không được chứa ký tự có dấu (chỉ dùng ASCII).`);
+    }
+  };
+
   const onSave = async () => {
     setSaving(true);
     setErr("");
     setOkMsg("");
 
     try {
+      // ✅ Validate base fields
+      validateBeforeUpdate();
+
       const cp = currentPassword.trim();
       const np = newPassword.trim();
       const cnp = confirmNewPassword.trim();
 
       const wantsChangePass = !!(cp || np || cnp);
 
-      // ✅ Validate chỉ khi user thật sự muốn đổi pass
+      // ✅ Validate password only when user wants change
       if (wantsChangePass) {
-        // Admin đổi cho user khác: backend sẽ cho phép bỏ currentPassword
-        // Nhưng FE vẫn nên check basic: new + confirm
         if (!np) throw new Error("Vui lòng nhập mật khẩu mới.");
         if (!cnp) throw new Error("Vui lòng xác nhận mật khẩu mới.");
         if (np !== cnp) throw new Error("Mật khẩu mới và xác nhận không khớp.");
         if (np.length < 6) throw new Error("Mật khẩu mới tối thiểu 6 ký tự.");
+
+        // ❗ Password không dấu (ASCII only)
+        // currentPassword: nếu user có nhập thì cũng check, còn admin bỏ trống thì ok
+        if (cp) validatePasswordNoDiacritics(cp, "Mật khẩu hiện tại");
+        validatePasswordNoDiacritics(np, "Mật khẩu mới");
+        validatePasswordNoDiacritics(cnp, "Xác nhận mật khẩu mới");
       }
 
       // ✅ Gửi x-www-form-urlencoded để tránh preflight
@@ -254,7 +312,11 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
           <div className="ep-grid">
             <div className="ep-field">
               <div className="ep-label">Username</div>
-              <input className="ep-input" value={username} onChange={(e) => setUsername(e.target.value)} />
+              <input
+                className="ep-input"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
             </div>
 
             <div className="ep-field">
@@ -269,24 +331,44 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
 
             <div className="ep-field">
               <div className="ep-label">Ngày sinh</div>
-              <input type="date" className="ep-input" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
+              <input
+                type="date"
+                className="ep-input"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+              />
             </div>
 
             <div className="ep-field">
               <div className="ep-label">Số điện thoại</div>
-              <input className="ep-input" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
+              <input
+                className="ep-input"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="0xxxxxxxxx"
+              />
             </div>
 
             <div className="ep-field" style={{ gridColumn: "1 / -1" }}>
               <div className="ep-label">Địa chỉ</div>
-              <input className="ep-input" value={address} onChange={(e) => setAddress(e.target.value)} />
+              <input
+                className="ep-input"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
             </div>
 
             <div className="ep-field">
               <div className="ep-label">Vai trò</div>
-              <select className="ep-select" value={role} onChange={(e) => setRole(e.target.value)}>
+              <select
+                className="ep-select"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+              >
                 {ROLE_OPTIONS.map((r) => (
-                  <option key={r.value} value={r.value}>{r.label}</option>
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -299,25 +381,53 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
           <div className="ep-grid">
             <div className="ep-field">
               <div className="ep-label">Mật khẩu hiện tại</div>
-              <input type="password" className="ep-input" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+              <input
+                type="password"
+                className="ep-input"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
             </div>
 
             <div className="ep-field">
               <div className="ep-label">Mật khẩu mới</div>
-              <input type="password" className="ep-input" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              <input
+                type="password"
+                className="ep-input"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                
+              />
             </div>
 
             <div className="ep-field">
               <div className="ep-label">Xác nhận mật khẩu mới</div>
-              <input type="password" className="ep-input" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} />
+              <input
+                type="password"
+                className="ep-input"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                
+              />
             </div>
           </div>
 
           <div className="ep-divider" />
 
           <div className="ep-actions">
-            <button className="ep-btn" onClick={() => loadUser()} disabled={saving || loading}>Tải lại</button>
-            <button className="ep-btn ep-btnPrimary" onClick={onSave} disabled={saving || loading}>
+            <button
+              className="ep-btn"
+              onClick={() => loadUser()}
+              disabled={saving || loading}
+            >
+              Tải lại
+            </button>
+
+            <button
+              className="ep-btn ep-btnPrimary"
+              onClick={onSave}
+              disabled={saving || loading}
+            >
               {saving ? "Đang lưu..." : "Lưu thay đổi"}
             </button>
           </div>
