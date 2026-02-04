@@ -1,4 +1,5 @@
 package com.example.DAO;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -16,20 +17,26 @@ public class TournamentDAO extends DBContext {
     public int countAllTournaments() {
         String sql = "SELECT COUNT(*) AS total FROM Tournaments";
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            if (rs.next()) return rs.getInt("total");
-        } catch (SQLException e) { e.printStackTrace(); }
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            if (rs.next())
+                return rs.getInt("total");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return 0;
     }
 
     public int countCancelledTournaments() {
         String sql = "SELECT COUNT(*) AS total FROM Tournaments WHERE status = 'Cancelled'";
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            if (rs.next()) return rs.getInt("total");
-        } catch (SQLException e) { e.printStackTrace(); }
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            if (rs.next())
+                return rs.getInt("total");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return 0;
     }
 
@@ -39,8 +46,8 @@ public class TournamentDAO extends DBContext {
         String sql = "SELECT status, COUNT(*) AS total FROM Tournaments GROUP BY status";
 
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 Map<String, Object> row = new HashMap<>();
@@ -48,30 +55,30 @@ public class TournamentDAO extends DBContext {
                 row.put("total", rs.getInt("total"));
                 list.add(row);
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
 
         return list;
     }
 
-    //Dung
+    // Dung
 
-
-    
     // =========================
     // CREATE TOURNAMENT
     // =========================
     public boolean createTournament(Tournaments t) {
         String sql = """
-            INSERT INTO Tournaments
-            (tournament_name, description, location, format, categories,
-             max_player, min_player, entry_fee, prize_pool,
-             registration_deadline, start_date, end_date,
-             create_by, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """;
+                    INSERT INTO Tournaments
+                    (tournament_name, description, location, format, categories,
+                     max_player, min_player, entry_fee, prize_pool,
+                     registration_deadline, start_date, end_date,
+                     create_by, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, t.getTournamentName());
             ps.setString(2, t.getDescription());
@@ -103,7 +110,7 @@ public class TournamentDAO extends DBContext {
         String sql = "SELECT * FROM Tournaments WHERE tournament_id = ?";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, id);
             ResultSet rs = ps.executeQuery();
@@ -117,7 +124,8 @@ public class TournamentDAO extends DBContext {
         }
         return null;
     }
-// =========================
+
+    // =========================
     // GET ALL TOURNAMENTS
     // =========================
     public List<Tournaments> getAllTournaments() {
@@ -125,8 +133,8 @@ public class TournamentDAO extends DBContext {
         String sql = "SELECT * FROM Tournaments";
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 list.add(mapResultSetToTournament(rs));
@@ -143,25 +151,25 @@ public class TournamentDAO extends DBContext {
     // =========================
     public boolean updateTournament(Tournaments t) {
         String sql = """
-            UPDATE Tournaments SET
-                tournament_name = ?,
-                description = ?,
-                location = ?,
-                format = ?,
-                categories = ?,
-                max_player = ?,
-                min_player = ?,
-                entry_fee = ?,
-                prize_pool = ?,
-                registration_deadline = ?,
-                start_date = ?,
-                end_date = ?,
-                notes = ?
-            WHERE tournament_id = ?
-        """;
+                    UPDATE Tournaments SET
+                        tournament_name = ?,
+                        description = ?,
+                        location = ?,
+                        format = ?,
+                        categories = ?,
+                        max_player = ?,
+                        min_player = ?,
+                        entry_fee = ?,
+                        prize_pool = ?,
+                        registration_deadline = ?,
+                        start_date = ?,
+                        end_date = ?,
+                        notes = ?
+                    WHERE tournament_id = ?
+                """;
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, t.getTournamentName());
             ps.setString(2, t.getDescription());
@@ -192,13 +200,13 @@ public class TournamentDAO extends DBContext {
     // =========================
     public boolean deleteTournament(int tournamentId) {
         String sql = """
-            UPDATE Tournaments
-            SET status = 'Delayed'
-            WHERE tournament_id = ?
-        """;
+                    UPDATE Tournaments
+                    SET status = 'Delayed'
+                    WHERE tournament_id = ?
+                """;
 
         try (Connection conn = DBContext.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, tournamentId);
             return ps.executeUpdate() > 0;
@@ -209,7 +217,7 @@ public class TournamentDAO extends DBContext {
         return false;
     }
 
-private Tournaments mapResultSetToTournament(ResultSet rs) throws SQLException {
+    private Tournaments mapResultSetToTournament(ResultSet rs) throws SQLException {
         Tournaments t = new Tournaments();
 
         t.setTournamentId(rs.getInt("tournament_id"));
@@ -233,4 +241,107 @@ private Tournaments mapResultSetToTournament(ResultSet rs) throws SQLException {
 
         return t;
     }
+
+    // Hien them
+    public List<Map<String, Object>> getTournamentHistoryByUser(int userId, String statusFilter) {
+        List<Map<String, Object>> list = new ArrayList<>();
+
+        String sql = """
+                    SELECT
+                        t.tournament_id,
+                        t.tournament_name,
+                        t.status,
+                        t.start_date,
+                        t.end_date,
+                        CASE
+                            WHEN t.status = 'Completed' THEN s.current_rank
+                            ELSE NULL
+                        END AS ranking
+                    FROM Participants p
+                    INNER JOIN Tournaments t ON t.tournament_id = p.tournament_id
+                    LEFT JOIN Standing s ON s.tournament_id = p.tournament_id AND s.user_id = p.user_id
+                    WHERE p.user_id = ?
+                      AND ( ? IS NULL OR ? = '' OR t.status = ? )
+                    ORDER BY t.start_date DESC, t.tournament_id DESC
+                """;
+
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, userId);
+
+            // dùng 3 lần vì câu SQL có 3 placeholders cho filter
+            ps.setString(2, statusFilter);
+            ps.setString(3, statusFilter);
+            ps.setString(4, statusFilter);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("tournamentId", rs.getInt("tournament_id"));
+                    row.put("tournamentName", rs.getString("tournament_name"));
+                    row.put("status", rs.getString("status"));
+                    row.put("startDate", rs.getTimestamp("start_date"));
+                    row.put("endDate", rs.getTimestamp("end_date"));
+                    row.put("ranking", rs.getObject("ranking")); // Integer hoặc null
+                    list.add(row);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+    public List<Map<String, Object>> getUserTournamentHistory(int userId, String status) {
+        List<Map<String, Object>> list = new ArrayList<>();
+
+        String sql = """
+                    SELECT
+                        t.tournament_id,
+                        t.tournament_name,
+                        t.status,
+                        t.start_date,
+                        t.end_date,
+                        s.current_rank AS ranking
+                    FROM Participants p
+                    INNER JOIN Tournaments t ON t.tournament_id = p.tournament_id
+                    LEFT JOIN Standing s ON s.tournament_id = t.tournament_id AND s.user_id = p.user_id
+                    WHERE p.user_id = ?
+                      AND ( ? IS NULL OR ? = '' OR t.status = ? )
+                    ORDER BY t.start_date DESC
+                """;
+
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, userId);
+            ps.setString(2, status);
+            ps.setString(3, status);
+            ps.setString(4, status);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("tournamentId", rs.getInt("tournament_id"));
+                    row.put("tournamentName", rs.getString("tournament_name"));
+                    row.put("status", rs.getString("status"));
+                    row.put("startDate", rs.getTimestamp("start_date"));
+                    row.put("endDate", rs.getTimestamp("end_date"));
+
+                    int ranking = rs.getInt("ranking");
+                    row.put("ranking", rs.wasNull() ? null : ranking);
+
+                    list.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
 }

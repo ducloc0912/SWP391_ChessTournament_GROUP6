@@ -6,8 +6,8 @@ export const Header = ({ title }) => {
   return (
     <header className="headerBar">
       <div className="headerTitle">
-        <h2>{title}</h2>
-        <p>Quản lý hệ thống Chess Tournament</p>
+        <h2 style={{color: "#000000"}}>{title}</h2>
+        <p style={{color: "#000000"}}>Quản lý hệ thống Chess Tournament</p>
       </div>
 
       <div className="headerSearchWrap">
