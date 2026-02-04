@@ -722,38 +722,7 @@ public class UserDAO extends DBContext {
         }
     }
 
-    // ====== ADD: verify current password then change ======
-    public boolean changePasswordWithVerify(int userId, String currentPassword, String newPassword) {
-        String selectSql = "SELECT password FROM Users WHERE user_id = ?";
-        String updateSql = "UPDATE Users SET password = ? WHERE user_id = ?";
-
-        try (Connection conn = getConnection()) {
-
-            String dbPass = null;
-            try (PreparedStatement ps = conn.prepareStatement(selectSql)) {
-                ps.setInt(1, userId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next())
-                        dbPass = rs.getString("password");
-                }
-            }
-
-            if (dbPass == null)
-                return false;
-            if (!dbPass.equals(currentPassword))
-                return false;
-
-            try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
-                ps.setString(1, newPassword);
-                ps.setInt(2, userId);
-                return ps.executeUpdate() > 0;
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
+   
 
     public boolean updateUserAvatar(int userId, String avatarDataUri) {
         String sql = "UPDATE Users SET avatar = ? WHERE user_id = ?";

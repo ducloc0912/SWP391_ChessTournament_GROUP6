@@ -62,19 +62,12 @@ function isNameValid(s) {
   return !/\d/.test(v);
 }
 
-function hasDiacritics(s) {
-  // forbid any non-ASCII char for password ("không dấu")
-  return /[^\x00-\x7F]/.test(String(s ?? ""));
-}
-
 function isAllowedImageType(file) {
   const t = String(file?.type || "").toLowerCase();
-  // Browser usually sets: image/jpeg, image/png
   return t === "image/jpeg" || t === "image/png";
 }
 
 function sniffImageSignature(file) {
-  // Verify magic bytes:
   // PNG: 89 50 4E 47 0D 0A 1A 0A
   // JPG: FF D8 FF
   return new Promise((resolve) => {
@@ -83,7 +76,6 @@ function sniffImageSignature(file) {
     reader.onload = () => {
       try {
         const buf = new Uint8Array(reader.result);
-        // PNG
         const isPng =
           buf.length >= 8 &&
           buf[0] === 0x89 &&
@@ -94,7 +86,7 @@ function sniffImageSignature(file) {
           buf[5] === 0x0a &&
           buf[6] === 0x1a &&
           buf[7] === 0x0a;
-        // JPG
+
         const isJpg = buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
 
         resolve(isPng || isJpg);
@@ -107,7 +99,6 @@ function sniffImageSignature(file) {
 }
 
 function verifyImageDecode(file) {
-  // extra safety: ensure browser can decode it as an image
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -149,18 +140,13 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [role, setRole] = useState("player");
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
-
   // Avatar
-  const [avatarUrl, setAvatarUrl] = useState(""); // current avatar (from server)
-  const [avatarFile, setAvatarFile] = useState(null); // new file
-  const [avatarPreview, setAvatarPreview] = useState(""); // preview URL
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState("");
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    // cleanup preview url
     return () => {
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
     };
@@ -199,8 +185,8 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
       setPhoneNumber(u.phoneNumber ?? "");
       setRole(normalizeRoleKeyFromServer(roleName));
 
-      // avatar current
-      setAvatarUrl(u.avatar ?? ""); // nếu backend field tên khác thì sửa lại
+      setAvatarUrl(u.avatar ?? "");
+
       // reset chosen file
       setAvatarFile(null);
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
@@ -238,33 +224,19 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
     }
   };
 
-  const validatePasswordNoDiacritics = (pwd, fieldLabel) => {
-    if (hasDiacritics(pwd)) {
-      throw new Error(`${fieldLabel} không được chứa ký tự có dấu (chỉ dùng ASCII).`);
-    }
-  };
-
   const validateAvatarFile = async (file) => {
     if (!file) return;
 
-    const maxBytes = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxBytes) {
-      throw new Error("Ảnh đại diện tối đa 10MB.");
-    }
+    const maxBytes = 10 * 1024 * 1024;
+    if (file.size > maxBytes) throw new Error("Ảnh đại diện tối đa 10MB.");
 
-    if (!isAllowedImageType(file)) {
-      throw new Error("Chỉ chấp nhận ảnh JPG hoặc PNG.");
-    }
+    if (!isAllowedImageType(file)) throw new Error("Chỉ chấp nhận ảnh JPG hoặc PNG.");
 
     const sigOk = await sniffImageSignature(file);
-    if (!sigOk) {
-      throw new Error("File không đúng định dạng ảnh (JPG/PNG) hoặc bị lỗi.");
-    }
+    if (!sigOk) throw new Error("File không đúng định dạng ảnh (JPG/PNG) hoặc bị lỗi.");
 
     const decOk = await verifyImageDecode(file);
-    if (!decOk) {
-      throw new Error("Không thể đọc ảnh. File có thể bị hỏng.");
-    }
+    if (!decOk) throw new Error("Không thể đọc ảnh. File có thể bị hỏng.");
   };
 
   const onPickAvatar = async (e) => {
@@ -281,8 +253,8 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
 
     try {
       await validateAvatarFile(file);
-
       setAvatarFile(file);
+
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
       setAvatarPreview(URL.createObjectURL(file));
     } catch (ex) {
@@ -307,33 +279,10 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
     setOkMsg("");
 
     try {
-      // ✅ Validate base fields
       validateBeforeUpdate();
 
-      // ✅ Validate avatar if selected
-      if (avatarFile) {
-        await validateAvatarFile(avatarFile);
-      }
+      if (avatarFile) await validateAvatarFile(avatarFile);
 
-      const cp = currentPassword.trim();
-      const np = newPassword.trim();
-      const cnp = confirmNewPassword.trim();
-
-      const wantsChangePass = !!(cp || np || cnp);
-
-      if (wantsChangePass) {
-        if (!np) throw new Error("Vui lòng nhập mật khẩu mới.");
-        if (!cnp) throw new Error("Vui lòng xác nhận mật khẩu mới.");
-        if (np !== cnp) throw new Error("Mật khẩu mới và xác nhận không khớp.");
-        if (np.length < 6) throw new Error("Mật khẩu mới tối thiểu 6 ký tự.");
-
-        if (cp) validatePasswordNoDiacritics(cp, "Mật khẩu hiện tại");
-        validatePasswordNoDiacritics(np, "Mật khẩu mới");
-        validatePasswordNoDiacritics(cnp, "Xác nhận mật khẩu mới");
-      }
-
-      // ✅ Nếu có avatarFile -> dùng multipart/form-data
-      // ✅ Nếu không -> dùng x-www-form-urlencoded như cũ
       let out;
 
       if (avatarFile) {
@@ -346,15 +295,7 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
         fd.set("address", address.trim());
         fd.set("phoneNumber", phoneNumber.trim());
         fd.set("role", role);
-
-        if (wantsChangePass) {
-          fd.set("currentPassword", cp);
-          fd.set("newPassword", np);
-          fd.set("confirmNewPassword", cnp);
-        }
-
-        // field name "avatar" (nếu backend yêu cầu tên khác, đổi ở đây)
-        fd.set("avatar", avatarFile);
+        fd.set("avatar", avatarFile); // must match servlet req.getPart("avatar")
 
         out = await apiFetch(`/api/admin/user-update/${userId}`, {
           method: "POST",
@@ -371,12 +312,6 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
         form.set("phoneNumber", phoneNumber.trim());
         form.set("role", role);
 
-        if (wantsChangePass) {
-          form.set("currentPassword", cp);
-          form.set("newPassword", np);
-          form.set("confirmNewPassword", cnp);
-        }
-
         out = await apiFetch(`/api/admin/user-update/${userId}`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -384,15 +319,9 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
         });
       }
 
-      if (out?.success !== true) {
-        throw new Error(out?.message || "Cập nhật thất bại.");
-      }
+      if (out?.success !== true) throw new Error(out?.message || "Cập nhật thất bại.");
 
       setOkMsg("Cập nhật thành công!");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmNewPassword("");
-
       await loadUser();
     } catch (e) {
       setErr(e?.message || String(e));
@@ -557,42 +486,6 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
                   </option>
                 ))}
               </select>
-            </div>
-          </div>
-
-          <div className="ep-divider" />
-
-          <div className="ep-sectionTitle">Đổi mật khẩu (tuỳ chọn)</div>
-
-          <div className="ep-grid">
-            <div className="ep-field">
-              <div className="ep-label">Mật khẩu hiện tại</div>
-              <input
-                type="password"
-                className="ep-input"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
-            </div>
-
-            <div className="ep-field">
-              <div className="ep-label">Mật khẩu mới</div>
-              <input
-                type="password"
-                className="ep-input"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </div>
-
-            <div className="ep-field">
-              <div className="ep-label">Xác nhận mật khẩu mới</div>
-              <input
-                type="password"
-                className="ep-input"
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-              />
             </div>
           </div>
 

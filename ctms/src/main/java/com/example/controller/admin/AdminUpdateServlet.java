@@ -11,7 +11,6 @@ import java.util.Map;
 import javax.imageio.ImageIO;
 
 import com.example.DAO.UserDAO;
-import com.example.model.User;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -21,7 +20,6 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 
 @WebServlet("/api/admin/user-update/*")
@@ -102,7 +100,6 @@ public class AdminUpdateServlet extends HttpServlet {
                 Part avatarPart = safeGetPart(req, "avatar"); // FE field name must be "avatar"
                 if (avatarPart != null && avatarPart.getSize() > 0) {
                     String avatarDataUri = validateAndConvertAvatarToDataUri(avatarPart);
-                    // ✅ Bạn cần implement hàm này trong DAO
                     okAvatar = userDAO.updateUserAvatar(userId, avatarDataUri);
                     if (!okAvatar) throw new RuntimeException("Update avatar failed");
                 }
@@ -117,53 +114,9 @@ public class AdminUpdateServlet extends HttpServlet {
                 ok2 = userDAO.updateUserRoleByKey(userId, roleKey);
             }
 
-            // ===== Password (optional) =====
-            String currentPassword = safeTrim(readField(req, body, "currentPassword"));
-            String newPassword = safeTrim(readField(req, body, "newPassword"));
-            String confirmNewPassword = safeTrim(readField(req, body, "confirmNewPassword"));
-
-            boolean wantsPass = !newPassword.isEmpty() || !confirmNewPassword.isEmpty() || !currentPassword.isEmpty();
-            boolean ok3 = true;
-
-            if (wantsPass) {
-                if (newPassword.isEmpty() || confirmNewPassword.isEmpty()) {
-                    throw new RuntimeException("Missing password fields");
-                }
-                if (!newPassword.equals(confirmNewPassword)) {
-                    throw new RuntimeException("Confirm password not match");
-                }
-
-                HttpSession session = req.getSession(false);
-                String role = session == null ? null : (String) session.getAttribute("role");
-
-                int sessionUserId = -1;
-                if (session != null) {
-                    Object uObj = session.getAttribute("user");
-                    if (uObj instanceof User) {
-                        sessionUserId = ((User) uObj).getUserId();
-                    } else if (uObj != null) {
-                        try { sessionUserId = Integer.parseInt(String.valueOf(uObj)); } catch (Exception ignore) {}
-                    }
-                }
-
-                boolean isAdmin = role != null && role.equalsIgnoreCase("Admin");
-                boolean changingOtherUser = sessionUserId > 0 && sessionUserId != userId;
-
-                if (isAdmin && changingOtherUser) {
-                    userDAO.updatePassword(userId, newPassword);
-                    ok3 = true;
-                } else {
-                    if (currentPassword.isEmpty()) {
-                        throw new RuntimeException("Missing current password");
-                    }
-                    ok3 = userDAO.changePasswordWithVerify(userId, currentPassword, newPassword);
-                    if (!ok3) throw new RuntimeException("Current password incorrect");
-                }
-            }
-
+            if (!okAvatar) throw new RuntimeException("Update avatar failed");
             if (!ok1) throw new RuntimeException("Update user basic failed");
             if (!ok2) throw new RuntimeException("Update role failed");
-            if (!ok3) throw new RuntimeException("Update password failed");
 
             out.put("success", true);
             out.put("message", "Updated");
@@ -184,10 +137,6 @@ public class AdminUpdateServlet extends HttpServlet {
 
         if (body != null && body.get(key) != null) return String.valueOf(body.get(key)); // json
         return null;
-    }
-
-    private String safeTrim(String s) {
-        return s == null ? "" : s.trim();
     }
 
     private Part safeGetPart(HttpServletRequest req, String name) {
@@ -220,14 +169,10 @@ public class AdminUpdateServlet extends HttpServlet {
             throw new RuntimeException("Avatar must be JPG or PNG (invalid file signature)");
         }
 
-        // must be decodable image
         BufferedImage img = ImageIO.read(new ByteArrayInputStream(bytes));
         if (img == null) {
             throw new RuntimeException("File is not a valid image");
         }
-
-        // Optional: limit dimension if you want
-        // if (img.getWidth() > 4000 || img.getHeight() > 4000) throw new RuntimeException("Image too large");
 
         String b64 = Base64.getEncoder().encodeToString(bytes);
         return "data:image/" + type + ";base64," + b64;
