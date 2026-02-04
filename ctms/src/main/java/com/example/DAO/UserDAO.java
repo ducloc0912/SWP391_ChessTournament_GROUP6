@@ -590,4 +590,113 @@ return getUserActiveStatus(userId);
         }
         return null;
     }
+    public boolean updateUserAdminBasic(
+        int userId,
+        String username,
+        String firstName,
+        String lastName,
+        java.util.Date birthday,
+        String address,
+        String phoneNumber
+) {
+    String sql =
+        "UPDATE Users SET username=?, first_name=?, last_name=?, birthday=?, address=?, phone_number=? " +
+        "WHERE user_id=?";
+
+    try (Connection conn = getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql)) {
+
+        ps.setString(1, username);
+        ps.setString(2, firstName);
+        ps.setString(3, lastName);
+
+        if (birthday != null) ps.setDate(4, new java.sql.Date(birthday.getTime()));
+        else ps.setNull(4, Types.DATE);
+
+        ps.setString(5, address);
+        ps.setString(6, phoneNumber);
+        ps.setInt(7, userId);
+
+        return ps.executeUpdate() > 0;
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return false;
+    }
+}
+
+// ====== ADD: update role by key (staff/tournament_leader/referee/player) ======
+public boolean updateUserRoleByKey(int userId, String roleKey) {
+    String roleName = normalizeRoleName(roleKey); // dùng method đã có trong DAO của bạn
+    if (roleName == null || roleName.equalsIgnoreCase("all")) return true;
+
+    String getRoleIdSql = "SELECT role_id FROM Roles WHERE LOWER(role_name) = LOWER(?)";
+    String deleteOldSql = "DELETE FROM User_Role WHERE user_id = ?";
+    String insertNewSql = "INSERT INTO User_Role(user_id, role_id) VALUES(?, ?)";
+
+    try (Connection conn = getConnection()) {
+        conn.setAutoCommit(false);
+
+        int roleId = 0;
+        try (PreparedStatement ps = conn.prepareStatement(getRoleIdSql)) {
+            ps.setString(1, roleName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) roleId = rs.getInt("role_id");
+            }
+        }
+
+        if (roleId == 0) {
+            conn.rollback();
+            return false;
+        }
+
+        try (PreparedStatement ps = conn.prepareStatement(deleteOldSql)) {
+            ps.setInt(1, userId);
+            ps.executeUpdate();
+        }
+
+        try (PreparedStatement ps = conn.prepareStatement(insertNewSql)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, roleId);
+            ps.executeUpdate();
+        }
+
+        conn.commit();
+        return true;
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return false;
+    }
+}
+
+// ====== ADD: verify current password then change ======
+public boolean changePasswordWithVerify(int userId, String currentPassword, String newPassword) {
+    String selectSql = "SELECT password FROM Users WHERE user_id = ?";
+    String updateSql = "UPDATE Users SET password = ? WHERE user_id = ?";
+
+    try (Connection conn = getConnection()) {
+
+        String dbPass = null;
+        try (PreparedStatement ps = conn.prepareStatement(selectSql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) dbPass = rs.getString("password");
+            }
+        }
+
+        if (dbPass == null) return false;
+        if (!dbPass.equals(currentPassword)) return false;
+
+        try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
+            ps.setString(1, newPassword);
+            ps.setInt(2, userId);
+            return ps.executeUpdate() > 0;
+        }
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return false;
+    }
+}
 }

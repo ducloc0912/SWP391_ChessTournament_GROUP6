@@ -3,7 +3,7 @@ import { Users, Trophy, Gamepad2, XCircle } from "lucide-react";
 
 const API_BASE = "http://localhost:8080/ctms";
 
-const StatCard = ({ label, value, icon, tone = "amber" }) => {
+const StatCard = ({ label, value, icon, tone = "amber", valueColor }) => {
   const toneMap = {
     amber: { bg: "#FFFBEB", fg: "#D97706" },
     blue: { bg: "#EFF6FF", fg: "#2563EB" },
@@ -21,7 +21,7 @@ const StatCard = ({ label, value, icon, tone = "amber" }) => {
         <div className="statMeta">
           <div className="statLabel">{label}</div>
           <div className="statValueRow">
-            <div className="statValue">{value}</div>
+            <div className="statValue" style={{ color: valueColor }}>{value}</div>
           </div>
         </div>
       </div>
@@ -78,24 +78,28 @@ export const Dashboard = () => {
         value: fmt(data.totalUsers),
         icon: <Users size={22} />,
         tone: "amber",
+        valueColor: "#000000",
       },
       {
         label: "Tổng giải đấu",
         value: fmt(data.totalTournaments),
         icon: <Trophy size={22} />,
         tone: "blue",
+        valueColor: "#000000",
       },
       {
         label: "Trận đang diễn ra",
         value: fmt(data.ongoingMatches),
         icon: <Gamepad2 size={22} />,
         tone: "emerald",
+        valueColor: "#000000",
       },
       {
         label: "Giải đấu đã hủy",
         value: fmt(data.cancelledTournaments),
         icon: <XCircle size={22} />,
         tone: "red",
+        valueColor: "#000000",
       },
     ];
   }, [data]);
@@ -227,8 +231,8 @@ export const Dashboard = () => {
         <div className="cardChart">
           <div className="chartHeader">
             <div>
-              <h3>Trạng thái giải đấu</h3>
-              <p>Phân bố theo status trong DB</p>
+              <h3 style={{ color: "#000000" }}>Trạng thái giải đấu</h3>
+              
             </div>
           </div>
 
@@ -240,7 +244,7 @@ export const Dashboard = () => {
               }}
             >
               <div className="donutInner">
-                <div className="donutNum">
+                <div className="donutNum" style={{color: "#000000"}}>
                   {data.totalTournaments?.toLocaleString?.() ??
                     data.totalTournaments}
                 </div>
