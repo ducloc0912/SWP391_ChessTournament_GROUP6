@@ -12,12 +12,48 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.example.model.entity.User;
 import com.example.model.entity.UserRole;
 import com.example.util.DBContext;
 
 public class UserDAO extends DBContext {
+    //========================
+    // GET USERSList BY IDS
+    //========================
+
+    public List<User> getUsersByIds(List<Integer> ids) {
+        if (ids.isEmpty()) return List.of();
+
+        String inSql = ids.stream().map(i -> "?").collect(Collectors.joining(","));
+        String sql = "SELECT * FROM Users WHERE user_id IN (" + inSql + ")";
+
+        List<User> list = new ArrayList<>();
+
+        try (Connection c = getConnection();
+            PreparedStatement ps = c.prepareStatement(sql)) {
+
+            for (int i = 0; i < ids.size(); i++) {
+                ps.setInt(i + 1, ids.get(i));
+            }
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                User u = new User();
+                u.setAvatar(rs.getString("avatar"));
+                u.setEmail(rs.getString("email"));
+                u.setPhoneNumber(rs.getString("phone_number"));
+                u.setUserId(rs.getInt("user_id"));
+                u.setUsername(rs.getString("username"));
+                u.setRank(rs.getInt("rank"));
+                list.add(u);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
 
     // =========================
     // 1) AUTHENTICATE (LOGIN)
@@ -275,7 +311,7 @@ private User mapRow(ResultSet rs) throws SQLException {
                 if (rs.next()) return mapRow(rs);
             }
         } catch (SQLException e) {
-e.printStackTrace();
+        e.printStackTrace();
         }
         return null;
     }
@@ -297,291 +333,292 @@ e.printStackTrace();
         }
         return null;
     }
-    public List<UserRole> getUsersForAdmin(String q, String roleKeyOrName) {
-        List<UserRole> list = new ArrayList<>();
-
-        String qVal = (q == null) ? "" : q.trim();
-        String roleVal = normalizeRoleName(roleKeyOrName);
-
-        StringBuilder sql = new StringBuilder();
-        sql.append("SELECT u.user_id, u.username, u.email, u.last_login, u.is_active, u.avatar, ");
-        sql.append("       r.role_name ");
-        sql.append("FROM Users u ");
-        sql.append("LEFT JOIN User_Role ur ON u.user_id = ur.user_id ");
-        sql.append("LEFT JOIN Roles r ON ur.role_id = r.role_id ");
-        sql.append("WHERE 1=1 ");
-
-        List<Object> params = new ArrayList<>();
-
-        if (!qVal.isEmpty()) {
-            sql.append(" AND (u.username LIKE ? OR u.email LIKE ?) ");
-            String like = "%" + qVal + "%";
-            params.add(like);
-            params.add(like);
-        }
-
-        if (roleVal != null && !roleVal.equalsIgnoreCase("all")) {
-            sql.append(" AND LOWER(r.role_name) = LOWER(?) ");
-            params.add(roleVal);
-        }
-
-        sql.append("ORDER BY u.user_id DESC");
-
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-
-            for (int i = 0; i < params.size(); i++) {
-                ps.setObject(i + 1, params.get(i));
-            }
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    UserRole urObj = new UserRole();
-                    urObj.setUserId(rs.getInt("user_id"));
-                    urObj.setUsername(rs.getString("username"));
-                    urObj.setEmail(rs.getString("email"));
-
-                    // last_login -> Timestamp (giữ nguyên như bạn đang dùng)
-                    urObj.setLastLogin(rs.getTimestamp("last_login"));
-
-                    // ✅ JSON key isActive (tuỳ theo UserRole của bạn)
-                    urObj.setIsActive(rs.getBoolean("is_active"));
-
-                    urObj.setAvatar(rs.getString("avatar"));
-                    urObj.setRoleName(rs.getString("role_name"));
-                    list.add(urObj);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return list;
-    }
-
-    private String normalizeRoleName(String roleKeyOrName) {
-        if (roleKeyOrName == null) return "all";
-        String k = roleKeyOrName.trim();
-        if (k.isEmpty() || k.equalsIgnoreCase("all")) return "all";
-
-        switch (k.toLowerCase()) {
-            case "admin":
-                return "Admin";
-            case "staff":
-                return "Staff";
-            case "tournamentleader":
-            case "tournament_leader":
-            case "leader":
-                return "TournamentLeader";
-            case "referee":
-                return "Referee";
-            case "player":
-                return "Player";
-            default:
-                return k;
-        }
-    }
-
-    public boolean insertUser(User u) {
-        String sql =
-                "INSERT INTO Users " +
-                "(birthday, username, user_id, first_name, last_name, email, phone_number, address, " +
-                " last_login, create_at, is_active, password, avatar, balance, rank) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            // birthday: java.util.Date -> java.sql.Date
-            if (u.getBirthday() != null) ps.setDate(1, new java.sql.Date(u.getBirthday().getTime()));
-            else ps.setNull(1, Types.DATE);
-
-            ps.setString(2, u.getUsername());
-            ps.setInt(3, u.getUserId());
-
-            ps.setString(4, u.getFirstName());
-            ps.setString(5, u.getLastName());
-            ps.setString(6, u.getEmail());
-            ps.setString(7, u.getPhoneNumber());
-            ps.setString(8, u.getAddress());
-
-            // last_login: java.util.Date -> Timestamp
-            if (u.getLastLogin() != null) ps.setTimestamp(9, new Timestamp(u.getLastLogin().getTime()));
-            else ps.setNull(9, Types.TIMESTAMP);
-
-            // create_at: nếu null thì lấy now
-            java.util.Date createdAt = (u.getCreatedAt() != null) ? u.getCreatedAt() : new java.util.Date();
-            ps.setTimestamp(10, new Timestamp(createdAt.getTime()));
-
-            ps.setBoolean(11, u.isActive());
-            ps.setString(12, u.getPassword());
-ps.setString(13, u.getAvatar());
-
-            BigDecimal bal = (u.getBalance() != null) ? u.getBalance() : BigDecimal.ZERO;
-            ps.setBigDecimal(14, bal);
-
-            if (u.getRank() == null) ps.setNull(15, Types.INTEGER);
-            else ps.setInt(15, u.getRank());
-
-            return ps.executeUpdate() > 0;
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-
-    public boolean updateUser(User u) {
-        String sql =
-                "UPDATE Users SET " +
-                "birthday=?, username=?, first_name=?, last_name=?, email=?, phone_number=?, address=?, " +
-                "last_login=?, is_active=?, password=?, avatar=?, balance=?, rank=? " +
-                "WHERE user_id=?";
-
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            if (u.getBirthday() != null) ps.setDate(1, new java.sql.Date(u.getBirthday().getTime()));
-            else ps.setNull(1, Types.DATE);
-
-            ps.setString(2, u.getUsername());
-            ps.setString(3, u.getFirstName());
-            ps.setString(4, u.getLastName());
-            ps.setString(5, u.getEmail());
-            ps.setString(6, u.getPhoneNumber());
-            ps.setString(7, u.getAddress());
-
-            if (u.getLastLogin() != null) ps.setTimestamp(8, new Timestamp(u.getLastLogin().getTime()));
-            else ps.setNull(8, Types.TIMESTAMP);
-
-            ps.setBoolean(9, u.isActive());
-            ps.setString(10, u.getPassword());
-            ps.setString(11, u.getAvatar());
-
-            BigDecimal bal = (u.getBalance() != null) ? u.getBalance() : BigDecimal.ZERO;
-            ps.setBigDecimal(12, bal);
-
-            if (u.getRank() == null) ps.setNull(13, Types.INTEGER);
-            else ps.setInt(13, u.getRank());
-
-            ps.setInt(14, u.getUserId());
-
-            return ps.executeUpdate() > 0;
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
-    public boolean deleteUser(int userId) {
-        String sql = "DELETE FROM Users WHERE user_id=?";
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, userId);
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-
-    public int countAllUsers() {
-        String sql = "SELECT COUNT(*) AS total FROM Users";
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            if (rs.next()) return rs.getInt("total");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return 0;
-    }
-
-    public int countActiveUsers() {
-        String sql = "SELECT COUNT(*) AS total FROM Users WHERE is_active = 1";
-try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            if (rs.next()) return rs.getInt("total");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return 0;
-    }
-
-    public List<Map<String, Object>> countUserRegistrationsLastNMonths(int months) {
-        List<Map<String, Object>> out = new ArrayList<>();
-
-        String sql = "WITH m AS ( " +
-                "  SELECT CAST(DATEFROMPARTS(YEAR(DATEADD(MONTH, -(?-1), GETDATE())), " +
-                "                              MONTH(DATEADD(MONTH, -(?-1), GETDATE())), 1) AS DATE) AS month_start " +
-                "  UNION ALL " +
-                "  SELECT DATEADD(MONTH, 1, month_start) FROM m " +
-                "  WHERE month_start < CAST(DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AS DATE) " +
-                ") " +
-                "SELECT FORMAT(m.month_start, 'MM/yyyy') AS label, " +
-                "       COUNT(u.user_id) AS total " +
-                "FROM m " +
-                "LEFT JOIN Users u " +
-                "  ON u.create_at >= m.month_start " +
-                " AND u.create_at < DATEADD(MONTH, 1, m.month_start) " +
-                "GROUP BY m.month_start " +
-                "ORDER BY m.month_start " +
-                "OPTION (MAXRECURSION 1000);";
-
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, months);
-            ps.setInt(2, months);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    Map<String, Object> row = new HashMap<>();
-                    row.put("label", rs.getString("label"));
-                    row.put("total", rs.getInt("total"));
-                    out.add(row);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return out;
-    }
-
-    public Boolean getUserActiveStatus(int userId) {
-        String sql = "SELECT is_active FROM Users WHERE user_id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, userId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getBoolean("is_active");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public Boolean toggleUserActiveAndReturnStatus(int userId) {
-        String sql = "UPDATE Users " +
-                "SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END " +
-                "WHERE user_id = ?";
-
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, userId);
-            int updated = ps.executeUpdate();
-            if (updated == 0) return null;
-return getUserActiveStatus(userId);
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
 }
+//     public List<UserRole> getUsersForAdmin(String q, String roleKeyOrName) {
+//         List<UserRole> list = new ArrayList<>();
+
+//         String qVal = (q == null) ? "" : q.trim();
+//         String roleVal = normalizeRoleName(roleKeyOrName);
+
+//         StringBuilder sql = new StringBuilder();
+//         sql.append("SELECT u.user_id, u.username, u.email, u.last_login, u.is_active, u.avatar, ");
+//         sql.append("       r.role_name ");
+//         sql.append("FROM Users u ");
+//         sql.append("LEFT JOIN User_Role ur ON u.user_id = ur.user_id ");
+//         sql.append("LEFT JOIN Roles r ON ur.role_id = r.role_id ");
+//         sql.append("WHERE 1=1 ");
+
+//         List<Object> params = new ArrayList<>();
+
+//         if (!qVal.isEmpty()) {
+//             sql.append(" AND (u.username LIKE ? OR u.email LIKE ?) ");
+//             String like = "%" + qVal + "%";
+//             params.add(like);
+//             params.add(like);
+//         }
+
+//         if (roleVal != null && !roleVal.equalsIgnoreCase("all")) {
+//             sql.append(" AND LOWER(r.role_name) = LOWER(?) ");
+//             params.add(roleVal);
+//         }
+
+//         sql.append("ORDER BY u.user_id DESC");
+
+//         try (Connection conn = getConnection();
+//              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+//             for (int i = 0; i < params.size(); i++) {
+//                 ps.setObject(i + 1, params.get(i));
+//             }
+
+//             try (ResultSet rs = ps.executeQuery()) {
+//                 while (rs.next()) {
+//                     UserRole urObj = new UserRole();
+//                     urObj.setUserId(rs.getInt("user_id"));
+//                     urObj.setUsername(rs.getString("username"));
+//                     urObj.setEmail(rs.getString("email"));
+
+//                     // last_login -> Timestamp (giữ nguyên như bạn đang dùng)
+//                     urObj.setLastLogin(rs.getTimestamp("last_login"));
+
+//                     // ✅ JSON key isActive (tuỳ theo UserRole của bạn)
+//                     urObj.setIsActive(rs.getBoolean("is_active"));
+
+//                     urObj.setAvatar(rs.getString("avatar"));
+//                     urObj.setRoleName(rs.getString("role_name"));
+//                     list.add(urObj);
+//                 }
+//             }
+//         } catch (SQLException e) {
+//             e.printStackTrace();
+//         }
+
+//         return list;
+//     }
+
+//     private String normalizeRoleName(String roleKeyOrName) {
+//         if (roleKeyOrName == null) return "all";
+//         String k = roleKeyOrName.trim();
+//         if (k.isEmpty() || k.equalsIgnoreCase("all")) return "all";
+
+//         switch (k.toLowerCase()) {
+//             case "admin":
+//                 return "Admin";
+//             case "staff":
+//                 return "Staff";
+//             case "tournamentleader":
+//             case "tournament_leader":
+//             case "leader":
+//                 return "TournamentLeader";
+//             case "referee":
+//                 return "Referee";
+//             case "player":
+//                 return "Player";
+//             default:
+//                 return k;
+//         }
+//     }
+
+//     public boolean insertUser(User u) {
+//         String sql =
+//                 "INSERT INTO Users " +
+//                 "(birthday, username, user_id, first_name, last_name, email, phone_number, address, " +
+//                 " last_login, create_at, is_active, password, avatar, balance, rank) " +
+//                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+//         try (Connection conn = getConnection();
+//              PreparedStatement ps = conn.prepareStatement(sql)) {
+
+//             // birthday: java.util.Date -> java.sql.Date
+//             if (u.getBirthday() != null) ps.setDate(1, new java.sql.Date(u.getBirthday().getTime()));
+//             else ps.setNull(1, Types.DATE);
+
+//             ps.setString(2, u.getUsername());
+//             ps.setInt(3, u.getUserId());
+
+//             ps.setString(4, u.getFirstName());
+//             ps.setString(5, u.getLastName());
+//             ps.setString(6, u.getEmail());
+//             ps.setString(7, u.getPhoneNumber());
+//             ps.setString(8, u.getAddress());
+
+//             // last_login: java.util.Date -> Timestamp
+//             if (u.getLastLogin() != null) ps.setTimestamp(9, new Timestamp(u.getLastLogin().getTime()));
+//             else ps.setNull(9, Types.TIMESTAMP);
+
+//             // create_at: nếu null thì lấy now
+//             java.util.Date createdAt = (u.getCreatedAt() != null) ? u.getCreatedAt() : new java.util.Date();
+//             ps.setTimestamp(10, new Timestamp(createdAt.getTime()));
+
+//             ps.setBoolean(11, u.isActive());
+//             ps.setString(12, u.getPassword());
+// ps.setString(13, u.getAvatar());
+
+//             BigDecimal bal = (u.getBalance() != null) ? u.getBalance() : BigDecimal.ZERO;
+//             ps.setBigDecimal(14, bal);
+
+//             if (u.getRank() == null) ps.setNull(15, Types.INTEGER);
+//             else ps.setInt(15, u.getRank());
+
+//             return ps.executeUpdate() > 0;
+
+//         } catch (SQLException e) {
+//             e.printStackTrace();
+//         }
+//         return false;
+//     }
+
+//     public boolean updateUser(User u) {
+//         String sql =
+//                 "UPDATE Users SET " +
+//                 "birthday=?, username=?, first_name=?, last_name=?, email=?, phone_number=?, address=?, " +
+//                 "last_login=?, is_active=?, password=?, avatar=?, balance=?, rank=? " +
+//                 "WHERE user_id=?";
+
+//         try (Connection conn = getConnection();
+//              PreparedStatement ps = conn.prepareStatement(sql)) {
+
+//             if (u.getBirthday() != null) ps.setDate(1, new java.sql.Date(u.getBirthday().getTime()));
+//             else ps.setNull(1, Types.DATE);
+
+//             ps.setString(2, u.getUsername());
+//             ps.setString(3, u.getFirstName());
+//             ps.setString(4, u.getLastName());
+//             ps.setString(5, u.getEmail());
+//             ps.setString(6, u.getPhoneNumber());
+//             ps.setString(7, u.getAddress());
+
+//             if (u.getLastLogin() != null) ps.setTimestamp(8, new Timestamp(u.getLastLogin().getTime()));
+//             else ps.setNull(8, Types.TIMESTAMP);
+
+//             ps.setBoolean(9, u.isActive());
+//             ps.setString(10, u.getPassword());
+//             ps.setString(11, u.getAvatar());
+
+//             BigDecimal bal = (u.getBalance() != null) ? u.getBalance() : BigDecimal.ZERO;
+//             ps.setBigDecimal(12, bal);
+
+//             if (u.getRank() == null) ps.setNull(13, Types.INTEGER);
+//             else ps.setInt(13, u.getRank());
+
+//             ps.setInt(14, u.getUserId());
+
+//             return ps.executeUpdate() > 0;
+
+//         } catch (SQLException e) {
+//             e.printStackTrace();
+//         }
+
+//         return false;
+//     }
+
+//     public boolean deleteUser(int userId) {
+//         String sql = "DELETE FROM Users WHERE user_id=?";
+//         try (Connection conn = getConnection();
+//              PreparedStatement ps = conn.prepareStatement(sql)) {
+//             ps.setInt(1, userId);
+//             return ps.executeUpdate() > 0;
+//         } catch (SQLException e) {
+//             e.printStackTrace();
+//         }
+//         return false;
+//     }
+
+//     public int countAllUsers() {
+//         String sql = "SELECT COUNT(*) AS total FROM Users";
+//         try (Connection conn = getConnection();
+//              PreparedStatement ps = conn.prepareStatement(sql);
+//              ResultSet rs = ps.executeQuery()) {
+//             if (rs.next()) return rs.getInt("total");
+//         } catch (SQLException e) {
+//             e.printStackTrace();
+//         }
+//         return 0;
+//     }
+
+//     public int countActiveUsers() {
+//         String sql = "SELECT COUNT(*) AS total FROM Users WHERE is_active = 1";
+// try (Connection conn = getConnection();
+//              PreparedStatement ps = conn.prepareStatement(sql);
+//              ResultSet rs = ps.executeQuery()) {
+//             if (rs.next()) return rs.getInt("total");
+//         } catch (SQLException e) {
+//             e.printStackTrace();
+//         }
+//         return 0;
+//     }
+
+//     public List<Map<String, Object>> countUserRegistrationsLastNMonths(int months) {
+//         List<Map<String, Object>> out = new ArrayList<>();
+
+//         String sql = "WITH m AS ( " +
+//                 "  SELECT CAST(DATEFROMPARTS(YEAR(DATEADD(MONTH, -(?-1), GETDATE())), " +
+//                 "                              MONTH(DATEADD(MONTH, -(?-1), GETDATE())), 1) AS DATE) AS month_start " +
+//                 "  UNION ALL " +
+//                 "  SELECT DATEADD(MONTH, 1, month_start) FROM m " +
+//                 "  WHERE month_start < CAST(DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AS DATE) " +
+//                 ") " +
+//                 "SELECT FORMAT(m.month_start, 'MM/yyyy') AS label, " +
+//                 "       COUNT(u.user_id) AS total " +
+//                 "FROM m " +
+//                 "LEFT JOIN Users u " +
+//                 "  ON u.create_at >= m.month_start " +
+//                 " AND u.create_at < DATEADD(MONTH, 1, m.month_start) " +
+//                 "GROUP BY m.month_start " +
+//                 "ORDER BY m.month_start " +
+//                 "OPTION (MAXRECURSION 1000);";
+
+//         try (Connection conn = getConnection();
+//              PreparedStatement ps = conn.prepareStatement(sql)) {
+
+//             ps.setInt(1, months);
+//             ps.setInt(2, months);
+
+//             try (ResultSet rs = ps.executeQuery()) {
+//                 while (rs.next()) {
+//                     Map<String, Object> row = new HashMap<>();
+//                     row.put("label", rs.getString("label"));
+//                     row.put("total", rs.getInt("total"));
+//                     out.add(row);
+//                 }
+//             }
+//         } catch (SQLException e) {
+//             e.printStackTrace();
+//         }
+
+//         return out;
+//     }
+
+//     public Boolean getUserActiveStatus(int userId) {
+//         String sql = "SELECT is_active FROM Users WHERE user_id = ?";
+//         try (Connection conn = getConnection();
+//              PreparedStatement ps = conn.prepareStatement(sql)) {
+//             ps.setInt(1, userId);
+//             try (ResultSet rs = ps.executeQuery()) {
+//                 if (rs.next()) return rs.getBoolean("is_active");
+//             }
+//         } catch (SQLException e) {
+//             e.printStackTrace();
+//         }
+//         return null;
+//     }
+
+//     public Boolean toggleUserActiveAndReturnStatus(int userId) {
+//         String sql = "UPDATE Users " +
+//                 "SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END " +
+//                 "WHERE user_id = ?";
+
+//         try (Connection conn = getConnection();
+//              PreparedStatement ps = conn.prepareStatement(sql)) {
+
+//             ps.setInt(1, userId);
+//             int updated = ps.executeUpdate();
+//             if (updated == 0) return null;
+// return getUserActiveStatus(userId);
+
+//         } catch (SQLException e) {
+//             e.printStackTrace();
+//         }
+//         return null;
+//     }
+// }

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
+import { useParams } from 'react-router-dom';
 import { useNavigate } from "react-router-dom";
 import axios from 'axios';
 import {
@@ -52,7 +53,8 @@ export function FormSection({
   );
 }
 
-export default function CreateTournamentPage() {
+export default function UpdateTournamentPage() {
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -71,6 +73,29 @@ export default function CreateTournamentPage() {
     notes: ""
   });
 
+  /* ================= LOAD DATA ================= */
+  useEffect(() => {
+    axios
+      .get(`http://localhost:8080/ctms/api/tournaments?id=${id}`)
+      .then(res => {
+        const data = res.data;
+        setFormData({
+          ...data,
+          registrationDeadline: data.registrationDeadline
+            ? data.registrationDeadline.slice(0, 10)
+            : "",
+          startDate: data.startDate
+            ? data.startDate.slice(0, 10)
+            : "",
+          endDate: data.endDate
+            ? data.endDate.slice(0, 10)
+            : ""
+        });
+      })
+      .catch(err => console.error(err));
+  }, [id]);
+
+  /* ================= HANDLERS ================= */
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -82,7 +107,6 @@ export default function CreateTournamentPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Map formData to BE expected format
     const payload = {
       tournamentName: formData.tournamentName,
       description: formData.description,
@@ -102,20 +126,20 @@ export default function CreateTournamentPage() {
       endDate: formData.endDate
         ? new Date(formData.endDate).toISOString()
         : null,
-      createBy: 1,
       notes: formData.notes
     };
 
-
     try {
-      const response = await axios.post('http://localhost:8080/ctms/api/tournaments', payload);
-      console.log('Create result:', response.data);
-      alert('Tournament created successfully!');
+      await axios.put(
+        `http://localhost:8080/ctms/api/tournaments?id=${id}`,
+        payload
+      );
+      alert("Update tournament thành công!");
       navigate("/tournaments");
-    } catch (error) {
-      console.error('Error creating tournament:', error);
-      alert('Create tournament failed');
-    }
+    } catch (err) {
+        console.error(err);
+        alert("Update thất bại!");
+        }
   };
 
 
@@ -124,6 +148,8 @@ export default function CreateTournamentPage() {
     KNOCKOUT: <Zap size={16} />,
     HYBRID: <Layers size={16} />,
   };
+
+
 
   return (
     <div className="tlc-page">
@@ -134,10 +160,10 @@ export default function CreateTournamentPage() {
           <nav className="tlc-breadcrumb">
             <span>Tournament Management</span>
             <ChevronRight size={14} />
-            <span className="active">Create New Tournament</span>
+            <span className="active">Update Tournament</span>
           </nav>
 
-          <h1 className="tlc-title">Create New Tournament</h1>
+          <h1 className="tlc-title">Update Tournament</h1>
         </div>
       </header>
 

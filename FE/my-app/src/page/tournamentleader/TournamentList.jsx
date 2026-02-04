@@ -11,34 +11,37 @@ const TournamentList = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const fetchTournaments = async () => {
-      try {
-        const res = await axios.get(
-          "http://localhost:8080/ctms/api/tournaments"
-        );
-        if (Array.isArray(res.data)) {
-          setTournaments(res.data);
-        } else {
-          console.error("API does not return array:", res.data);
-          setTournaments([]);
-        }
 
-      } catch (err) {
-        console.error(err);
-        alert("Cannot load tournaments");
+  const fetchTournaments = async () => {
+    try {
+      setLoading(true);
+
+      const res = await axios.get(
+        "http://localhost:8080/ctms/api/tournaments"
+      );
+
+      if (Array.isArray(res.data)) {
+        setTournaments(res.data);
+      } else {
         setTournaments([]);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (err) {
+      console.error(err);
+      alert("Cannot load tournaments");
+      setTournaments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+
+  useEffect(() => {
     fetchTournaments();
   }, []);
 
-  // 👉 FILTER
+  //  FILTER
   const filteredTournaments = useMemo(() => {
-    // ✅ CHỐT CHẶN LẦN 2 (rất quan trọng)
+    
     if (!Array.isArray(tournaments)) return [];
 
     return tournaments.filter((t) => {
@@ -86,14 +89,17 @@ const TournamentList = () => {
               onReset={handleReset}
             />
 
-            <TournamentTable tournaments={filteredTournaments} />
+            <TournamentTable
+              tournaments={filteredTournaments}
+              refresh={fetchTournaments}
+            />
           </div>
 
           <footer className="tl-footer">
             © 2024 Chess Tournament Management System
           </footer>
         </main>
-</div>
+      </div>
     </div>
   );
 };

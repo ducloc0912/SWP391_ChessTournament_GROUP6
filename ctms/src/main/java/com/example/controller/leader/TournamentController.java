@@ -1,6 +1,7 @@
 package com.example.controller.leader;
 
-import com.example.model.Tournaments;
+import com.example.model.entity.Tournament;
+import com.example.model.enums.TournamentFormat;
 import com.example.service.leader.TournamentService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -46,12 +47,12 @@ public class TournamentController extends HttpServlet {
         String idParam = request.getParameter("id");
 
         if (idParam == null) {
-            List<Tournaments> list = tournamentService.getAllTournamentsWithCurrentPlayers();
+            List<Tournament> list = tournamentService.getAllTournamentsWithCurrentPlayers();
             response.getWriter().write(gson.toJson(list));
         } else {
             try {
                 int id = Integer.parseInt(idParam);
-                Tournaments t = tournamentService.getTournamentByIdWithCurrentPlayers(id);
+                Tournament t = tournamentService.getTournamentByIdWithCurrentPlayers(id);
 
                 if (t == null) {
                     response.setStatus(HttpServletResponse.SC_NOT_FOUND);
@@ -74,9 +75,10 @@ public class TournamentController extends HttpServlet {
             throws ServletException, IOException {
 
         response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
 
-        Tournaments tournament =
-                gson.fromJson(request.getReader(), Tournaments.class);
+        Tournament tournament =
+                gson.fromJson(request.getReader(), Tournament.class);
 
         boolean success = tournamentService.createTournament(tournament);
 
@@ -88,12 +90,31 @@ public class TournamentController extends HttpServlet {
     // =======================
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response)
-throws ServletException, IOException {
+            throws ServletException, IOException {
 
         response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
 
-        Tournaments tournament =
-                gson.fromJson(request.getReader(), Tournaments.class);
+        String idParam = request.getParameter("id");
+        if (idParam == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+            return;
+        }
+
+        int id;
+        try {
+            id = Integer.parseInt(idParam);
+        } catch (NumberFormatException e) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+            return;
+        }
+
+        Tournament tournament =
+                gson.fromJson(request.getReader(), Tournament.class);
+
+        tournament.setTournamentId(id);
 
         boolean success = tournamentService.updateTournament(tournament);
 
@@ -108,18 +129,22 @@ throws ServletException, IOException {
             throws ServletException, IOException {
 
         response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
 
         String idParam = request.getParameter("id");
+        String reason = request.getParameter("reason");
 
-        if (idParam == null) {
+        if (idParam == null || reason == null || reason.isBlank()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             response.getWriter().write("{\"success\": false}");
             return;
         }
 
         int id = Integer.parseInt(idParam);
-        boolean success = tournamentService.deleteTournament(id);
+
+        boolean success = tournamentService.deleteTournament(id, reason);
 
         response.getWriter().write("{\"success\": " + success + "}");
     }
+
 }

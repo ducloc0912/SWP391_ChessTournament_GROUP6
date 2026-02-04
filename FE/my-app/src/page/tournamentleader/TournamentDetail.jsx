@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -48,6 +48,8 @@ const TournamentDetail = () => {
   const { id } = useParams(); // lấy tournamentId từ URL
   const [activeTab, setActiveTab] = useState(0);
 
+  const [participants, setParticipants] = useState([null]);
+  const [users, setUsers] = useState([]);
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -66,6 +68,33 @@ const TournamentDetail = () => {
 
     fetchTournament();
   }, [id]);
+
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      const pRes = await axios.get(
+        `http://localhost:8080/ctms/api/participants?tournamentId=${id}`
+      );
+
+      setParticipants(pRes.data);
+
+      const userIds = [...new Set(pRes.data.map(p => p.userId))];
+
+      if (userIds.length > 0) {
+        const uRes = await axios.get(
+          `http://localhost:8080/ctms/api/users?ids=${userIds.join(",")}`
+        );
+        setUsers(uRes.data);
+      }
+    };
+
+    fetchPlayers();
+  }, [id]);
+
+  const players = participants.map(p => ({
+    ...p,
+    user: users.find(u => u.userId === p.userId)
+  }));
+
 
   const tabs = [
     { label: 'Overview', icon: <LayoutDashboard size={18} /> },
@@ -118,7 +147,7 @@ const TournamentDetail = () => {
           <button className="btn-primary">
             <Edit2 size={18} />
             Edit Tournament
-</button>
+          </button>
           <button className="btn-danger">
             <Trash2 size={20} />
           </button>
@@ -157,7 +186,7 @@ const TournamentDetail = () => {
         {/* Tab Content */}
         <div className="tab-content">
             {activeTab === 0 && <OverviewTab tournament={tournament} />}
-            {activeTab === 1 && <PlayersTab tournamentId={tournament.tournamentId} />}
+            {activeTab === 1 && <PlayersTab players={players} />}
             {activeTab === 2 && <BracketTab />}
             {activeTab === 3 && <RefereeTab />}
             {activeTab === 4 && <ReportsTab />}
@@ -217,7 +246,7 @@ const OverviewTab = ({ tournament }) => {
           </li>
           <li>
             <span>Opening Ceremony</span>
-<strong>15 March 2026</strong>
+            <strong>15 March 2026</strong>
           </li>
           <li>
             <span>Final Round</span>
@@ -229,7 +258,7 @@ const OverviewTab = ({ tournament }) => {
   );
 };
 
-const PlayersTab = () => {
+const PlayersTab = ({ players }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   return (
@@ -261,12 +290,25 @@ const PlayersTab = () => {
             <tr>
               <th>Player Identity</th>
               <th>FIDE Rating</th>
-              <th>Registration</th>
-              <th>Check-In</th>
-              <th className="text-right">Actions</th>
+              <th>Email</th>
+              <th>Registration Date</th>
+              <th className="text-right">Status</th>
             </tr>
           </thead>
-          
+              <tbody>
+                {players.map(p => (
+                  <tr key={p.participantId}>
+                    <td>
+                      <small>{p.user?.avatar}</small>
+                      <strong>{p.user?.username}</strong>
+                    </td>
+                    <th>{p.user?.rank}</th>
+                    <td>{p.user?.email}</td>
+                    <td>{p.registrationDate}</td>
+                    <td>{p.status}</td>
+                  </tr>
+                ))}
+              </tbody>
         </table>
       </div>
     </div>
@@ -323,7 +365,7 @@ const BracketTab = () => {
             <p>
               The bracket is currently view-only. Start Round 4 to enable real-time updates.
             </p>
-<button>Enter Management View</button>
+            <button>Enter Management View</button>
           </div>
         </div>
       </div>

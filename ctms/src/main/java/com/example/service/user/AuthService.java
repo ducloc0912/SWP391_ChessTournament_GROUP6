@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.example.DAO.UserDAO;
-import com.example.model.User;
+import com.example.model.entity.User;
 import com.example.util.PasswordUtil;
 
 public class AuthService {
@@ -43,7 +43,7 @@ public class AuthService {
         }
 
         // Trường hợp 3: Tài khoản bị khóa (IsActive = 0)
-        if (!user.isActive()) {
+        if (!user.getIsActive()) {
             response.put("success", false);
             response.put("message", "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ Admin.");
             return response;
