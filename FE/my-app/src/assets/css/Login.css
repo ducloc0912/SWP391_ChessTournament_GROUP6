@@ -1,51 +1,21 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Segoe UI", sans-serif;
-}
-
-/* CONTAINER */
 .login-container {
   display: flex;
   min-height: 100vh;
 }
 
-/* LEFT SIDE */
+/* =========================
+   LEFT IMAGE
+========================= */
 .login-left {
   flex: 1;
   background-size: cover;
   background-position: center;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  background-repeat: no-repeat;
 }
 
-/* Overlay blur */
-.overlay {
-  position: absolute;
-  inset: 0;
-  backdrop-filter: blur(4px);
-  background: linear-gradient(
-    rgba(0,0,0,0.5),
-    rgba(0,0,0,0.7)
-  );
-}
-
-/* Glass card */
-.glass-card {
-  position: relative;
-  color: white;
-  padding: 40px;
-  border-radius: 16px;
-  backdrop-filter: blur(12px);
-  background: rgba(255,255,255,0.1);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  text-align: center;
-}
-
-/* RIGHT SIDE */
+/* =========================
+   RIGHT SIDE
+========================= */
 .login-right {
   flex: 1;
   background: #f5f7fb;
@@ -54,20 +24,31 @@
   align-items: center;
 }
 
-/* PANEL */
+/* =========================
+   LOGIN PANEL
+========================= */
 .login-panel {
-  background: white;
-  width: 360px;
+  width: 380px;
+  background: #ffffff;
   padding: 40px;
-  border-radius: 16px;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+  border-radius: 18px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.1);
 }
 
+/* =========================
+   TITLE
+========================= */
 .login-title {
-  margin-bottom: 25px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 28px;
+  color: #111827;
 }
 
-/* FORM */
+/* =========================
+   FORM GROUP
+========================= */
 .form-group {
   margin-bottom: 18px;
 }
@@ -75,106 +56,140 @@
 .form-group label {
   display: block;
   font-size: 14px;
+  font-weight: 600;
   margin-bottom: 6px;
+  color: #374151;
 }
 
 .form-group input {
   width: 100%;
-  padding: 11px;
+  padding: 12px 14px;
   border-radius: 12px;
-  border: 1px solid #ddd;
-  transition: 0.3s;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #4a90e2;
-  box-shadow: 0 0 6px rgba(74,144,226,0.4);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
-/* PASSWORD */
+/* =========================
+   PASSWORD
+========================= */
+
 .password-wrapper {
   position: relative;
 }
 
+.password-wrapper input {
+  width: 100%;
+  padding: 12px 44px 12px 14px; /* chừa chỗ icon */
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  position: relative;
+  z-index: 1;
+}
+
 .toggle-password {
   position: absolute;
-  right: 10px;
+  right: 14px;
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
+  font-size: 18px;
+  z-index: 2;
+  color: #6b7280; /* 🔥 CỰC KỲ QUAN TRỌNG */
 }
 
-/* OPTIONS */
+.toggle-password:hover {
+  color: #2563eb;
+}
+
+/* =========================
+   FORGOT PASSWORD
+========================= */
 .login-options {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end; /* 🔥 ép sang phải */
+  margin-top: -6px; /* 🔥 kéo sát ô password */
+  margin-bottom: 18px;
+}
+.forgot-link {
   font-size: 14px;
-  margin-bottom: 20px;
+  font-weight: 700; /* in đậm */
+  color: #2563eb; /* xanh */
+  text-decoration: none;
 }
 
-/* PRIMARY BUTTON */
-.btn-primary {
+.forgot-link:hover {
+  text-decoration: underline;
+  color: #1d4ed8;
+}
+
+/* =========================
+   BUTTON
+========================= */
+.login-panel .btn-primary {
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   border-radius: 14px;
   border: none;
-  background: linear-gradient(135deg,#4a90e2,#0066ff);
-  color: white;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  margin-bottom: 15px;
-  box-shadow: 0 4px 18px rgba(0,102,255,0.3);
-  transition: 0.3s;
-}
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+  transition: all 0.25s ease;
 
-.btn-primary:hover {
-  transform: translateY(-2px);
-}
-
-/* GOOGLE BUTTON */
-.btn-google {
-  width: 100%;
-  padding: 10px;
-  border-radius: 14px;
-  border: 1px solid #ddd;
-  background: white;
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 10px;
-  cursor: pointer;
 }
 
-.btn-google img {
-  width: 18px;
+/* 🔥 QUAN TRỌNG: hover cũng phải override */
+.login-panel .btn-primary:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.login-panel .btn-primary:focus,
+.login-panel .btn-primary:focus-visible,
+.login-panel .btn-primary:active {
+  outline: none;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
 }
 
-/* FOOTER */
+/* =========================
+   REGISTER LINK
+========================= */
 .register-link {
+  margin-top: 20px;
   text-align: center;
-  margin-top: 18px;
   font-size: 14px;
+  color: #374151;
 }
 
 .register-link a {
-  color: #0066ff;
-  text-decoration: none;
+  color: #2563eb;
   font-weight: 600;
+  text-decoration: none;
 }
 
-/* RESPONSIVE */
-@media (max-width: 900px) {
+.register-link a:hover {
+  text-decoration: underline;
+}
 
-  .login-left {
-    display: none;
-  }
-
-  .login-right {
-    flex: 1;
-  }
-
-  .login-panel {
-    width: 90%;
-  }
+/* =========================
+   ERROR
+========================= */
+.error-text {
+  margin-bottom: 14px;
+  color: #dc2626;
+  font-size: 14px;
+  text-align: center;
 }

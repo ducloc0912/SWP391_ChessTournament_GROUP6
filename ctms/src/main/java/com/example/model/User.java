@@ -26,6 +26,16 @@ public class User {
     private Integer rank;               // rank int (có thể null)
 
     public User() {}
+    public User(String firstName, String lastName, String username,
+                String phoneNumber, String email, String address, String password) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.username = username;
+        this.phoneNumber = phoneNumber;
+        this.email = email;
+        this.address = address;
+        this.password = password;
+    }
 
     public int getUserId() { return userId; }
     public void setUserId(int userId) { this.userId = userId; }
@@ -71,4 +81,6 @@ public class User {
 
     public Integer getRank() { return rank; }
     public void setRank(Integer rank) { this.rank = rank; }
+  
+    
 }

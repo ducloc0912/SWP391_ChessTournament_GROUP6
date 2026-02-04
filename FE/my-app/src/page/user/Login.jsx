@@ -1,9 +1,8 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import "../../assets/css/Login.css";
 import chessImg from "../../assets/img/chessLogin.jpg";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-
-const API_BASE = "http://localhost:8080/ctms/api/auth";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -11,7 +10,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [keepSigned, setKeepSigned] = useState(false);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -19,53 +17,30 @@ export default function Login() {
     e.preventDefault();
     setError("");
 
-    const cleanEmail = (email || "").trim().toLowerCase();
-    const cleanPass = (password || "").trim();
-
-    if (!cleanEmail || !cleanPass) {
-      setError("Vui lòng nhập email và mật khẩu.");
-      return;
-    }
-
     try {
-      setLoading(true);
-
       const res = await axios.post(
-        `${API_BASE}/login`,
-        {
-          email: cleanEmail,
-          password: cleanPass,
-          rememberMe: keepSigned,
-        },
-        {
-          headers: { "Content-Type": "application/json" },
-          withCredentials: true, // quan trọng để giữ session cookie
-        }
+        "http://localhost:8080/ctms/api/login",
+        { email, password },
+        { headers: { "Content-Type": "application/json" } },
       );
 
-      if (res.data?.success) {
-        // Lưu user/role để FE dùng hiển thị (session vẫn nằm ở cookie do BE set)
-        if (res.data.user) localStorage.setItem("user", JSON.stringify(res.data.user));
-        if (res.data.role) localStorage.setItem("role", res.data.role);
+      console.log("LOGIN RESPONSE:", res.data);
 
-        // Redirect theo BE (admin/staff/player...) nếu có, không thì về "/"
-        navigate(res.data.redirect || "/", { replace: true });
+      if (!res.data.success) {
+        setError(res.data.message || "Login failed");
         return;
       }
 
-      // login fail nhưng status vẫn 200 => show message từ BE
-      setError(res.data?.message || "Đăng nhập thất bại.");
-    } catch (err) {
-      // Nếu BE trả 401/403/500 có body {message: "..."} thì lấy ra hiển thị
-      const beMsg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message;
+      const redirect = res.data.redirect;
 
-      setError(beMsg || "Không thể kết nối server. Vui lòng thử lại.");
+      if (redirect) {
+        navigate(redirect, { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
+    } catch (err) {
       console.error("LOGIN ERROR:", err);
-    } finally {
-      setLoading(false);
+      setError("Server error");
     }
   };
 
@@ -80,12 +55,6 @@ export default function Login() {
         <form className="login-panel" onSubmit={handleLogin}>
           <h2 className="login-title">Login to your account</h2>
 
-          {!!error?.trim() && (
-            <div style={{ color: "red", marginBottom: 12 }}>
-              {error}
-            </div>
-          )}
-
           <div className="form-group">
             <label>Email Address</label>
             <input
@@ -96,7 +65,6 @@ export default function Login() {
                 setEmail(e.target.value);
                 setError("");
               }}
-              autoComplete="email"
             />
           </div>
 
@@ -111,33 +79,26 @@ export default function Login() {
                   setPassword(e.target.value);
                   setError("");
                 }}
-                autoComplete="current-password"
               />
               <span
                 className="toggle-password"
                 onClick={() => setShowPassword(!showPassword)}
-                style={{ cursor: "pointer" }}
-                title={showPassword ? "Hide password" : "Show password"}
               >
-                👁
+                {showPassword ? "🙈" : "👁"}
               </span>
             </div>
           </div>
 
+          {error && <p className="error-text">{error}</p>}
+
           <div className="login-options">
-            <label>
-              <input
-                type="checkbox"
-                checked={keepSigned}
-                onChange={() => setKeepSigned(!keepSigned)}
-              />
-              Keep me signed in
-            </label>
-            <Link to="/forgot-password">Forgot password?</Link>
+            <Link to="/forgot-password" className="forgot-link">
+              Forgot password?
+            </Link>
           </div>
 
-          <button className="btn-primary" type="submit" disabled={loading}>
-            {loading ? "Logging in..." : "Login"}
+          <button className="btn-primary" type="submit">
+            Login
           </button>
 
           <p className="register-link">

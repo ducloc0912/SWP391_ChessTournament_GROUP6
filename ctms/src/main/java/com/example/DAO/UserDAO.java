@@ -19,190 +19,232 @@ import com.example.util.DBContext;
 
 public class UserDAO extends DBContext {
 
-    // =========================
-    // 1) AUTHENTICATE (LOGIN)
-    // =========================
-    public Map<String, Object> authenticate(String email) {
-        Map<String, Object> data = new HashMap<>();
+    public boolean insert(User user) {
 
         String sql = """
-            SELECT u.*, r.role_name
-            FROM Users u
-            LEFT JOIN User_Role ur ON u.user_id = ur.user_id
-            LEFT JOIN Roles r ON ur.role_id = r.role_id
-            WHERE u.email = ?
+            INSERT INTO Users
+            (first_name, last_name, username, phone_number, email, address, password)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """;
 
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection con = DBContext.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
 
-            ps.setString(1, email);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) return null;
+            ps.setString(1, user.getFirstName());
+            ps.setString(2, user.getLastName());
+            ps.setString(3, user.getUsername());
+            ps.setString(4, user.getPhoneNumber());
+            ps.setString(5, user.getEmail());
+            ps.setString(6, user.getAddress());
+            ps.setString(7, user.getPassword());
 
-                User user = new User();
-                user.setUserId(rs.getInt("user_id"));
-                user.setUsername(rs.getString("username"));
-                user.setFirstName(rs.getString("first_name"));
-                user.setLastName(rs.getString("last_name"));
-                user.setEmail(rs.getString("email"));
-                user.setPhoneNumber(rs.getString("phone_number"));
-                user.setAddress(rs.getString("address"));
-                user.setPassword(rs.getString("password"));
-                user.setAvatar(rs.getString("avatar"));
-                user.setActive(rs.getBoolean("is_active"));
-                user.setBalance(rs.getBigDecimal("balance"));
-                user.setRank((Integer) rs.getObject("rank"));
-
-                String roleName = rs.getString("role_name");
-                if (roleName == null || roleName.isBlank()) roleName = "Player";
-
-                data.put("user", user);
-                data.put("role", roleName);
-                return data;
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    // =========================
-    // 2) REGISTER (TRANSACTION)
-    // =========================
-    public boolean register(User user) {
-        Connection conn = null;
-        PreparedStatement psUser = null;
-        PreparedStatement psRole = null;
-        ResultSet rs = null;
-
-        try {
-            conn = getConnection();
-            conn.setAutoCommit(false);
-
-            // 1) Insert user
-            String sqlUser = """
-                INSERT INTO Users(username, first_name, last_name, email, phone_number, address, password, is_active, create_at, balance)
-                VALUES(?, ?, ?, ?, ?, ?, ?, 1, GETDATE(), 0)
-            """;
-            psUser = conn.prepareStatement(sqlUser, Statement.RETURN_GENERATED_KEYS);
-            psUser.setString(1, user.getUsername());
-            psUser.setString(2, user.getFirstName());
-            psUser.setString(3, user.getLastName());
-            psUser.setString(4, user.getEmail());
-            psUser.setString(5, user.getPhoneNumber());
-            psUser.setString(6, user.getAddress());
-            psUser.setString(7, user.getPassword());
-
-            int affected = psUser.executeUpdate();
-            if (affected == 0) throw new SQLException("Insert user failed.");
-
-            // 2) Get new user_id
-            rs = psUser.getGeneratedKeys();
-            if (!rs.next()) throw new SQLException("No user_id returned.");
-            int newUserId = rs.getInt(1);
-
-            // 3) Get role_id of 'Player' (không hard-code = 1)
-            int playerRoleId = getRoleIdByName(conn, "Player");
-            if (playerRoleId == 0) throw new SQLException("Role 'Player' not found in Roles table.");
-
-            // 4) Insert User_Role
-            String sqlRole = "INSERT INTO User_Role(user_id, role_id) VALUES(?, ?)";
-            psRole = conn.prepareStatement(sqlRole);
-            psRole.setInt(1, newUserId);
-            psRole.setInt(2, playerRoleId);
-            psRole.executeUpdate();
-
-            conn.commit();
-            return true;
+            return ps.executeUpdate() > 0;
 
         } catch (Exception e) {
-            try { if (conn != null) conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
-            e.printStackTrace();
-            return false;
-
-        } finally {
-            try { if (rs != null) rs.close(); } catch (SQLException ignored) {}
-            try { if (psUser != null) psUser.close(); } catch (SQLException ignored) {}
-            try { if (psRole != null) psRole.close(); } catch (SQLException ignored) {}
-            try { if (conn != null) conn.close(); } catch (SQLException ignored) {}
-        }
-    }
-
-    private int getRoleIdByName(Connection conn, String roleName) throws SQLException {
-        String sql = "SELECT role_id FROM Roles WHERE role_name = ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, roleName);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getInt("role_id");
-            }
-        }
-        return 0;
-    }
-
-    // =========================
-    // 3) CHECK EXIST (VALIDATION)
-    // =========================
-    public boolean checkExist(String column, String value) {
-        // whitelist cột hợp lệ để tránh injection qua column
-        if (!isAllowedColumn(column)) {
-            throw new IllegalArgumentException("Invalid column: " + column);
-        }
-
-        String sql = "SELECT 1 FROM Users WHERE " + column + " = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, value);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
-            }
-
-        } catch (SQLException e) {
             e.printStackTrace();
         }
         return false;
     }
 
-    private boolean isAllowedColumn(String column) {
-        return "email".equalsIgnoreCase(column)
-            || "username".equalsIgnoreCase(column)
-            || "phone_number".equalsIgnoreCase(column);
-    }
-    public List<User> getAllUsers() {
-    List<User> list = new ArrayList<>();
-    String sql = "SELECT user_id, password FROM Users";
+    /* =========================
+       CHECK EXISTS
+       ========================= */
+    public boolean isEmailExists(String email) {
+        String sql = "SELECT 1 FROM Users WHERE email = ?";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-    try (Connection conn = getConnection();
-         PreparedStatement ps = conn.prepareStatement(sql);
-         ResultSet rs = ps.executeQuery()) {
+            ps.setString(1, email.trim());
+            return ps.executeQuery().next();
 
-        while (rs.next()) {
-            User u = new User();
-            u.setUserId(rs.getInt("user_id"));
-            u.setPassword(rs.getString("password")); // password hiện tại (sai format)
-            list.add(u);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+        return false;
+    }
 
+    public boolean isPhoneExists(String phone) {
+        String sql = "SELECT 1 FROM Users WHERE phone_number = ?";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, phone);
+            return ps.executeQuery().next();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean isUsernameExists(String username) {
+        String sql = "SELECT 1 FROM Users WHERE username = ?";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, username);
+            return ps.executeQuery().next();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public User findByEmail(String email) {
+
+        String sql = """
+            SELECT user_id, first_name, last_name, username,
+                   phone_number, email, address, password, is_active
+            FROM Users
+            WHERE email = ?
+        """;
+
+        try (Connection con = DBContext.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, email);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                User user = new User();
+
+                user.setUserId(rs.getInt("user_id"));
+                user.setFirstName(rs.getString("first_name"));
+                user.setLastName(rs.getString("last_name"));
+                user.setUsername(rs.getString("username"));
+                user.setPhoneNumber(rs.getString("phone_number"));
+                user.setEmail(rs.getString("email"));
+                user.setAddress(rs.getString("address"));
+                user.setPassword(rs.getString("password"));
+                user.setActive(rs.getBoolean("is_active"));
+
+                return user;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public boolean updatePassword(String email, String hashedPassword) {
+
+        String sql = """
+            UPDATE Users
+            SET password = ?
+            WHERE email = ? AND is_active = 1
+        """;
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, hashedPassword);
+            ps.setString(2, email);
+            return ps.executeUpdate() > 0;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public int getUserIdByEmail(String email) {
+
+        String sql = "SELECT user_id FROM Users WHERE email = ?";
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, email);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt("user_id");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return -1;
+    }
+
+    public boolean assignRole(int userId, int roleId) {
+
+        String sql = """
+            INSERT INTO User_Role (user_id, role_id)
+            VALUES (?, ?)
+        """;
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, userId);
+            ps.setInt(2, roleId);
+            return ps.executeUpdate() > 0;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public int getRoleIdByName(String roleName) {
+
+        String sql = "SELECT role_id FROM Roles WHERE role_name = ?";
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, roleName);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt("role_id");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return -1;
+    }
+public UserRole findUserWithRole(String email, String password) {
+    String sql = """
+        SELECT u.user_id,
+               u.username,
+               u.email,
+               u.last_login,
+               u.is_active,
+               u.avatar,
+               r.role_name
+        FROM Users u
+        JOIN User_Role ur ON u.user_id = ur.user_id
+        JOIN Roles r ON ur.role_id = r.role_id
+        WHERE u.email = ? AND u.password = ?
+    """;
+
+    try (Connection con = DBContext.getConnection();
+         PreparedStatement ps = con.prepareStatement(sql)) {
+
+        ps.setString(1, email);
+        ps.setString(2, password);
+
+        ResultSet rs = ps.executeQuery();
+        if (rs.next()) {
+            return new UserRole(
+                rs.getInt("user_id"),
+                rs.getString("username"),
+                rs.getString("email"),
+                rs.getTimestamp("last_login"),
+                rs.getBoolean("is_active"),
+                rs.getString("avatar"),
+                rs.getString("role_name")
+            );
+        }
     } catch (Exception e) {
         e.printStackTrace();
     }
-    return list;
-}
-public void updatePassword(int userId, String hashedPassword) {
-    String sql = "UPDATE Users SET password = ? WHERE user_id = ?";
-
-    try (Connection conn = getConnection();
-         PreparedStatement ps = conn.prepareStatement(sql)) {
-
-        ps.setString(1, hashedPassword);
-        ps.setInt(2, userId);
-        ps.executeUpdate();
-
-    } catch (Exception e) {
-        e.printStackTrace();
-    }
+    return null;
 }
 
 // Hàm của Hien

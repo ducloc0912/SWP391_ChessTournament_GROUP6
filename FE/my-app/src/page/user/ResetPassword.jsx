@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-import "../assets/css/ResetPassword.css";
+import "../../assets/css/ResetPassword.css";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -60,7 +60,9 @@ const ResetPassword = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-            <span onClick={() => setShowNewPassword(!showNewPassword)}>👁</span>
+            <span onClick={() => setShowNewPassword(!showNewPassword)}>
+              {showNewPassword ? "🙈" : "👁"}
+            </span>
           </div>
         </div>
 
@@ -75,12 +77,12 @@ const ResetPassword = () => {
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
             <span onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
-              👁
+              {showConfirmPassword ? "🙈" : "👁"}
             </span>
           </div>
         </div>
 
-        {error && <p className="reset-error">{error}</p>}
+        {error && <p className="error">{error}</p>}
 
         <button className="reset-btn" onClick={handleReset} disabled={loading}>
           {loading ? "Processing..." : "Reset password"}
@@ -89,10 +91,6 @@ const ResetPassword = () => {
         <button className="cancel-btn" onClick={() => navigate("/")}>
           ← Cancel
         </button>
-
-        <div className="reset-footer">
-          PROFESSIONAL &nbsp;•&nbsp; SECURE ENCRYPTION
-        </div>
       </div>
     </div>
   );

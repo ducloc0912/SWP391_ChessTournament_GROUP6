@@ -12,41 +12,62 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
-// Chặn tất cả request vào /admin/* và /staff/*
-@WebFilter(urlPatterns = {"/admin/*", "/staff/*", "/api/admin/*"}) 
+@WebFilter(urlPatterns = {
+    "/admin/*",
+    "/staff/*",
+    "/player/*",
+    "/referee/*",
+    "/tournamentLeader/*"
+    
+})
 public class AuthorizationFilter implements Filter {
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
-        
+
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse res = (HttpServletResponse) response;
+
+        if ("OPTIONS".equalsIgnoreCase(req.getMethod())) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        res.setContentType("application/json");
+        res.setCharacterEncoding("UTF-8");
+
         HttpSession session = req.getSession(false);
 
-        // 1. Check Login
-        if (session == null || session.getAttribute("user") == null) {
-            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
-            res.getWriter().write("{\"message\": \"Unauthorized\"}");
+        if (session == null || session.getAttribute("role") == null) {
+            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            res.setContentType("application/json");
+            res.setCharacterEncoding("UTF-8");
+            res.getWriter().write("{\"message\":\"Please login\"}");
             return;
-        }
+}
 
-        // 2. Check Role (Lấy từ Session lúc Login)
-        String role = (String) session.getAttribute("role");
+
+       String role = ((String) session.getAttribute("role")).toUpperCase();
+
         String path = req.getRequestURI();
+        String ctx = req.getContextPath();
 
-        if (path.contains("/admin") && !"Admin".equalsIgnoreCase(role)) {
-            res.setStatus(HttpServletResponse.SC_FORBIDDEN); // 403 Forbidden
-            res.getWriter().write("{\"message\": \"Access Denied: Admins only\"}");
+        boolean allowed = switch (role) {
+            case "ADMIN" -> path.startsWith(ctx + "/admin");
+            case "STAFF" -> path.startsWith(ctx + "/staff");
+            case "PLAYER" -> path.startsWith(ctx + "/player");
+            case "REFEREE" -> path.startsWith(ctx + "/referee");
+            case "TOURNAMENTLEADER" -> path.startsWith(ctx + "/tournamentLeader");
+            default -> false;
+        };
+
+        if (!allowed) {
+            res.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            res.getWriter().write("{\"message\":\"Access denied\"}");
             return;
         }
 
-        if (path.contains("/staff") && !"Staff".equalsIgnoreCase(role) && !"Admin".equalsIgnoreCase(role)) {
-             res.setStatus(HttpServletResponse.SC_FORBIDDEN);
-             return;
-        }
-
-        // Cho qua
         chain.doFilter(request, response);
     }
 }
