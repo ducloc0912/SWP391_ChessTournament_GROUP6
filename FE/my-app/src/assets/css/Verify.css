@@ -1,8 +1,14 @@
+/* =========================
+   GLOBAL
+========================= */
 * {
   box-sizing: border-box;
   font-family: "Segoe UI", sans-serif;
 }
 
+/* =========================
+   PAGE
+========================= */
 .otp-page {
   height: 100vh;
   background: linear-gradient(120deg, #f5f7fa, #eef1f6);
@@ -11,6 +17,9 @@
   justify-content: center;
 }
 
+/* =========================
+   CARD
+========================= */
 .otp-card {
   width: 420px;
   background: #ffffff;
@@ -19,6 +28,7 @@
   text-align: center;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
   position: relative;
+  color: #111;
 }
 
 .otp-card::before {
@@ -32,6 +42,9 @@
   border-radius: 16px 16px 0 0;
 }
 
+/* =========================
+   HEADER
+========================= */
 .otp-icon {
   font-size: 32px;
   margin-bottom: 12px;
@@ -39,15 +52,28 @@
 
 .otp-title {
   font-size: 24px;
+  font-weight: 700;
   margin-bottom: 8px;
+  color: #111;
+  position: relative;
+  z-index: 2;
 }
 
 .otp-subtitle {
   font-size: 14px;
-  color: #666;
   margin-bottom: 24px;
+  color: #444;
+  position: relative;
+  z-index: 2;
 }
 
+.otp-subtitle strong {
+  color: #000;
+}
+
+/* =========================
+   OTP INPUTS
+========================= */
 .otp-inputs {
   display: flex;
   justify-content: space-between;
@@ -68,6 +94,9 @@
   border-color: #ff9800;
 }
 
+/* =========================
+   ERROR
+========================= */
 .otp-error {
   color: #e53935;
   font-size: 13px;
@@ -75,25 +104,37 @@
   min-height: 16px;
 }
 
-.otp-resend {
-  font-size: 13px;
-  color: #888;
-  margin-top: 10px;
-}
-
-.otp-resend span {
-  color: #ff9800;
-  font-weight: 600;
+/* =========================
+   RESEND
+========================= */
+.otp-resend-timer {
+  font-size: 14px;
+  color: #444;
+  margin-top: 8px;
 }
 
 .otp-resend-btn {
   margin-top: 6px;
   background: none;
   border: none;
-  color: #ccc;
+  font-size: 14px;
+  color: #aaa;
   cursor: not-allowed;
+  transition: color 0.3s;
 }
 
+.otp-resend-btn.active {
+  color: #000;
+  cursor: pointer;
+}
+
+.otp-resend-btn.active:hover {
+  text-decoration: underline;
+}
+
+/* =========================
+   SUBMIT BUTTON
+========================= */
 .otp-submit-btn {
   width: 100%;
   margin-top: 24px;
@@ -111,6 +152,9 @@
   opacity: 0.9;
 }
 
+/* =========================
+   BACK LINK
+========================= */
 .otp-back {
   display: block;
   margin-top: 18px;
@@ -120,24 +164,5 @@
 }
 
 .otp-back:hover {
-  text-decoration: underline;
-}
-.otp-resend-btn {
-  margin-top: 6px;
-  background: none;
-  border: none;
-  color: #ccc; /* XÁM khi đang đếm */
-  cursor: not-allowed;
-  font-size: 14px;
-  transition: color 0.3s;
-}
-
-/* ACTIVE sau khi đếm xong */
-.otp-resend-btn.active {
-  color: #111; /* ĐEN */
-  cursor: pointer;
-}
-
-.otp-resend-btn.active:hover {
   text-decoration: underline;
 }

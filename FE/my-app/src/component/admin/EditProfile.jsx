@@ -37,7 +37,9 @@ function toISODateInput(d) {
 }
 
 function normalizeRoleKeyFromServer(roleName) {
-  const raw = String(roleName || "").trim().toLowerCase();
+  const raw = String(roleName || "")
+    .trim()
+    .toLowerCase();
   if (raw === "staff") return "staff";
   if (raw === "referee") return "referee";
   if (raw === "player") return "player";
@@ -57,24 +59,19 @@ function isValidPhoneVN(s) {
 
 function isNameValid(s) {
   // not empty, no digits
-  const v = String(s ?? "").trim().replace(/\s+/g, " ");
+  const v = String(s ?? "")
+    .trim()
+    .replace(/\s+/g, " ");
   if (!v) return false;
   return !/\d/.test(v);
 }
 
-function hasDiacritics(s) {
-  // forbid any non-ASCII char for password ("không dấu")
-  return /[^\x00-\x7F]/.test(String(s ?? ""));
-}
-
 function isAllowedImageType(file) {
   const t = String(file?.type || "").toLowerCase();
-  // Browser usually sets: image/jpeg, image/png
   return t === "image/jpeg" || t === "image/png";
 }
 
 function sniffImageSignature(file) {
-  // Verify magic bytes:
   // PNG: 89 50 4E 47 0D 0A 1A 0A
   // JPG: FF D8 FF
   return new Promise((resolve) => {
@@ -83,7 +80,6 @@ function sniffImageSignature(file) {
     reader.onload = () => {
       try {
         const buf = new Uint8Array(reader.result);
-        // PNG
         const isPng =
           buf.length >= 8 &&
           buf[0] === 0x89 &&
@@ -94,8 +90,12 @@ function sniffImageSignature(file) {
           buf[5] === 0x0a &&
           buf[6] === 0x1a &&
           buf[7] === 0x0a;
-        // JPG
-        const isJpg = buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+
+        const isJpg =
+          buf.length >= 3 &&
+          buf[0] === 0xff &&
+          buf[1] === 0xd8 &&
+          buf[2] === 0xff;
 
         resolve(isPng || isJpg);
       } catch {
@@ -107,7 +107,6 @@ function sniffImageSignature(file) {
 }
 
 function verifyImageDecode(file) {
-  // extra safety: ensure browser can decode it as an image
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -149,9 +148,17 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [role, setRole] = useState("player");
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  // Avatar
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState("");
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    };
+  }, [avatarPreview]);
 
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState(""); // current avatar (from server)
@@ -183,7 +190,9 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
     setOkMsg("");
 
     try {
-      const res = await apiFetch(`/api/admin/users/${userId}`, { method: "GET" });
+      const res = await apiFetch(`/api/admin/users/${userId}`, {
+        method: "GET",
+      });
 
       const data = res?.data || {};
       const u = data.user || {};
@@ -199,8 +208,8 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
       setPhoneNumber(u.phoneNumber ?? "");
       setRole(normalizeRoleKeyFromServer(roleName));
 
-      // avatar current
-      setAvatarUrl(u.avatar ?? ""); // nếu backend field tên khác thì sửa lại
+      setAvatarUrl(u.avatar ?? "");
+
       // reset chosen file
       setAvatarFile(null);
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
@@ -228,43 +237,35 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
       throw new Error("Họ và tên không được để trống và không được chứa số.");
     }
     if (isBlankOrSpaces(address)) {
-      throw new Error("Địa chỉ không được để trống (không chỉ là khoảng trắng).");
+      throw new Error(
+        "Địa chỉ không được để trống (không chỉ là khoảng trắng).",
+      );
     }
     if (!isValidPhoneVN(phoneNumber)) {
-      throw new Error("Số điện thoại phải đúng 10 chữ số và bắt đầu bằng số 0.");
+      throw new Error(
+        "Số điện thoại phải đúng 10 chữ số và bắt đầu bằng số 0.",
+      );
     }
     if (isBlankOrSpaces(username)) {
       throw new Error("Username không được để trống.");
     }
   };
 
-  const validatePasswordNoDiacritics = (pwd, fieldLabel) => {
-    if (hasDiacritics(pwd)) {
-      throw new Error(`${fieldLabel} không được chứa ký tự có dấu (chỉ dùng ASCII).`);
-    }
-  };
-
   const validateAvatarFile = async (file) => {
     if (!file) return;
 
-    const maxBytes = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxBytes) {
-      throw new Error("Ảnh đại diện tối đa 10MB.");
-    }
+    const maxBytes = 10 * 1024 * 1024;
+    if (file.size > maxBytes) throw new Error("Ảnh đại diện tối đa 10MB.");
 
-    if (!isAllowedImageType(file)) {
+    if (!isAllowedImageType(file))
       throw new Error("Chỉ chấp nhận ảnh JPG hoặc PNG.");
-    }
 
     const sigOk = await sniffImageSignature(file);
-    if (!sigOk) {
+    if (!sigOk)
       throw new Error("File không đúng định dạng ảnh (JPG/PNG) hoặc bị lỗi.");
-    }
 
     const decOk = await verifyImageDecode(file);
-    if (!decOk) {
-      throw new Error("Không thể đọc ảnh. File có thể bị hỏng.");
-    }
+    if (!decOk) throw new Error("Không thể đọc ảnh. File có thể bị hỏng.");
   };
 
   const onPickAvatar = async (e) => {
@@ -281,8 +282,8 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
 
     try {
       await validateAvatarFile(file);
-
       setAvatarFile(file);
+
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
       setAvatarPreview(URL.createObjectURL(file));
     } catch (ex) {
@@ -307,33 +308,10 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
     setOkMsg("");
 
     try {
-      // ✅ Validate base fields
       validateBeforeUpdate();
 
-      // ✅ Validate avatar if selected
-      if (avatarFile) {
-        await validateAvatarFile(avatarFile);
-      }
+      if (avatarFile) await validateAvatarFile(avatarFile);
 
-      const cp = currentPassword.trim();
-      const np = newPassword.trim();
-      const cnp = confirmNewPassword.trim();
-
-      const wantsChangePass = !!(cp || np || cnp);
-
-      if (wantsChangePass) {
-        if (!np) throw new Error("Vui lòng nhập mật khẩu mới.");
-        if (!cnp) throw new Error("Vui lòng xác nhận mật khẩu mới.");
-        if (np !== cnp) throw new Error("Mật khẩu mới và xác nhận không khớp.");
-        if (np.length < 6) throw new Error("Mật khẩu mới tối thiểu 6 ký tự.");
-
-        if (cp) validatePasswordNoDiacritics(cp, "Mật khẩu hiện tại");
-        validatePasswordNoDiacritics(np, "Mật khẩu mới");
-        validatePasswordNoDiacritics(cnp, "Xác nhận mật khẩu mới");
-      }
-
-      // ✅ Nếu có avatarFile -> dùng multipart/form-data
-      // ✅ Nếu không -> dùng x-www-form-urlencoded như cũ
       let out;
 
       if (avatarFile) {
@@ -346,15 +324,7 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
         fd.set("address", address.trim());
         fd.set("phoneNumber", phoneNumber.trim());
         fd.set("role", role);
-
-        if (wantsChangePass) {
-          fd.set("currentPassword", cp);
-          fd.set("newPassword", np);
-          fd.set("confirmNewPassword", cnp);
-        }
-
-        // field name "avatar" (nếu backend yêu cầu tên khác, đổi ở đây)
-        fd.set("avatar", avatarFile);
+        fd.set("avatar", avatarFile); // must match servlet req.getPart("avatar")
 
         out = await apiFetch(`/api/admin/user-update/${userId}`, {
           method: "POST",
@@ -371,12 +341,6 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
         form.set("phoneNumber", phoneNumber.trim());
         form.set("role", role);
 
-        if (wantsChangePass) {
-          form.set("currentPassword", cp);
-          form.set("newPassword", np);
-          form.set("confirmNewPassword", cnp);
-        }
-
         out = await apiFetch(`/api/admin/user-update/${userId}`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -384,15 +348,10 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
         });
       }
 
-      if (out?.success !== true) {
+      if (out?.success !== true)
         throw new Error(out?.message || "Cập nhật thất bại.");
-      }
 
       setOkMsg("Cập nhật thành công!");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmNewPassword("");
-
       await loadUser();
     } catch (e) {
       setErr(e?.message || String(e));
@@ -445,6 +404,7 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
         .ep-sectionTitle{ font-weight:950; margin:2px 0 10px; }
         .ep-divider{ height:1px; background:rgba(15,23,42,0.08); margin:10px 0; }
 
+
         .ep-avatarRow{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
         .ep-avatar{
           width:72px; height:72px; border-radius:18px; overflow:hidden;
@@ -486,7 +446,14 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
               )}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 280 }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                minWidth: 280,
+              }}
+            >
               <input
                 ref={fileInputRef}
                 type="file"
@@ -495,12 +462,17 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
                 className="ep-input"
               />
               <div className="ep-hint">
-                Chỉ JPG/PNG • Tối đa 10MB • Hệ thống sẽ kiểm tra “đúng là ảnh” (magic bytes + decode).
+                Chỉ JPG/PNG • Tối đa 10MB • Hệ thống sẽ kiểm tra “đúng là ảnh”
+                (magic bytes + decode).
               </div>
 
               {avatarFile && (
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button className="ep-btn ep-btnDanger" onClick={removePickedAvatar} disabled={saving || loading}>
+                  <button
+                    className="ep-btn ep-btnDanger"
+                    onClick={removePickedAvatar}
+                    disabled={saving || loading}
+                  >
                     Bỏ ảnh đã chọn
                   </button>
                 </div>
@@ -515,7 +487,11 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
           <div className="ep-grid">
             <div className="ep-field">
               <div className="ep-label">Username</div>
-              <input className="ep-input" value={username} onChange={(e) => setUsername(e.target.value)} />
+              <input
+                className="ep-input"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
             </div>
 
             <div className="ep-field">
@@ -530,7 +506,12 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
 
             <div className="ep-field">
               <div className="ep-label">Ngày sinh</div>
-              <input type="date" className="ep-input" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
+              <input
+                type="date"
+                className="ep-input"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+              />
             </div>
 
             <div className="ep-field">
@@ -545,12 +526,20 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
 
             <div className="ep-field" style={{ gridColumn: "1 / -1" }}>
               <div className="ep-label">Địa chỉ</div>
-              <input className="ep-input" value={address} onChange={(e) => setAddress(e.target.value)} />
+              <input
+                className="ep-input"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
             </div>
 
             <div className="ep-field">
               <div className="ep-label">Vai trò</div>
-              <select className="ep-select" value={role} onChange={(e) => setRole(e.target.value)}>
+              <select
+                className="ep-select"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+              >
                 {ROLE_OPTIONS.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
@@ -562,48 +551,20 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
 
           <div className="ep-divider" />
 
-          <div className="ep-sectionTitle">Đổi mật khẩu (tuỳ chọn)</div>
-
-          <div className="ep-grid">
-            <div className="ep-field">
-              <div className="ep-label">Mật khẩu hiện tại</div>
-              <input
-                type="password"
-                className="ep-input"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
-            </div>
-
-            <div className="ep-field">
-              <div className="ep-label">Mật khẩu mới</div>
-              <input
-                type="password"
-                className="ep-input"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </div>
-
-            <div className="ep-field">
-              <div className="ep-label">Xác nhận mật khẩu mới</div>
-              <input
-                type="password"
-                className="ep-input"
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="ep-divider" />
-
           <div className="ep-actions">
-            <button className="ep-btn" onClick={() => loadUser()} disabled={saving || loading}>
+            <button
+              className="ep-btn"
+              onClick={() => loadUser()}
+              disabled={saving || loading}
+            >
               Tải lại
             </button>
 
-            <button className="ep-btn ep-btnPrimary" onClick={onSave} disabled={saving || loading}>
+            <button
+              className="ep-btn ep-btnPrimary"
+              onClick={onSave}
+              disabled={saving || loading}
+            >
               {saving ? "Đang lưu..." : "Lưu thay đổi"}
             </button>
           </div>

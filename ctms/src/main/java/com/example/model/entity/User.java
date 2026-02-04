@@ -15,6 +15,17 @@ public class User {
     private String password;
     private String avatar;
     private BigDecimal balance;
+    
+    public User(String firstName, String lastName, String username,
+                String phoneNumber, String email, String address, String password) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.username = username;
+        this.phoneNumber = phoneNumber;
+        this.email = email;
+        this.address = address;
+        this.password = password;
+    }
     public Integer getUserId() {
         return userId;
     }
