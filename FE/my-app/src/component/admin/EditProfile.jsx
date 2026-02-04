@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 const API_BASE = "http://localhost:8080/ctms";
@@ -63,9 +63,64 @@ function isNameValid(s) {
 }
 
 function hasDiacritics(s) {
-  // detect Vietnamese/Unicode combining marks or any non-ascii letters (common "dấu")
-  // If you want STRICT "no dấu" for password => forbid any non-ASCII character.
+  // forbid any non-ASCII char for password ("không dấu")
   return /[^\x00-\x7F]/.test(String(s ?? ""));
+}
+
+function isAllowedImageType(file) {
+  const t = String(file?.type || "").toLowerCase();
+  // Browser usually sets: image/jpeg, image/png
+  return t === "image/jpeg" || t === "image/png";
+}
+
+function sniffImageSignature(file) {
+  // Verify magic bytes:
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  // JPG: FF D8 FF
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onerror = () => resolve(false);
+    reader.onload = () => {
+      try {
+        const buf = new Uint8Array(reader.result);
+        // PNG
+        const isPng =
+          buf.length >= 8 &&
+          buf[0] === 0x89 &&
+          buf[1] === 0x50 &&
+          buf[2] === 0x4e &&
+          buf[3] === 0x47 &&
+          buf[4] === 0x0d &&
+          buf[5] === 0x0a &&
+          buf[6] === 0x1a &&
+          buf[7] === 0x0a;
+        // JPG
+        const isJpg = buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+
+        resolve(isPng || isJpg);
+      } catch {
+        resolve(false);
+      }
+    };
+    reader.readAsArrayBuffer(file.slice(0, 16));
+  });
+}
+
+function verifyImageDecode(file) {
+  // extra safety: ensure browser can decode it as an image
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(true);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(false);
+    };
+    img.src = url;
+  });
 }
 
 export default function EditProfile({ userId: userIdProp, onBack }) {
@@ -98,6 +153,19 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
+  // Avatar
+  const [avatarUrl, setAvatarUrl] = useState(""); // current avatar (from server)
+  const [avatarFile, setAvatarFile] = useState(null); // new file
+  const [avatarPreview, setAvatarPreview] = useState(""); // preview URL
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    // cleanup preview url
+    return () => {
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    };
+  }, [avatarPreview]);
+
   const nameSplit = useMemo(() => {
     const s = (fullName || "").trim().replace(/\s+/g, " ");
     if (!s) return { firstName: "", lastName: "" };
@@ -129,8 +197,15 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
       setBirthday(toISODateInput(u.birthday));
       setAddress(u.address ?? "");
       setPhoneNumber(u.phoneNumber ?? "");
-
       setRole(normalizeRoleKeyFromServer(roleName));
+
+      // avatar current
+      setAvatarUrl(u.avatar ?? ""); // nếu backend field tên khác thì sửa lại
+      // reset chosen file
+      setAvatarFile(null);
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+      setAvatarPreview("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (e) {
       setErr(e?.message || String(e));
     } finally {
@@ -149,22 +224,15 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
   }, [userId]);
 
   const validateBeforeUpdate = () => {
-    // Full name: not empty spaces, not digits
     if (!isNameValid(fullName)) {
       throw new Error("Họ và tên không được để trống và không được chứa số.");
     }
-
-    // Address: not just spaces
     if (isBlankOrSpaces(address)) {
       throw new Error("Địa chỉ không được để trống (không chỉ là khoảng trắng).");
     }
-
-    // Phone: 10 digits start 0
     if (!isValidPhoneVN(phoneNumber)) {
       throw new Error("Số điện thoại phải đúng 10 chữ số và bắt đầu bằng số 0.");
     }
-
-    // Username: optional rule? (keep light)
     if (isBlankOrSpaces(username)) {
       throw new Error("Username không được để trống.");
     }
@@ -176,6 +244,63 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
     }
   };
 
+  const validateAvatarFile = async (file) => {
+    if (!file) return;
+
+    const maxBytes = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxBytes) {
+      throw new Error("Ảnh đại diện tối đa 10MB.");
+    }
+
+    if (!isAllowedImageType(file)) {
+      throw new Error("Chỉ chấp nhận ảnh JPG hoặc PNG.");
+    }
+
+    const sigOk = await sniffImageSignature(file);
+    if (!sigOk) {
+      throw new Error("File không đúng định dạng ảnh (JPG/PNG) hoặc bị lỗi.");
+    }
+
+    const decOk = await verifyImageDecode(file);
+    if (!decOk) {
+      throw new Error("Không thể đọc ảnh. File có thể bị hỏng.");
+    }
+  };
+
+  const onPickAvatar = async (e) => {
+    setErr("");
+    setOkMsg("");
+
+    const file = e.target.files?.[0] || null;
+    if (!file) {
+      setAvatarFile(null);
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+      setAvatarPreview("");
+      return;
+    }
+
+    try {
+      await validateAvatarFile(file);
+
+      setAvatarFile(file);
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+      setAvatarPreview(URL.createObjectURL(file));
+    } catch (ex) {
+      setAvatarFile(null);
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+      setAvatarPreview("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setErr(ex?.message || String(ex));
+    }
+  };
+
+  const removePickedAvatar = () => {
+    setAvatarFile(null);
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    setAvatarPreview("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const onSave = async () => {
     setSaving(true);
     setErr("");
@@ -185,51 +310,79 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
       // ✅ Validate base fields
       validateBeforeUpdate();
 
+      // ✅ Validate avatar if selected
+      if (avatarFile) {
+        await validateAvatarFile(avatarFile);
+      }
+
       const cp = currentPassword.trim();
       const np = newPassword.trim();
       const cnp = confirmNewPassword.trim();
 
       const wantsChangePass = !!(cp || np || cnp);
 
-      // ✅ Validate password only when user wants change
       if (wantsChangePass) {
         if (!np) throw new Error("Vui lòng nhập mật khẩu mới.");
         if (!cnp) throw new Error("Vui lòng xác nhận mật khẩu mới.");
         if (np !== cnp) throw new Error("Mật khẩu mới và xác nhận không khớp.");
         if (np.length < 6) throw new Error("Mật khẩu mới tối thiểu 6 ký tự.");
 
-        // ❗ Password không dấu (ASCII only)
-        // currentPassword: nếu user có nhập thì cũng check, còn admin bỏ trống thì ok
         if (cp) validatePasswordNoDiacritics(cp, "Mật khẩu hiện tại");
         validatePasswordNoDiacritics(np, "Mật khẩu mới");
         validatePasswordNoDiacritics(cnp, "Xác nhận mật khẩu mới");
       }
 
-      // ✅ Gửi x-www-form-urlencoded để tránh preflight
-      const form = new URLSearchParams();
-      form.set("userId", String(userId));
-      form.set("username", username.trim());
-      form.set("firstName", nameSplit.firstName.trim());
-      form.set("lastName", nameSplit.lastName.trim());
-      form.set("birthday", birthday ? birthday : ""); // yyyy-MM-dd
-      form.set("address", address.trim());
-      form.set("phoneNumber", phoneNumber.trim());
-      form.set("role", role);
+      // ✅ Nếu có avatarFile -> dùng multipart/form-data
+      // ✅ Nếu không -> dùng x-www-form-urlencoded như cũ
+      let out;
 
-      // ✅ CHỈ gửi password fields khi muốn đổi
-      if (wantsChangePass) {
-        form.set("currentPassword", cp); // có thể rỗng nếu admin đổi cho user khác
-        form.set("newPassword", np);
-        form.set("confirmNewPassword", cnp);
+      if (avatarFile) {
+        const fd = new FormData();
+        fd.set("userId", String(userId));
+        fd.set("username", username.trim());
+        fd.set("firstName", nameSplit.firstName.trim());
+        fd.set("lastName", nameSplit.lastName.trim());
+        fd.set("birthday", birthday ? birthday : "");
+        fd.set("address", address.trim());
+        fd.set("phoneNumber", phoneNumber.trim());
+        fd.set("role", role);
+
+        if (wantsChangePass) {
+          fd.set("currentPassword", cp);
+          fd.set("newPassword", np);
+          fd.set("confirmNewPassword", cnp);
+        }
+
+        // field name "avatar" (nếu backend yêu cầu tên khác, đổi ở đây)
+        fd.set("avatar", avatarFile);
+
+        out = await apiFetch(`/api/admin/user-update/${userId}`, {
+          method: "POST",
+          body: fd,
+        });
+      } else {
+        const form = new URLSearchParams();
+        form.set("userId", String(userId));
+        form.set("username", username.trim());
+        form.set("firstName", nameSplit.firstName.trim());
+        form.set("lastName", nameSplit.lastName.trim());
+        form.set("birthday", birthday ? birthday : "");
+        form.set("address", address.trim());
+        form.set("phoneNumber", phoneNumber.trim());
+        form.set("role", role);
+
+        if (wantsChangePass) {
+          form.set("currentPassword", cp);
+          form.set("newPassword", np);
+          form.set("confirmNewPassword", cnp);
+        }
+
+        out = await apiFetch(`/api/admin/user-update/${userId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: form.toString(),
+        });
       }
-
-      const out = await apiFetch(`/api/admin/user-update/${userId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: form.toString(),
-      });
 
       if (out?.success !== true) {
         throw new Error(out?.message || "Cập nhật thất bại.");
@@ -252,6 +405,8 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
     if (typeof onBack === "function") return onBack();
     navigate(-1);
   };
+
+  const showAvatarSrc = avatarPreview || avatarUrl;
 
   return (
     <div className="ep-page">
@@ -285,9 +440,21 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
         .ep-btn{ border-radius:14px; padding:10px 12px; border:1px solid rgba(15,23,42,0.12); background:rgba(255,255,255,0.95);
           box-shadow:0 10px 24px rgba(15,23,42,0.06); color:#0b0f1a; font-weight:950; cursor:pointer; }
         .ep-btnPrimary{ background: rgba(59,130,246,0.12); }
+        .ep-btnDanger{ background: rgba(239,68,68,0.10); }
         .ep-btn:disabled{ opacity:.65; cursor:not-allowed; }
         .ep-sectionTitle{ font-weight:950; margin:2px 0 10px; }
         .ep-divider{ height:1px; background:rgba(15,23,42,0.08); margin:10px 0; }
+
+        .ep-avatarRow{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+        .ep-avatar{
+          width:72px; height:72px; border-radius:18px; overflow:hidden;
+          border:1px solid rgba(15,23,42,0.12);
+          background:rgba(15,23,42,0.03);
+          display:flex; align-items:center; justify-content:center;
+        }
+        .ep-avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+        .ep-avatarPlaceholder{ font-weight:950; opacity:.6; font-size:12px; padding:8px; text-align:center; }
+        .ep-hint{ font-size:12px; opacity:.75; font-weight:750; }
       `}</style>
 
       <div className="ep-wrap">
@@ -302,7 +469,43 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
               <div className="ep-sub">UserId: {String(userId)}</div>
             </div>
 
-            <button className="ep-btn" onClick={handleBack}>Quay lại</button>
+            <button className="ep-btn" onClick={handleBack}>
+              Quay lại
+            </button>
+          </div>
+
+          <div className="ep-divider" />
+
+          <div className="ep-sectionTitle">Ảnh đại diện</div>
+          <div className="ep-avatarRow">
+            <div className="ep-avatar">
+              {showAvatarSrc ? (
+                <img src={showAvatarSrc} alt="avatar" />
+              ) : (
+                <div className="ep-avatarPlaceholder">No Avatar</div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 280 }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                onChange={onPickAvatar}
+                className="ep-input"
+              />
+              <div className="ep-hint">
+                Chỉ JPG/PNG • Tối đa 10MB • Hệ thống sẽ kiểm tra “đúng là ảnh” (magic bytes + decode).
+              </div>
+
+              {avatarFile && (
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button className="ep-btn ep-btnDanger" onClick={removePickedAvatar} disabled={saving || loading}>
+                    Bỏ ảnh đã chọn
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="ep-divider" />
@@ -312,11 +515,7 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
           <div className="ep-grid">
             <div className="ep-field">
               <div className="ep-label">Username</div>
-              <input
-                className="ep-input"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
+              <input className="ep-input" value={username} onChange={(e) => setUsername(e.target.value)} />
             </div>
 
             <div className="ep-field">
@@ -331,12 +530,7 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
 
             <div className="ep-field">
               <div className="ep-label">Ngày sinh</div>
-              <input
-                type="date"
-                className="ep-input"
-                value={birthday}
-                onChange={(e) => setBirthday(e.target.value)}
-              />
+              <input type="date" className="ep-input" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
             </div>
 
             <div className="ep-field">
@@ -351,20 +545,12 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
 
             <div className="ep-field" style={{ gridColumn: "1 / -1" }}>
               <div className="ep-label">Địa chỉ</div>
-              <input
-                className="ep-input"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-              />
+              <input className="ep-input" value={address} onChange={(e) => setAddress(e.target.value)} />
             </div>
 
             <div className="ep-field">
               <div className="ep-label">Vai trò</div>
-              <select
-                className="ep-select"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              >
+              <select className="ep-select" value={role} onChange={(e) => setRole(e.target.value)}>
                 {ROLE_OPTIONS.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
@@ -396,7 +582,6 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
                 className="ep-input"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                
               />
             </div>
 
@@ -407,7 +592,6 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
                 className="ep-input"
                 value={confirmNewPassword}
                 onChange={(e) => setConfirmNewPassword(e.target.value)}
-                
               />
             </div>
           </div>
@@ -415,19 +599,11 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
           <div className="ep-divider" />
 
           <div className="ep-actions">
-            <button
-              className="ep-btn"
-              onClick={() => loadUser()}
-              disabled={saving || loading}
-            >
+            <button className="ep-btn" onClick={() => loadUser()} disabled={saving || loading}>
               Tải lại
             </button>
 
-            <button
-              className="ep-btn ep-btnPrimary"
-              onClick={onSave}
-              disabled={saving || loading}
-            >
+            <button className="ep-btn ep-btnPrimary" onClick={onSave} disabled={saving || loading}>
               {saving ? "Đang lưu..." : "Lưu thay đổi"}
             </button>
           </div>
