@@ -1,38 +1,57 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-import HeaderTournament from "../../component/tournament/HeaderTournament";
+import MainHeader from "../../component/common/MainHeader";
 import SlidebarTournament from "../../component/tournament/SlideBarTournament";
 import FilterSection from "../../component/tournament/FilterSection";
 import TournamentTable from "../../component/tournament/TournamentTable";
+import "../../assets/css/tournament-leader.css";
 
 const TournamentList = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [tournaments, setTournaments] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const fetchTournaments = async () => {
-      try {
-        const res = await axios.get(
-          "http://localhost:8080/ctms/api/tournaments"
-        );
-        if (Array.isArray(res.data)) {
-          setTournaments(res.data);
-        } else {
-          console.error("API does not return array:", res.data);
-          setTournaments([]);
-        }
 
-      } catch (err) {
-        console.error(err);
-        alert("Cannot load tournaments");
+  // User state for MainHeader
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem("user");
+    return stored ? JSON.parse(stored) : null;
+  });
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    setUser(null);
+    navigate("/login");
+  };
+
+  const fetchTournaments = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(
+        "http://localhost:8080/ctms/api/tournaments",
+        { withCredentials: true }
+      );
+      if (Array.isArray(res.data)) {
+        setTournaments(res.data);
+      } else {
+        console.error("API does not return array:", res.data);
         setTournaments([]);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (err) {
+      console.error(err);
+      alert("Cannot load tournaments");
+      setTournaments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchTournaments();
   }, []);
 
@@ -67,12 +86,11 @@ const TournamentList = () => {
 
   return (
     <div className="tl-layout">
+      <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
       <SlidebarTournament />
 
       <div className="tl-main">
-        <HeaderTournament />
-
-        <main className="tl-content">
+        <main className="tl-content" style={{ marginTop: "60px" }}>
           <div className="tl-container">
             <div className="tl-page-header">
               <h1>Tournament List</h1>
@@ -86,7 +104,10 @@ const TournamentList = () => {
               onReset={handleReset}
             />
 
-            <TournamentTable tournaments={filteredTournaments} />
+            <TournamentTable 
+              tournaments={filteredTournaments} 
+              refresh={fetchTournaments}
+            />
           </div>
 
           <footer className="tl-footer">

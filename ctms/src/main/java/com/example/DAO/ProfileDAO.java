@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.example.util.DBContext;
+import com.example.util.EncodingUtil;
 
 public class ProfileDAO { 
 
@@ -31,10 +32,28 @@ public class ProfileDAO {
         }
     }
 
+    /**
+     * Check if phone_number is already used by another user.
+     */
+    public boolean isPhoneTaken(String phoneNumber, int excludeUserId) {
+        if (phoneNumber == null || phoneNumber.isBlank()) return false;
+        String sql = "SELECT 1 FROM Users WHERE phone_number = ? AND user_id <> ?";
+        try (Connection con = DBContext.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, phoneNumber.trim());
+            ps.setInt(2, excludeUserId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public Map<String, Object> getUserBasic(int userId) {
         String sql = """
             SELECT user_id, username, first_name, last_name, email, phone_number,
-                   address, avatar, is_active, balance, rank, birthday, last_login, create_at
+                   address, avatar, is_active, balance, rank, birthday, gender, last_login, create_at
             FROM Users
             WHERE user_id = ?
         """;
@@ -48,17 +67,18 @@ public class ProfileDAO {
 
                 Map<String, Object> u = new HashMap<>();
                 u.put("userId", rs.getInt("user_id"));
-                u.put("username", rs.getString("username"));
-                u.put("firstName", rs.getString("first_name"));
-                u.put("lastName", rs.getString("last_name"));
-                u.put("email", rs.getString("email"));
+                u.put("username", EncodingUtil.fixUtf8Mojibake(rs.getString("username")));
+                u.put("firstName", EncodingUtil.fixUtf8Mojibake(rs.getString("first_name")));
+                u.put("lastName", EncodingUtil.fixUtf8Mojibake(rs.getString("last_name")));
+                u.put("email", EncodingUtil.fixUtf8Mojibake(rs.getString("email")));
                 u.put("phoneNumber", rs.getString("phone_number"));
-                u.put("address", rs.getString("address"));
+                u.put("address", EncodingUtil.fixUtf8Mojibake(rs.getString("address")));
                 u.put("avatar", rs.getString("avatar"));
                 u.put("isActive", rs.getBoolean("is_active"));
                 u.put("balance", rs.getBigDecimal("balance"));
                 u.put("rank", (Integer) rs.getObject("rank"));
                 u.put("birthday", rs.getDate("birthday"));
+                u.put("gender", EncodingUtil.fixUtf8Mojibake(rs.getString("gender")));
                 u.put("lastLogin", rs.getTimestamp("last_login"));
                 u.put("createAt", rs.getTimestamp("create_at"));
                 return u;
@@ -119,28 +139,32 @@ public class ProfileDAO {
         }
     }
     public Map<String, Object> getPlayerStats(int userId) {
-        // Stats used by FE: totalTournaments, avgRanking
+        // Stats used by FE: totalTournaments, avgRanking, championCount (số lần hạng 1)
         String sql = """
             SELECT
                 (SELECT COUNT(1) FROM Participants p WHERE p.user_id = ?) AS totalTournaments,
                 (SELECT AVG(CAST(s.current_rank AS FLOAT))
                    FROM Standing s
-                  WHERE s.user_id = ? AND s.current_rank IS NOT NULL) AS avgRanking
+                  WHERE s.user_id = ? AND s.current_rank IS NOT NULL) AS avgRanking,
+                (SELECT COUNT(1) FROM Standing s WHERE s.user_id = ? AND s.current_rank = 1) AS championCount
         """;
 
         try (Connection con = DBContext.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, userId);
             ps.setInt(2, userId);
+            ps.setInt(3, userId);
 
             try (ResultSet rs = ps.executeQuery()) {
                 Map<String, Object> m = new HashMap<>();
                 if (rs.next()) {
                     m.put("totalTournaments", rs.getInt("totalTournaments"));
                     m.put("avgRanking", rs.getObject("avgRanking") == null ? null : rs.getDouble("avgRanking"));
+                    m.put("championCount", rs.getInt("championCount"));
                 } else {
                     m.put("totalTournaments", 0);
                     m.put("avgRanking", null);
+                    m.put("championCount", 0);
                 }
                 return m;
             }
@@ -176,7 +200,7 @@ public class ProfileDAO {
                 while (rs.next()) {
                     Map<String, Object> t = new HashMap<>();
                     t.put("tournamentId", rs.getInt("tournamentId"));
-                    t.put("tournamentName", rs.getString("tournamentName"));
+                    t.put("tournamentName", EncodingUtil.fixUtf8Mojibake(rs.getString("tournamentName")));
                     t.put("tournamentStatus", rs.getString("tournamentStatus"));
                     t.put("startDate", rs.getTimestamp("startDate"));
                     t.put("joinedDate", rs.getTimestamp("joinedDate"));
@@ -192,28 +216,32 @@ public class ProfileDAO {
     }
 
     public Map<String, Object> getLeaderStats(int userId) {
-        // Leader = user tạo tournament (create_by)
+        // Leader = user tạo tournament (create_by) + rating từ feedback về giải của họ
         String sql = """
             SELECT
-                COUNT(DISTINCT t.tournament_id) AS totalTournaments,
-                COUNT(p.participant_id)         AS totalParticipants
-            FROM Tournaments t
-            LEFT JOIN Participants p
-                ON p.tournament_id = t.tournament_id
-            WHERE t.create_by = ?
+                (SELECT COUNT(DISTINCT t.tournament_id) FROM Tournaments t WHERE t.create_by = ?) AS totalTournaments,
+                (SELECT COUNT(p.participant_id) FROM Tournaments t LEFT JOIN Participants p ON p.tournament_id = t.tournament_id WHERE t.create_by = ?) AS totalParticipants,
+                (SELECT AVG(CAST(f.star_rating AS FLOAT)) FROM Feedback f
+                 INNER JOIN Tournaments t ON t.tournament_id = f.tournament_id AND t.create_by = ?
+                 WHERE f.status = 'approved' AND f.star_rating IS NOT NULL) AS averageRating
         """;
 
         try (Connection con = DBContext.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, userId);
+            ps.setInt(2, userId);
+            ps.setInt(3, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 Map<String, Object> m = new HashMap<>();
                 if (rs.next()) {
                     m.put("totalTournaments", rs.getInt("totalTournaments"));
                     m.put("totalParticipants", rs.getInt("totalParticipants"));
+                    Object ar = rs.getObject("averageRating");
+                    m.put("averageRating", ar == null ? null : rs.getDouble("averageRating"));
                 } else {
                     m.put("totalTournaments", 0);
                     m.put("totalParticipants", 0);
+                    m.put("averageRating", null);
                 }
                 return m;
             }
@@ -227,9 +255,20 @@ public class ProfileDAO {
             SELECT
                 t.tournament_id   AS tournamentId,
                 t.tournament_name AS tournamentName,
+                t.description     AS description,
+                t.location        AS location,
+                t.format          AS format,
+                t.categories      AS categories,
+                t.max_player      AS maxPlayer,
+                t.min_player      AS minPlayer,
+                t.entry_fee       AS entryFee,
+                t.prize_pool      AS prizePool,
                 t.status          AS tournamentStatus,
+                t.registration_deadline AS registrationDeadline,
                 t.start_date      AS startDate,
-                t.create_at       AS createdAt
+                t.end_date        AS endDate,
+                t.create_at       AS createdAt,
+                t.notes           AS notes
             FROM Tournaments t
             WHERE t.create_by = ?
             ORDER BY t.create_at DESC
@@ -243,10 +282,21 @@ public class ProfileDAO {
                 while (rs.next()) {
                     Map<String, Object> t = new HashMap<>();
                     t.put("tournamentId", rs.getInt("tournamentId"));
-                    t.put("tournamentName", rs.getString("tournamentName"));
+                    t.put("tournamentName", EncodingUtil.fixUtf8Mojibake(rs.getString("tournamentName")));
+                    t.put("description", EncodingUtil.fixUtf8Mojibake(rs.getString("description")));
+                    t.put("location", EncodingUtil.fixUtf8Mojibake(rs.getString("location")));
+                    t.put("format", rs.getString("format"));
+                    t.put("categories", rs.getString("categories"));
+                    t.put("maxPlayer", rs.getObject("maxPlayer"));
+                    t.put("minPlayer", rs.getObject("minPlayer"));
+                    t.put("entryFee", rs.getObject("entryFee"));
+                    t.put("prizePool", rs.getObject("prizePool"));
                     t.put("tournamentStatus", rs.getString("tournamentStatus"));
+                    t.put("registrationDeadline", rs.getTimestamp("registrationDeadline"));
                     t.put("startDate", rs.getTimestamp("startDate"));
+                    t.put("endDate", rs.getTimestamp("endDate"));
                     t.put("createdAt", rs.getTimestamp("createdAt"));
+                    t.put("notes", EncodingUtil.fixUtf8Mojibake(rs.getString("notes")));
                     list.add(t);
                 }
             }
@@ -257,13 +307,72 @@ public class ProfileDAO {
     }
 
     public Map<String, Object> getRefereeStats(int userId) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("assignedMatches", 0);
-        return m;
+        // Số trận đã trọng tài + rating trung bình từ feedback của các trận đó
+        String sql = """
+            SELECT
+                (SELECT COUNT(1) FROM Match_Referee mr WHERE mr.referee_id = ?) AS assignedMatches,
+                (SELECT AVG(CAST(f.star_rating AS FLOAT)) FROM Feedback f
+                 INNER JOIN Match_Referee mr ON mr.match_id = f.match_id AND mr.referee_id = ?
+                 WHERE f.status = 'approved' AND f.star_rating IS NOT NULL) AS averageRating
+        """;
+
+        try (Connection con = DBContext.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                Map<String, Object> m = new HashMap<>();
+                if (rs.next()) {
+                    m.put("assignedMatches", rs.getInt("assignedMatches"));
+                    Object ar = rs.getObject("averageRating");
+                    m.put("averageRating", ar == null ? null : rs.getDouble("averageRating"));
+                } else {
+                    m.put("assignedMatches", 0);
+                    m.put("averageRating", null);
+                }
+                return m;
+            }
+        } catch (SQLException e) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("assignedMatches", 0);
+            m.put("averageRating", null);
+            return m;
+        }
     }
 
     public List<Map<String, Object>> getRefereeTournaments(int userId) {
-        return new ArrayList<>();
+        String sql = """
+            SELECT
+                t.tournament_id   AS tournamentId,
+                t.tournament_name AS tournamentName,
+                t.status          AS tournamentStatus,
+                t.start_date      AS startDate,
+                tr.assigned_at    AS assignedAt
+            FROM Tournament_Referee tr
+            INNER JOIN Tournaments t ON t.tournament_id = tr.tournament_id
+            WHERE tr.referee_id = ?
+            ORDER BY tr.assigned_at DESC
+        """;
+
+        List<Map<String, Object>> list = new ArrayList<>();
+        try (Connection con = DBContext.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> t = new HashMap<>();
+                    t.put("tournamentId", rs.getInt("tournamentId"));
+                    t.put("tournamentName", EncodingUtil.fixUtf8Mojibake(rs.getString("tournamentName")));
+                    t.put("tournamentStatus", rs.getString("tournamentStatus"));
+                    t.put("startDate", rs.getTimestamp("startDate"));
+                    t.put("assignedAt", rs.getTimestamp("assignedAt"));
+                    list.add(t);
+                }
+            }
+            return list;
+        } catch (SQLException e) {
+            return new ArrayList<>();
+        }
     }
 
     public Map<String, Object> getStaffStats(int userId) {

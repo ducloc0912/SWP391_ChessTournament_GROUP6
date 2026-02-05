@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from "react";
+import "../../assets/css/admin.css";
 import Dashboard from "../../component/admin/Dashboard";
 import Slidebar from "../../component/admin/Slidebar";
 import Header from "../../component/admin/Header";
 import { NAVIGATION_ITEMS } from "../../constants";
 import AccountListScreen from "../../component/admin/Accounlist";
 import UserProfile from "../../component/admin/UserProfile";
-import EditProfile from "../../component/admin/EditProfile"; // ✅ dùng luôn class bạn gửi
+import EditProfile from "../../component/admin/EditProfile";
+import EditRole from "../../component/admin/EditRole";
 
 export const AdminLayout = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -16,6 +18,7 @@ export const AdminLayout = () => {
   const activeLabel = useMemo(() => {
     if (activeTab === "user_profile") return "Thông tin tài khoản";
     if (activeTab === "edit_user") return "Sửa hồ sơ người dùng";
+    if (activeTab === "edit_role") return "Phân quyền người dùng";
 
     const item = NAVIGATION_ITEMS.find((x) => x.id === activeTab);
     return item?.label || "Bảng điều khiển";
@@ -37,6 +40,10 @@ export const AdminLayout = () => {
               setSelectedUserId(userId);
               setActiveTab("edit_user");
             }}
+            onEditRole={(userId) => {
+              setSelectedUserId(userId);
+              setActiveTab("edit_role");
+            }}
           />
         );
 
@@ -51,6 +58,14 @@ export const AdminLayout = () => {
       case "edit_user":
         return (
           <EditProfile
+            userId={selectedUserId}
+            onBack={() => setActiveTab("accounts")}
+          />
+        );
+
+      case "edit_role":
+        return (
+          <EditRole
             userId={selectedUserId}
             onBack={() => setActiveTab("accounts")}
           />

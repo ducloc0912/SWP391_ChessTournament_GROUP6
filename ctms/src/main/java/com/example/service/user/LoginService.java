@@ -1,8 +1,8 @@
 package com.example.service.user;
 
 import com.example.DAO.UserDAO;
-import com.example.model.User;
-import com.example.model.UserRole;
+import com.example.model.entity.User;
+import com.example.model.entity.UserRole;
 import com.example.util.PasswordUtil;
 
 import java.util.HashMap;
@@ -32,8 +32,8 @@ public class LoginService {
         return result;
     }
 
-    String role = user.getRoleName().toUpperCase();
-   
+    String roleName = user.getRoleName();
+    String role = (roleName != null && !roleName.isBlank()) ? roleName.toUpperCase() : "PLAYER";
 
     result.put("success", true);
     result.put("user", user);

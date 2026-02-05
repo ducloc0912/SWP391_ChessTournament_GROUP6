@@ -154,6 +154,26 @@ public class User {
         this.isActive = isActive;
     }
 
+    /** Alias for setIsActive(boolean) for DAO compatibility */
+    public void setActive(boolean active) {
+        this.isActive = active;
+    }
+
+    /** Alias for getIsActive() != null && getIsActive() */
+    public boolean isActive() {
+        return Boolean.TRUE.equals(isActive);
+    }
+
+    /** Alias for getCreateAt() for DAO compatibility */
+    public Timestamp getCreatedAt() {
+        return getCreateAt();
+    }
+
+    /** Alias for setCreateAt(); accepts Timestamp or java.util.Date. */
+    public void setCreatedAt(java.util.Date createdAt) {
+        this.createAt = createdAt != null ? new Timestamp(createdAt.getTime()) : null;
+    }
+
     private Integer rank;
     private Timestamp lastLogin;
     private Timestamp createAt;

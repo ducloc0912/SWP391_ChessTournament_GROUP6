@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import com.example.model.User;
+import com.example.model.entity.User;
 import com.example.service.user.ProfileService;
 import com.google.gson.Gson;
 
@@ -36,7 +36,7 @@ public class ProfileServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        resp.setContentType("application/json");
+        resp.setContentType("application/json; charset=UTF-8");
         resp.setCharacterEncoding("UTF-8");
 
         String path = req.getPathInfo();
@@ -72,7 +72,7 @@ public class ProfileServlet extends HttpServlet {
     }
  @Override
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        resp.setContentType("application/json");
+        resp.setContentType("application/json; charset=UTF-8");
         resp.setCharacterEncoding("UTF-8");
 
         String path = req.getPathInfo();
@@ -108,11 +108,15 @@ public class ProfileServlet extends HttpServlet {
             String avatar = str(payload, "avatar"); // FE mới sẽ không gửi nữa (avatar upload qua endpoint riêng)
             java.sql.Date birthday = toSqlDate(str(payload, "birthday")); // yyyy-MM-dd
 
+            if (firstName != null) firstName = firstName.trim();
+            if (lastName != null) lastName = lastName.trim();
+            if (phoneNumber != null) phoneNumber = phoneNumber.trim();
+            if (address != null) address = address.trim();
+
             if (username != null && username.length() > 50) {
                 write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "username too long", null);
                 return;
             }
-
             if (firstName != null && firstName.length() > 50) {
                 write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "firstName too long", null);
                 return;
@@ -138,8 +142,8 @@ public class ProfileServlet extends HttpServlet {
                     user.getUserId(),
                     role,
                     emptyToNull(username),
-                    emptyToNull(firstName),
-                    emptyToNull(lastName),
+                    firstName,   // pass trimmed; service validates required (rejects blank)
+                    lastName,
                     emptyToNull(phoneNumber),
                     emptyToNull(address),
                     birthday,
@@ -157,7 +161,7 @@ public class ProfileServlet extends HttpServlet {
                 if (phoneNumber != null) user.setPhoneNumber(phoneNumber);
                 if (address != null) user.setAddress(address);
                 if (avatar != null) user.setAvatar(avatar);
-                if (birthday != null) user.setBirthday(birthday);
+                if (birthday != null) user.setBirthday(new java.sql.Timestamp(birthday.getTime()));
                 session.setAttribute("user", user);
             }
 
@@ -177,7 +181,7 @@ public class ProfileServlet extends HttpServlet {
      */
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        resp.setContentType("application/json");
+        resp.setContentType("application/json; charset=UTF-8");
         resp.setCharacterEncoding("UTF-8");
 
         String path = req.getPathInfo();
@@ -283,6 +287,8 @@ public class ProfileServlet extends HttpServlet {
     }
     private void write(HttpServletResponse resp, int status,
                        boolean success, String message, Object data) throws IOException {
+        resp.setContentType("application/json; charset=UTF-8");
+        resp.setCharacterEncoding("UTF-8");
         resp.setStatus(status);
         Map<String, Object> res = new HashMap<>();
         res.put("success", success);

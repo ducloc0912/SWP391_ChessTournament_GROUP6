@@ -1,7 +1,7 @@
 package com.example.service.user;
 
 import com.example.DAO.UserDAO;
-import com.example.model.User;
+import com.example.model.entity.User;
 import com.example.util.PasswordUtil;
 import com.example.util.ValidationUtil;
 import java.util.HashMap;

@@ -2,7 +2,7 @@ package com.example.service.user;
 
 import com.example.DAO.OTPDAO;
 import com.example.DAO.UserDAO;
-import com.example.model.User;
+import com.example.model.entity.User;
 import com.example.util.EmailUtil;
 import com.example.util.OTPUtil;
 import java.util.HashMap;

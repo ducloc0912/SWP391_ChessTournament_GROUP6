@@ -88,12 +88,31 @@ public class TournamentController extends HttpServlet {
     // =======================
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response)
-throws ServletException, IOException {
+            throws ServletException, IOException {
 
         response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        String idParam = request.getParameter("id");
+        if (idParam == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+            return;
+        }
+
+        int id;
+        try {
+            id = Integer.parseInt(idParam);
+        } catch (NumberFormatException e) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+            return;
+        }
 
         Tournaments tournament =
                 gson.fromJson(request.getReader(), Tournaments.class);
+
+        tournament.setTournamentId(id);
 
         boolean success = tournamentService.updateTournament(tournament);
 
@@ -108,17 +127,20 @@ throws ServletException, IOException {
             throws ServletException, IOException {
 
         response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
 
         String idParam = request.getParameter("id");
+        String reason = request.getParameter("reason");
 
-        if (idParam == null) {
+        if (idParam == null || reason == null || reason.isBlank()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write("{\"success\": false}");
+            response.getWriter().write("{\"success\": false, \"message\": \"Missing id or reason\"}");
             return;
         }
 
         int id = Integer.parseInt(idParam);
-        boolean success = tournamentService.deleteTournament(id);
+
+        boolean success = tournamentService.deleteTournament(id, reason);
 
         response.getWriter().write("{\"success\": " + success + "}");
     }

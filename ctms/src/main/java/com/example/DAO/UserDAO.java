@@ -12,10 +12,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-import com.example.model.User;
-import com.example.model.UserRole;
+import com.example.model.entity.User;
+import com.example.model.entity.UserRole;
 import com.example.util.DBContext;
+import com.example.util.EncodingUtil;
 
 public class UserDAO extends DBContext {
 //Ham cua Hieu
@@ -110,14 +112,14 @@ public class UserDAO extends DBContext {
                 User user = new User();
 
                 user.setUserId(rs.getInt("user_id"));
-                user.setFirstName(rs.getString("first_name"));
-                user.setLastName(rs.getString("last_name"));
-                user.setUsername(rs.getString("username"));
+                user.setFirstName(EncodingUtil.fixUtf8Mojibake(rs.getString("first_name")));
+                user.setLastName(EncodingUtil.fixUtf8Mojibake(rs.getString("last_name")));
+                user.setUsername(EncodingUtil.fixUtf8Mojibake(rs.getString("username")));
                 user.setPhoneNumber(rs.getString("phone_number"));
-                user.setEmail(rs.getString("email"));
-                user.setAddress(rs.getString("address"));
+                user.setEmail(EncodingUtil.fixUtf8Mojibake(rs.getString("email")));
+                user.setAddress(EncodingUtil.fixUtf8Mojibake(rs.getString("address")));
                 user.setPassword(rs.getString("password"));
-                user.setActive(rs.getBoolean("is_active"));
+                user.setIsActive(rs.getBoolean("is_active"));
 
                 return user;
             }
@@ -220,7 +222,7 @@ public UserRole findUserWithRole(String email, String password) {
         FROM Users u
         JOIN User_Role ur ON u.user_id = ur.user_id
         JOIN Roles r ON ur.role_id = r.role_id
-        WHERE u.email = ? AND u.password = ?
+        WHERE u.email = ? AND u.password = ? AND u.is_active = 1
     """;
 
     try (Connection con = DBContext.getConnection();
@@ -270,15 +272,15 @@ public UserRole findUserWithRole(String email, String password) {
 
                 User user = new User();
                 user.setUserId(rs.getInt("user_id"));
-                user.setUsername(rs.getString("username"));
-                user.setFirstName(rs.getString("first_name"));
-                user.setLastName(rs.getString("last_name"));
-                user.setEmail(rs.getString("email"));
+                user.setUsername(EncodingUtil.fixUtf8Mojibake(rs.getString("username")));
+                user.setFirstName(EncodingUtil.fixUtf8Mojibake(rs.getString("first_name")));
+                user.setLastName(EncodingUtil.fixUtf8Mojibake(rs.getString("last_name")));
+                user.setEmail(EncodingUtil.fixUtf8Mojibake(rs.getString("email")));
                 user.setPhoneNumber(rs.getString("phone_number"));
-                user.setAddress(rs.getString("address"));
+                user.setAddress(EncodingUtil.fixUtf8Mojibake(rs.getString("address")));
                 user.setPassword(rs.getString("password"));
                 user.setAvatar(rs.getString("avatar"));
-                user.setActive(rs.getBoolean("is_active"));
+                user.setIsActive(rs.getBoolean("is_active"));
                 user.setBalance(rs.getBigDecimal("balance"));
                 user.setRank((Integer) rs.getObject("rank"));
 
@@ -295,6 +297,41 @@ public UserRole findUserWithRole(String email, String password) {
             e.printStackTrace();
         }
         return null;
+    }
+
+    // =========================
+    // GET USERS BY IDS
+    // =========================
+    public List<User> getUsersByIds(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) return new ArrayList<>();
+
+        String inSql = ids.stream().map(i -> "?").collect(Collectors.joining(","));
+        String sql = "SELECT user_id, username, email, phone_number, avatar, rank FROM Users WHERE user_id IN (" + inSql + ")";
+
+        List<User> list = new ArrayList<>();
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            for (int i = 0; i < ids.size(); i++) {
+                ps.setInt(i + 1, ids.get(i));
+            }
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                User u = new User();
+                u.setUserId(rs.getInt("user_id"));
+                u.setUsername(rs.getString("username"));
+                u.setEmail(rs.getString("email"));
+                u.setPhoneNumber(rs.getString("phone_number"));
+                u.setAvatar(rs.getString("avatar"));
+                u.setRank((Integer) rs.getObject("rank"));
+                list.add(u);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
     }
 
     // =========================
@@ -467,26 +504,23 @@ public UserRole findUserWithRole(String email, String password) {
 
         u.setUserId(rs.getInt("user_id"));
 
-        // birthday (DATE) -> java.util.Date
         java.sql.Date bd = rs.getDate("birthday");
-        u.setBirthday(bd != null ? new java.util.Date(bd.getTime()) : null);
+        u.setBirthday(bd != null ? new Timestamp(bd.getTime()) : null);
 
-        u.setUsername(rs.getString("username"));
-        u.setFirstName(rs.getString("first_name"));
-        u.setLastName(rs.getString("last_name"));
-        u.setEmail(rs.getString("email"));
+        u.setUsername(EncodingUtil.fixUtf8Mojibake(rs.getString("username")));
+        u.setFirstName(EncodingUtil.fixUtf8Mojibake(rs.getString("first_name")));
+        u.setLastName(EncodingUtil.fixUtf8Mojibake(rs.getString("last_name")));
+        u.setEmail(EncodingUtil.fixUtf8Mojibake(rs.getString("email")));
         u.setPhoneNumber(rs.getString("phone_number"));
-        u.setAddress(rs.getString("address"));
+        u.setAddress(EncodingUtil.fixUtf8Mojibake(rs.getString("address")));
 
-        // last_login (DATETIME) -> java.util.Date
         Timestamp lastLoginTs = rs.getTimestamp("last_login");
-        u.setLastLogin(lastLoginTs != null ? new java.util.Date(lastLoginTs.getTime()) : null);
+        u.setLastLogin(lastLoginTs);
 
-        // create_at (DATETIME) -> java.util.Date
         Timestamp createdAtTs = rs.getTimestamp("create_at");
         u.setCreatedAt(createdAtTs != null ? new java.util.Date(createdAtTs.getTime()) : null);
 
-        u.setActive(rs.getBoolean("is_active"));
+        u.setIsActive(rs.getBoolean("is_active"));
         u.setPassword(rs.getString("password"));
         u.setAvatar(rs.getString("avatar"));
 
@@ -981,24 +1015,6 @@ public UserRole findUserWithRole(String email, String password) {
             return false;
         }
     }
-
-    public boolean updateUserAvatar(int userId, String avatarDataUri) {
-        String sql = "UPDATE Users SET avatar = ? WHERE user_id = ?";
-
-        try (Connection conn = getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, avatarDataUri);
-            ps.setInt(2, userId);
-
-            return ps.executeUpdate() > 0;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-}
 
 public boolean updateUserAvatar(int userId, String avatarDataUri) {
         String sql = "UPDATE Users SET avatar = ? WHERE user_id = ?";
