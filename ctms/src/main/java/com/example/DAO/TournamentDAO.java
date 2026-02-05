@@ -10,7 +10,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.example.model.Tournaments;
+import com.example.model.entity.*;
 import com.example.util.DBContext;
+import com.example.util.EncodingUtil;
 
 public class TournamentDAO extends DBContext {
 
@@ -130,7 +132,7 @@ public class TournamentDAO extends DBContext {
     // =========================
     public List<Tournaments> getAllTournaments() {
         List<Tournaments> list = new ArrayList<>();
-        String sql = "SELECT * FROM Tournaments";
+        String sql = "SELECT * FROM Tournaments ORDER BY created_at DESC";
 
         try (Connection conn = DBContext.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql);
@@ -196,25 +198,32 @@ public class TournamentDAO extends DBContext {
 
     // =========================
     // DELETE (SOFT DELETE)
-    // Status → Delayed
+    // Status → Cancelled with reason
     // =========================
-    public boolean deleteTournament(int tournamentId) {
+    public boolean deleteTournament(int tournamentId, String reason) {
         String sql = """
                     UPDATE Tournaments
-                    SET status = 'Delayed'
+                    SET status = 'Cancelled',
+                        notes = ?
                     WHERE tournament_id = ?
                 """;
 
         try (Connection conn = DBContext.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setInt(1, tournamentId);
+            ps.setString(1, reason);
+            ps.setInt(2, tournamentId);
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return false;
+    }
+
+    // DELETE (SOFT DELETE) - old method for backward compatibility
+    public boolean deleteTournament(int tournamentId) {
+        return deleteTournament(tournamentId, "Cancelled by admin");
     }
 
     private Tournaments mapResultSetToTournament(ResultSet rs) throws SQLException {
@@ -279,7 +288,7 @@ public class TournamentDAO extends DBContext {
                 while (rs.next()) {
                     Map<String, Object> row = new HashMap<>();
                     row.put("tournamentId", rs.getInt("tournament_id"));
-                    row.put("tournamentName", rs.getString("tournament_name"));
+                    row.put("tournamentName", EncodingUtil.fixUtf8Mojibake(rs.getString("tournament_name")));
                     row.put("status", rs.getString("status"));
                     row.put("startDate", rs.getTimestamp("start_date"));
                     row.put("endDate", rs.getTimestamp("end_date"));
@@ -326,7 +335,7 @@ public class TournamentDAO extends DBContext {
                 while (rs.next()) {
                     Map<String, Object> row = new HashMap<>();
                     row.put("tournamentId", rs.getInt("tournament_id"));
-                    row.put("tournamentName", rs.getString("tournament_name"));
+                    row.put("tournamentName", EncodingUtil.fixUtf8Mojibake(rs.getString("tournament_name")));
                     row.put("status", rs.getString("status"));
                     row.put("startDate", rs.getTimestamp("start_date"));
                     row.put("endDate", rs.getTimestamp("end_date"));

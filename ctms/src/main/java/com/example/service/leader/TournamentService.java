@@ -112,6 +112,13 @@ if (isBlank(t.getTournamentName())) return false;
     // =========================
     // DELETE (SOFT DELETE)
     // =========================
+    public boolean deleteTournament(int tournamentId, String reason) {
+        if (tournamentId <= 0) return false;
+        if (reason == null || reason.trim().isEmpty()) return false;
+        return tournamentDAO.deleteTournament(tournamentId, reason);
+    }
+
+    // DELETE - backward compatible
     public boolean deleteTournament(int tournamentId) {
         if (tournamentId <= 0) return false;
         return tournamentDAO.deleteTournament(tournamentId);

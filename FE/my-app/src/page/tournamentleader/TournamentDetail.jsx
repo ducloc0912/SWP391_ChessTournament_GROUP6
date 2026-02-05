@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import '../../assets/css/tournament-leader.css';
 import {
   Trophy, 
   Users, 
@@ -27,17 +28,17 @@ import {
 } from 'lucide-react';
 
 const Badge = ({ children, variant }) => (
-  <span className={`badge badge-${variant}`}>
+  <span className={`td-badge td-badge-${variant}`}>
     {children}
   </span>
 );
 
 const StatCard = ({ label, value, icon, accent }) => (
-  <div className="stat-card">
-    <div className={`stat-icon ${accent}`}>
+  <div className="td-stat-card">
+    <div className={`td-stat-icon ${accent}`}>
       {icon}
     </div>
-    <div className="stat-content">
+    <div className="td-stat-content">
       <h3>{value}</h3>
       <p>{label}</p>
     </div>
@@ -54,7 +55,9 @@ const TournamentDetail = () => {
   useEffect(() => {
     const fetchTournament = async () => {
       try {
-        const res = await axios.get(`http://localhost:8080/ctms/api/tournaments?id=${id}`);
+        const res = await axios.get(`http://localhost:8080/ctms/api/tournaments?id=${id}`, {
+          withCredentials: true
+        });
         setTournament(res.data);
       } catch (err) {
         console.error('Error loading tournament:', err);
@@ -76,36 +79,36 @@ const TournamentDetail = () => {
   ];
 
   if (loading) {
-  return <div className="page-wrapper">Loading tournament...</div>;
+  return <div className="td-page-wrapper">Loading tournament...</div>;
   }
 
   if (!tournament) {
-    return <div className="page-wrapper">Tournament not found</div>;
+    return <div className="td-page-wrapper">Tournament not found</div>;
   }
 
   return (
-    <div className="page-wrapper">
+    <div className="td-page-wrapper">
 
       {/* HERO */}
-      <section className="tournament-hero">
-        <div className="hero-content">
-          <div className="hero-badges">
+      <section className="td-hero">
+        <div className="td-hero-content">
+          <div className="td-hero-badges">
             <Badge variant="teal">{tournament.format}</Badge>
             <Badge variant="orange">{tournament.status}</Badge>
           </div>
 
-          <h1 className="hero-title">
+          <h1 className="td-hero-title">
             {tournament.tournamentName}
           </h1>
 
-          <div className="hero-meta">
-            <div className="meta-item">
+          <div className="td-hero-meta">
+            <div className="td-meta-item">
               <Calendar size={18} />
               <span>
                 {tournament.startDate} — {tournament.endDate}
               </span>
             </div>
-            <div className="meta-item">
+            <div className="td-meta-item">
               <MapPin size={18} />
               <span>
                 {tournament.location}
@@ -114,19 +117,19 @@ const TournamentDetail = () => {
           </div>
         </div>
 
-        <div className="hero-actions">
-          <button className="btn-primary">
+        <div className="td-hero-actions">
+          <button className="td-btn-primary">
             <Edit2 size={18} />
             Edit Tournament
-</button>
-          <button className="btn-danger">
+          </button>
+          <button className="td-btn-danger">
             <Trash2 size={20} />
           </button>
         </div>
       </section>
 
       {/* STATS */}
-      <section className="stats-row">
+      <section className="td-stats-row">
         <StatCard
             label="Participants"
             value={`${tournament.currentPlayers}/${tournament.maxPlayer}`}
@@ -138,24 +141,24 @@ const TournamentDetail = () => {
       </section>
 
         {/* Tab Interface */}
-      <section className="tabs-section">
-        <div className="tabs-header">
+      <section className="td-tabs-section">
+        <div className="td-tabs-header">
             {tabs.map((tab, idx) => (
             <button
                 key={tab.label}
                 onClick={() => setActiveTab(idx)}
-                className={`tab-button ${activeTab === idx ? 'active' : ''}`}
+                className={`td-tab-button ${activeTab === idx ? 'active' : ''}`}
             >
-                <span className="tab-icon">
+                <span className="td-tab-icon">
                 {tab.icon}
                 </span>
-                <span className="tab-label">{tab.label}</span>
+                <span className="td-tab-label">{tab.label}</span>
             </button>
             ))}
         </div>
 
         {/* Tab Content */}
-        <div className="tab-content">
+        <div className="td-tab-content">
             {activeTab === 0 && <OverviewTab tournament={tournament} />}
             {activeTab === 1 && <PlayersTab tournamentId={tournament.tournamentId} />}
             {activeTab === 2 && <BracketTab />}
@@ -173,33 +176,33 @@ const TournamentDetail = () => {
 
 const OverviewTab = ({ tournament }) => {
   return (
-    <div className="overview-tab">
+    <div className="td-overview-tab">
 
       {/* Top Stats */}
-      <div className="overview-stats">
-        <div className="stat-card">
-          <span className="stat-label">Total Players</span>
-          <strong className="stat-value">{tournament.maxPlayer}</strong>
+      <div className="td-overview-stats">
+        <div className="td-overview-card">
+          <span className="td-overview-label">Total Players</span>
+          <strong className="td-overview-value">{tournament.maxPlayer}</strong>
         </div>
 
-        <div className="stat-card">
-          <span className="stat-label">Rounds</span>
-          <strong className="stat-value">7</strong>
+        <div className="td-overview-card">
+          <span className="td-overview-label">Rounds</span>
+          <strong className="td-overview-value">7</strong>
         </div>
 
-        <div className="stat-card">
-          <span className="stat-label">Prize Pool</span>
-          <strong className="stat-value">${tournament.prizePool}</strong>
+        <div className="td-overview-card">
+          <span className="td-overview-label">Prize Pool</span>
+          <strong className="td-overview-value">${tournament.prizePool}</strong>
         </div>
 
-        <div className="stat-card highlight">
-          <span className="stat-label">Status</span>
-          <strong className="stat-value">{tournament.status}</strong>
+        <div className="td-overview-card highlight">
+          <span className="td-overview-label">Status</span>
+          <strong className="td-overview-value">{tournament.status}</strong>
         </div>
       </div>
 
       {/* Tournament Description */}
-      <div className="overview-section">
+      <div className="td-overview-section">
         <h3>About Tournament</h3>
         <p>
           {tournament.description}
@@ -207,17 +210,17 @@ const OverviewTab = ({ tournament }) => {
       </div>
 
       {/* Schedule */}
-      <div className="overview-section">
+      <div className="td-overview-section">
         <h3>Schedule Overview</h3>
 
-        <ul className="schedule-list">
+        <ul className="td-schedule-list">
           <li>
             <span>Registration Deadline</span>
             <strong>{tournament.registrationDeadline}</strong>
           </li>
           <li>
             <span>Opening Ceremony</span>
-<strong>15 March 2026</strong>
+            <strong>15 March 2026</strong>
           </li>
           <li>
             <span>Final Round</span>
@@ -233,10 +236,10 @@ const PlayersTab = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   return (
-    <div className="players-tab">
-      <div className="players-tab__header">
-        <div className="players-search">
-          <Search className="players-search__icon" size={18} />
+    <div className="td-players-tab">
+      <div className="td-players-header">
+        <div className="td-players-search">
+          <Search className="td-players-search-icon" size={18} />
           <input
             type="text"
             placeholder="Search players by name or rating..."
@@ -245,18 +248,18 @@ const PlayersTab = () => {
           />
         </div>
 
-        <div className="players-actions">
-          <button className="btn btn-secondary">
+        <div className="td-players-actions">
+          <button className="td-btn td-btn-secondary">
             <Filter size={16} /> Filter
           </button>
-          <button className="btn btn-primary">
+          <button className="td-btn td-btn-primary">
             <Plus size={18} /> Add New Player
           </button>
         </div>
       </div>
 
-      <div className="players-table-wrapper">
-        <table className="players-table">
+      <div className="td-players-table-wrapper">
+        <table className="td-players-table">
           <thead>
             <tr>
               <th>Player Identity</th>
@@ -275,64 +278,64 @@ const PlayersTab = () => {
 
 const BracketTab = () => {
   return (
-    <div className="bracket-grid">
+    <div className="td-bracket-grid">
       
       {/* LEFT – BRACKET */}
-      <div className="bracket-card">
-        <div className="bracket-header">
+      <div className="td-bracket-card">
+        <div className="td-bracket-header">
           <h3>Live Bracket Visualization</h3>
-          <button className="bracket-fullscreen">
+          <button className="td-bracket-fullscreen">
             Fullscreen <ArrowRight size={14} />
           </button>
         </div>
 
-        <div className="bracket-body">
+        <div className="td-bracket-body">
           
-          <div className="bracket-column">
+          <div className="td-bracket-column">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="bracket-item">
-                <div className="line primary"></div>
-                <div className="line secondary"></div>
+              <div key={i} className="td-bracket-item">
+                <div className="td-line primary"></div>
+                <div className="td-line secondary"></div>
               </div>
             ))}
           </div>
 
-          <div className="bracket-column mid">
+          <div className="td-bracket-column mid">
             {[1, 2].map(i => (
-              <div key={i} className="bracket-item mid">
-                <div className="line primary"></div>
-                <div className="line secondary"></div>
+              <div key={i} className="td-bracket-item mid">
+                <div className="td-line primary"></div>
+                <div className="td-line secondary"></div>
               </div>
             ))}
           </div>
 
-          <div className="bracket-winner">
-            <div className="winner-card">
+          <div className="td-bracket-winner">
+            <div className="td-winner-card">
               <Trophy size={32} />
-              <div className="line winner"></div>
+              <div className="td-line winner"></div>
             </div>
           </div>
 
         </div>
 
         {/* HOVER OVERLAY */}
-        <div className="bracket-overlay">
-          <div className="overlay-card">
+        <div className="td-bracket-overlay">
+          <div className="td-overlay-card">
             <GitBranch size={48} />
             <h4>Bracket Interactive</h4>
             <p>
               The bracket is currently view-only. Start Round 4 to enable real-time updates.
             </p>
-<button>Enter Management View</button>
+            <button>Enter Management View</button>
           </div>
         </div>
       </div>
 
       {/* RIGHT – MATCH LIST */}
-      <div className="match-list">
-        <div className="match-header">
+      <div className="td-match-list">
+        <div className="td-match-header">
           <h3>Featured Matchups</h3>
-          <Badge color="blue">3 Live Matches</Badge>
+          <Badge variant="blue">3 Live Matches</Badge>
         </div>
 
       </div>
@@ -343,12 +346,12 @@ const BracketTab = () => {
 
 const RefereeTab = () => {
   return (
-    <div className="referee-grid">
+    <div className="td-referee-grid">
       
 
       {/* ADD REFEREE */}
-      <div className="referee-add">
-        <div className="add-icon">
+      <div className="td-referee-add">
+        <div className="td-add-icon">
           <UserPlus size={32} />
         </div>
         <h4>Recruit Referee</h4>
@@ -361,23 +364,23 @@ const RefereeTab = () => {
 };
 
 const ReportsTab = () => (
-  <div className="reports-card">
+  <div className="td-reports-card">
     {/* Header */}
-    <div className="reports-header">
+    <div className="td-reports-header">
       <div>
         <h3>Documentation Center</h3>
         <p>Audit logs, performance reviews and match data.</p>
       </div>
 
-      <button className="export-btn">
+      <button className="td-export-btn">
         <Download size={20} />
         Export Final Ledger
       </button>
     </div>
 
     {/* Table */}
-    <div className="reports-table-wrapper">
-      <table className="reports-table">
+    <div className="td-reports-table-wrapper">
+      <table className="td-reports-table">
         <thead>
           <tr>
             <th>Document Identity</th>
@@ -395,9 +398,9 @@ const ReportsTab = () => (
     </div>
 
     {/* Footer CTA */}
-    <div className="reports-footer">
-      <div className="footer-box">
-        <div className="footer-icon">
+    <div className="td-reports-footer">
+      <div className="td-footer-box">
+        <div className="td-footer-icon">
           <AlertCircle size={32} />
         </div>
 
@@ -408,7 +411,7 @@ const ReportsTab = () => (
           in under 5 minutes.
         </p>
 
-        <button className="audit-btn">
+        <button className="td-audit-btn">
           Run Advanced Audit <ArrowRight size={14} />
         </button>
       </div>

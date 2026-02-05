@@ -6,9 +6,14 @@ import java.util.List;
 import java.util.Map;
 
 import com.example.DAO.HomeDAO;
-import com.example.model.Tournaments;
-import com.example.model.User;
+import com.example.model.entity.*;
+import com.example.model.dto.FeedbackDTO;
+import com.example.service.user.FeedbackService;
+import com.example.util.LocalDateTimeAdapter;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import java.time.LocalDateTime;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -26,18 +31,21 @@ public class HomeServlet extends HttpServlet {
 
         try {
             HomeDAO dao = new HomeDAO();
-            
-            // 2. Lấy dữ liệu từ DAO
-            List<Tournaments> upcomingTournaments = dao.getUpcomingTournaments();
+            FeedbackService feedbackService = new FeedbackService();
+
+            List<Tournament> upcomingTournaments = dao.getUpcomingTournaments();
             List<User> topPlayers = dao.getTopPlayers();
-            
-            // 3. Đóng gói vào 1 object Map để trả về 1 lần
+            List<FeedbackDTO> topFeedbacks = feedbackService.getHomepageFeedbacks(10);
+
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("upcomingTournaments", upcomingTournaments);
             responseData.put("topPlayers", topPlayers);
+            responseData.put("topFeedbacks", topFeedbacks);
             
-            // 4. Convert sang JSON và gửi về
-            Gson gson = new Gson();
+            // 4. Convert sang JSON (LocalDateTime -> ISO string cho FE)
+            Gson gson = new GsonBuilder()
+                    .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+                    .create();
             String json = gson.toJson(responseData);
             resp.getWriter().write(json);
             

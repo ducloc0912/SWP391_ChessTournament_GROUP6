@@ -16,7 +16,7 @@ const FilterSection = ({
 
   useEffect(() => {
     axios
-      .get("http://localhost:8080/ctms/api/tournaments/filters")
+      .get("http://localhost:8080/ctms/api/tournaments/filters", { withCredentials: true })
       .then((res) => {
         setStatuses(res.data.statuses || []);
         setTypes(res.data.types || []);

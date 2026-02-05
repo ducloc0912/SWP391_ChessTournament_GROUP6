@@ -214,7 +214,7 @@ const ROLE_OPTIONS = [
   { value: "player", label: "Player" },
 ];
 
-export const AccountListScreen = ({ onViewAccount, onEditAccount }) => {
+export const AccountListScreen = ({ onViewAccount, onEditAccount, onEditRole }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -303,6 +303,10 @@ export const AccountListScreen = ({ onViewAccount, onEditAccount }) => {
   // ✅ SỬA: không navigate nữa để tránh "No routes matched"
   const handleEdit = (id) => {
     if (typeof onEditAccount === "function") onEditAccount(id);
+  };
+
+  const handleEditRole = (id) => {
+    if (typeof onEditRole === "function") onEditRole(id);
   };
 
   return (
@@ -703,6 +707,14 @@ export const AccountListScreen = ({ onViewAccount, onEditAccount }) => {
                             onClick={() => handleEdit(id)}
                           >
                             <IconEdit />
+                          </button>
+
+                          <button
+                            className="al-iconBtn"
+                            title="Phân quyền"
+                            onClick={() => handleEditRole(id)}
+                          >
+                            <IconShield />
                           </button>
                         </td>
                       </tr>

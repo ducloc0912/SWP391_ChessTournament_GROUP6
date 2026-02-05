@@ -8,10 +8,13 @@ import java.sql.SQLException;
 import java.util.*;
 
 import com.example.DAO.ProfileDAO;
+import com.example.DAO.RbacDAO;
 import com.example.DAO.TournamentDAO;
 import com.example.DAO.UserDAO;
-import com.example.model.UserRole;
+import com.example.model.entity.UserRole;
+import com.example.util.BodyUtil;
 import com.example.util.DBContext;
+import com.example.util.JsonMiniUtil;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -26,6 +29,7 @@ public class UserServlet extends HttpServlet {
     private final UserDAO userDAO = new UserDAO();
     private final ProfileDAO profileDAO = new ProfileDAO();
     private final TournamentDAO tournamentDAO = new TournamentDAO();
+    private final RbacDAO rbacDAO = new RbacDAO();
 
     private final Gson gson = new GsonBuilder()
             .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX")
@@ -70,7 +74,17 @@ public class UserServlet extends HttpServlet {
             return;
         }
 
-        // 2) Tournament history: /api/admin/users/{id}/tournament-history
+        // 2) User roles: GET /api/admin/users/{id}/roles
+        if (parts.length == 3 && "roles".equalsIgnoreCase(parts[2])) {
+            Set<Integer> roleIds = rbacDAO.getRoleIdsByUser(userId);
+            Map<String, Object> out = new HashMap<>();
+            out.put("userId", userId);
+            out.put("roleIds", new ArrayList<>(roleIds));
+            resp.getWriter().print(gson.toJson(out));
+            return;
+        }
+
+        // 3) Tournament history: /api/admin/users/{id}/tournament-history
         if (parts.length >= 3 && "tournament-history".equalsIgnoreCase(parts[2])) {
             String status = req.getParameter("status"); // Ongoing | Completed | null
 
@@ -88,7 +102,7 @@ public class UserServlet extends HttpServlet {
             return;
         }
 
-        // 3) Detail: /api/admin/users/{id}
+        // 4) Detail: /api/admin/users/{id}
         if (parts.length == 2) {
             Map<String, Object> user = profileDAO.getUserBasic(userId);
             if (user == null) {
@@ -111,6 +125,43 @@ public class UserServlet extends HttpServlet {
 
             resp.setStatus(HttpServletResponse.SC_OK);
             resp.getWriter().print(gson.toJson(out));
+            return;
+        }
+
+        resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        resp.getWriter().print("{\"success\":false,\"message\":\"Not found\"}");
+    }
+
+    /**
+     * PUT /api/admin/users/{id}/roles — body: { "roleIds": [1, 2] }
+     */
+    @Override
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        resp.setContentType("application/json");
+        resp.setCharacterEncoding("UTF-8");
+
+        String pathInfo = req.getPathInfo();
+        if (pathInfo == null || pathInfo.isEmpty()) {
+            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            resp.getWriter().print("{\"success\":false,\"message\":\"Not found\"}");
+            return;
+        }
+
+        String[] parts = pathInfo.split("/");
+        if (parts.length == 3 && "roles".equalsIgnoreCase(parts[2])) {
+            int userId;
+            try {
+                userId = Integer.parseInt(parts[1]);
+            } catch (NumberFormatException ex) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp.getWriter().print("{\"success\":false,\"message\":\"Invalid userId\"}");
+                return;
+            }
+            String body = BodyUtil.readBody(req);
+            List<Integer> roleIds = JsonMiniUtil.getIntList(body, "roleIds");
+            rbacDAO.replaceUserRoles(userId, roleIds);
+            resp.setStatus(HttpServletResponse.SC_OK);
+            resp.getWriter().print("{\"success\":true,\"message\":\"User roles updated\"}");
             return;
         }
 
