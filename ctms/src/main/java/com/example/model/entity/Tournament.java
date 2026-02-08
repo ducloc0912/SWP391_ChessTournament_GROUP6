@@ -10,6 +10,8 @@ public class Tournament {
     private Integer tournamentId;
     private String tournamentName;
     private String description;
+    private String tournamentImage;
+    private String rules;
     private String location;
     private TournamentFormat format;
     private String categories;
@@ -39,6 +41,22 @@ public class Tournament {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getTournamentImage() {
+        return tournamentImage;
+    }
+
+    public void setTournamentImage(String tournamentImage) {
+        this.tournamentImage = tournamentImage;
+    }
+
+    public String getRules() {
+        return rules;
+    }
+
+    public void setRules(String rules) {
+        this.rules = rules;
     }
 
     public String getLocation() {
@@ -163,7 +181,8 @@ public class Tournament {
 
     public Tournament() {}
 
-    public Tournament(Integer tournamentId, String tournamentName, String description, String location,
+    public Tournament(Integer tournamentId, String tournamentName, String description,
+                      String tournamentImage, String rules, String location,
                       TournamentFormat format, String categories, Integer maxPlayer, Integer minPlayer,
                       BigDecimal entryFee, BigDecimal prizePool, TournamentStatus status,
                       LocalDateTime registrationDeadline, LocalDateTime startDate, LocalDateTime endDate,
@@ -171,6 +190,8 @@ public class Tournament {
         this.tournamentId = tournamentId;
         this.tournamentName = tournamentName;
         this.description = description;
+        this.tournamentImage = tournamentImage;
+        this.rules = rules;
         this.location = location;
         this.format = format;
         this.categories = categories;

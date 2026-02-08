@@ -1,8 +1,9 @@
 package com.example.service.leader;
 
 import com.example.DAO.TournamentDAO;
+import com.example.model.dto.TournamentDTO;
 import com.example.DAO.ParticipantDAO;
-import com.example.model.Tournaments;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -16,11 +17,11 @@ public class TournamentService {
         this.participantDAO = new ParticipantDAO();
     }
 
-    public List<Tournaments> getAllTournamentsWithCurrentPlayers() {
+    public List<TournamentDTO> getAllTournamentsWithCurrentPlayers() {
 
-        List<Tournaments> list = tournamentDAO.getAllTournaments();
+        List<TournamentDTO> list = tournamentDAO.getAllTournaments();
 
-        for (Tournaments t : list) {
+        for (TournamentDTO t : list) {
             int count =
                 participantDAO.countParticipantsByTournament(
                     t.getTournamentId()
@@ -32,9 +33,9 @@ public class TournamentService {
         return list;
     }
 
-    public Tournaments getTournamentByIdWithCurrentPlayers(int id) {
+    public TournamentDTO getTournamentByIdWithCurrentPlayers(int id) {
         if (id <= 0) return null;
-        Tournaments t = tournamentDAO.getTournamentById(id);
+        TournamentDTO t = tournamentDAO.getTournamentById(id);
         if (t != null) {
             int count = participantDAO.countParticipantsByTournament(id);
             t.setCurrentPlayers(count);
@@ -56,7 +57,7 @@ public class TournamentService {
     // =========================
     // CREATE
     // =========================
-    public boolean createTournament(Tournaments t) {
+    public boolean createTournament(TournamentDTO t) {
 
         if (t == null) return false;
 
@@ -87,19 +88,19 @@ public class TournamentService {
     // =========================
     // READ
     // =========================
-    public Tournaments getTournamentById(int id) {
+    public TournamentDTO getTournamentById(int id) {
         if (id <= 0) return null;
         return tournamentDAO.getTournamentById(id);
     }
 
-    public List<Tournaments> getAllTournaments() {
+    public List<TournamentDTO> getAllTournaments() {
         return tournamentDAO.getAllTournaments();
     }
 
     // =========================
     // UPDATE
     // =========================
-    public boolean updateTournament(Tournaments t) {
+    public boolean updateTournament(TournamentDTO t) {
 
         if (t == null) return false;
         if (t.getTournamentId() <= 0) return false;

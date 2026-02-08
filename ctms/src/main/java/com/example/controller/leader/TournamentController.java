@@ -1,6 +1,6 @@
 package com.example.controller.leader;
 
-import com.example.model.Tournaments;
+import com.example.model.dto.TournamentDTO;
 import com.example.service.leader.TournamentService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -46,12 +46,12 @@ public class TournamentController extends HttpServlet {
         String idParam = request.getParameter("id");
 
         if (idParam == null) {
-            List<Tournaments> list = tournamentService.getAllTournamentsWithCurrentPlayers();
+            List<TournamentDTO> list = tournamentService.getAllTournamentsWithCurrentPlayers();
             response.getWriter().write(gson.toJson(list));
         } else {
             try {
                 int id = Integer.parseInt(idParam);
-                Tournaments t = tournamentService.getTournamentByIdWithCurrentPlayers(id);
+                TournamentDTO t = tournamentService.getTournamentByIdWithCurrentPlayers(id);
 
                 if (t == null) {
                     response.setStatus(HttpServletResponse.SC_NOT_FOUND);
@@ -75,8 +75,8 @@ public class TournamentController extends HttpServlet {
 
         response.setContentType("application/json");
 
-        Tournaments tournament =
-                gson.fromJson(request.getReader(), Tournaments.class);
+        TournamentDTO tournament =
+                gson.fromJson(request.getReader(), TournamentDTO.class);
 
         boolean success = tournamentService.createTournament(tournament);
 
@@ -109,8 +109,8 @@ public class TournamentController extends HttpServlet {
             return;
         }
 
-        Tournaments tournament =
-                gson.fromJson(request.getReader(), Tournaments.class);
+        TournamentDTO tournament =
+                gson.fromJson(request.getReader(), TournamentDTO.class);
 
         tournament.setTournamentId(id);
 

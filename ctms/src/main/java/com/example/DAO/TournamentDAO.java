@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.example.model.Tournaments;
+import com.example.model.dto.TournamentDTO;
 import com.example.model.entity.*;
 import com.example.util.DBContext;
 import com.example.util.EncodingUtil;
@@ -69,7 +69,7 @@ public class TournamentDAO extends DBContext {
     // =========================
     // CREATE TOURNAMENT
     // =========================
-    public boolean createTournament(Tournaments t) {
+    public boolean createTournament(TournamentDTO t) {
         String sql = """
                     INSERT INTO Tournaments
                     (tournament_name, description, location, format, categories,
@@ -108,7 +108,7 @@ public class TournamentDAO extends DBContext {
     // =========================
     // GET TOURNAMENT BY ID
     // =========================
-    public Tournaments getTournamentById(int id) {
+    public TournamentDTO getTournamentById(int id) {
         String sql = "SELECT * FROM Tournaments WHERE tournament_id = ?";
 
         try (Connection conn = DBContext.getConnection();
@@ -130,9 +130,9 @@ public class TournamentDAO extends DBContext {
     // =========================
     // GET ALL TOURNAMENTS
     // =========================
-    public List<Tournaments> getAllTournaments() {
-        List<Tournaments> list = new ArrayList<>();
-        String sql = "SELECT * FROM Tournaments ORDER BY created_at DESC";
+    public List<TournamentDTO> getAllTournaments() {
+        List<TournamentDTO> list = new ArrayList<>();
+        String sql = "SELECT * FROM Tournaments ORDER BY create_at DESC";
 
         try (Connection conn = DBContext.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql);
@@ -151,7 +151,7 @@ public class TournamentDAO extends DBContext {
     // =========================
     // UPDATE TOURNAMENT
     // =========================
-    public boolean updateTournament(Tournaments t) {
+    public boolean updateTournament(TournamentDTO t) {
         String sql = """
                     UPDATE Tournaments SET
                         tournament_name = ?,
@@ -226,8 +226,8 @@ public class TournamentDAO extends DBContext {
         return deleteTournament(tournamentId, "Cancelled by admin");
     }
 
-    private Tournaments mapResultSetToTournament(ResultSet rs) throws SQLException {
-        Tournaments t = new Tournaments();
+    private TournamentDTO mapResultSetToTournament(ResultSet rs) throws SQLException {
+        TournamentDTO t = new TournamentDTO();
 
         t.setTournamentId(rs.getInt("tournament_id"));
         t.setTournamentName(rs.getString("tournament_name"));
