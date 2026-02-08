@@ -163,6 +163,16 @@ export default function CreateTournamentPage() {
       return;
     }
 
+    // Get logged-in user's ID from localStorage
+    const storedUser = localStorage.getItem("user");
+    const userId = storedUser ? JSON.parse(storedUser).userId : null;
+
+    if (!userId) {
+      alert('Please login to create a tournament');
+      navigate('/login');
+      return;
+    }
+
     // Map formData to BE expected format
     const payload = {
       tournamentName: formData.tournamentName,
@@ -183,7 +193,7 @@ export default function CreateTournamentPage() {
       endDate: formData.endDate
         ? new Date(formData.endDate).toISOString()
         : null,
-      createBy: 1,
+      createBy: userId,
       notes: formData.notes
     };
 

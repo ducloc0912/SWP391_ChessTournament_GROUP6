@@ -1,4 +1,4 @@
-package com.example.model;
+package com.example.model.dto;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -7,10 +7,12 @@ import java.sql.Timestamp;
  * DTO for tournament (String format/status, Timestamp dates).
  * Used by TournamentDAO, TournamentService, TournamentController.
  */
-public class Tournaments {
+public class TournamentDTO {
     private Integer tournamentId;
     private String tournamentName;
     private String description;
+    private String tournamentImage;
+    private String rules;
     private String location;
     private String format;
     private String categories;
@@ -33,6 +35,10 @@ public class Tournaments {
     public void setTournamentName(String tournamentName) { this.tournamentName = tournamentName; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getTournamentImage() { return tournamentImage; }
+    public void setTournamentImage(String tournamentImage) { this.tournamentImage = tournamentImage; }
+    public String getRules() { return rules; }
+    public void setRules(String rules) { this.rules = rules; }
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
     public String getFormat() { return format; }
