@@ -1,0 +1,624 @@
+/* ===== TournamentList Page ===== */
+
+.tl-page {
+  min-height: 100vh;
+  background: #b5b5b5;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.tl-body {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+/* ===== Header Section ===== */
+.tl-header-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+@media (min-width: 768px) {
+  .tl-header-section {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.tl-header-title {
+  font-size: 30px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.tl-header-subtitle {
+  color: #4b5563;
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+.tl-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tl-search-box {
+  position: relative;
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .tl-search-box {
+    display: block;
+  }
+}
+
+.tl-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.tl-search-input {
+  padding: 10px 16px 10px 40px;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  width: 256px;
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+
+.tl-search-input::placeholder {
+  color: #6b7280;
+}
+
+.tl-search-input:focus {
+  box-shadow: 0 0 0 3px rgba(97, 169, 194, 0.3);
+}
+
+.tl-create-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #61A9C2;
+  color: white;
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(97, 169, 194, 0.2);
+  transition: all 0.2s;
+}
+
+.tl-create-btn:hover {
+  background: #4a8ba3;
+  transform: scale(1.03);
+}
+
+/* ===== Stats Section ===== */
+.tl-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+@media (min-width: 640px) {
+  .tl-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .tl-stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.tl-stat-card {
+  background: #f5f5f5;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: transform 0.2s;
+}
+
+.tl-stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.tl-stat-label {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.tl-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-top: 4px;
+}
+
+.tl-stat-icon {
+  padding: 12px;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tl-stat-icon.indigo { color: #4f46e5; }
+.tl-stat-icon.blue { color: #2563eb; }
+.tl-stat-icon.emerald { color: #059669; }
+.tl-stat-icon.gray { color: #4b5563; }
+
+/* ===== Content Layout (Sidebar + Grid) ===== */
+.tl-content-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+@media (min-width: 1024px) {
+  .tl-content-layout {
+    flex-direction: row;
+  }
+}
+
+.tl-sidebar {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+@media (min-width: 1024px) {
+  .tl-sidebar {
+    width: 288px;
+  }
+}
+
+.tl-main-area {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ===== Card Grid ===== */
+.tl-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 768px) {
+  .tl-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .tl-card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ===== Tournament Card ===== */
+.tl-tournament-card {
+  background: #f5f5f5;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s;
+}
+
+.tl-tournament-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  border-color: #61A9C2;
+}
+
+.tl-card-banner {
+  height: 128px;
+  background: linear-gradient(135deg, #61A9C2, #4a8ba3);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.tl-card-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent);
+  opacity: 0.6;
+}
+
+.tl-card-banner-icon {
+  color: rgba(255, 255, 255, 0.2);
+  z-index: 1;
+}
+
+.tl-card-status-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid;
+  z-index: 2;
+}
+
+.tl-card-status-badge.Pending { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+.tl-card-status-badge.Upcoming { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+.tl-card-status-badge.Ongoing { background: #d1fae5; color: #047857; border-color: #a7f3d0; }
+.tl-card-status-badge.Finished { background: #e5e7eb; color: #374151; border-color: #d1d5db; }
+.tl-card-status-badge.Cancelled { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
+.tl-card-status-badge.Rejected { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
+.tl-card-status-badge.Delayed { background: #fed7aa; color: #c2410c; border-color: #fdba74; }
+
+.tl-card-content {
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.tl-card-format {
+  font-size: 11px;
+  font-weight: 600;
+  color: #61A9C2;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tl-card-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.tl-card-details {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.tl-card-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.tl-card-detail-row svg {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+/* Progress bar */
+.tl-card-progress {
+  margin-top: 20px;
+}
+
+.tl-card-progress-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.tl-card-progress-label {
+  color: #4b5563;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tl-card-progress-pct {
+  color: #61A9C2;
+  font-weight: 600;
+}
+
+.tl-card-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.tl-card-progress-fill {
+  height: 100%;
+  background: #61A9C2;
+  border-radius: 999px;
+  transition: width 0.5s;
+}
+
+/* Card footer */
+.tl-card-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tl-card-manage-btn {
+  padding: 8px 16px;
+  background: #61A9C2;
+  color: white;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.tl-card-manage-btn:hover {
+  background: #4a8ba3;
+}
+
+.tl-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tl-card-action-btn {
+  padding: 8px;
+  border-radius: 8px;
+  color: #6b7280;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.tl-card-action-btn:hover {
+  background: rgba(97, 169, 194, 0.1);
+  color: #61A9C2;
+}
+
+.tl-card-action-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* ===== Empty State ===== */
+.tl-empty-state {
+  background: #f5f5f5;
+  border-radius: 12px;
+  padding: 48px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.tl-empty-icon-wrap {
+  width: 96px;
+  height: 96px;
+  background: #e5e7eb;
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+}
+
+.tl-empty-state h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.tl-empty-state p {
+  color: #6b7280;
+  margin-bottom: 24px;
+}
+
+.tl-empty-create-btn {
+  padding: 12px 24px;
+  background: #61A9C2;
+  color: white;
+  border-radius: 12px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.tl-empty-create-btn:hover {
+  background: #4a8ba3;
+}
+
+/* ===== Pagination ===== */
+.tl-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 40px;
+  margin-bottom: 24px;
+}
+
+.tl-page-btn {
+  padding: 8px;
+  border-radius: 8px;
+  color: #4b5563;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.tl-page-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.tl-page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tl-page-num {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-weight: 500;
+  color: #4b5563;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.2s;
+}
+
+.tl-page-num:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.tl-page-num.active {
+  background: #61A9C2;
+  color: white;
+  box-shadow: 0 2px 6px rgba(97, 169, 194, 0.3);
+}
+
+/* ===== Cancel Modal (keep from TournamentTable) ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal {
+  background: #fff;
+  padding: 24px;
+  width: 400px;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+}
+
+.modal h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.modal p {
+  margin: 0 0 16px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.modal-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.modal-textarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  font-size: 14px;
+  resize: none;
+}
+
+.modal-textarea:focus {
+  outline: none;
+  border-color: #61A9C2;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.btn-cancel {
+  background: #f1f5f9;
+  color: #64748b;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-cancel:hover {
+  background: #e2e8f0;
+}
+
+.btn-confirm {
+  background: #ef4444;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-confirm:hover {
+  background: #dc2626;
+}
+
+/* ===== Loading ===== */
+.tl-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  font-size: 16px;
+  color: #6b7280;
+}

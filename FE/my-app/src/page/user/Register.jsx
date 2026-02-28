@@ -1,9 +1,8 @@
 import React, { useState } from "react";
+import "../../assets/css/Register.css";
 import chess from "../../assets/img/chessRegis.jpg";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
-
-const API_BASE = "http://localhost:8080/ctms/api/auth";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -18,138 +17,199 @@ export default function Register() {
     agree: false,
   });
 
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
   const navigate = useNavigate();
-
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  // ================= HANDLE INPUT =================
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-    setError("");
   };
 
+  // ================= HANDLE SUBMIT =================
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-
-    // validate nhẹ FE
-    if (!form.agree) {
-      setError("Bạn cần đồng ý Terms & Conditions.");
-      return;
-    }
-    if (form.password !== form.confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.");
-      return;
-    }
+    setErrors({});
 
     try {
-      setLoading(true);
-
-      // 1) Register
-      const res = await axios.post(`${API_BASE}/register`, form, {
-        headers: { "Content-Type": "application/json" },
-        withCredentials: true,
-      });
-
-      if (!res.data?.success) {
-        setError(res.data?.message || "Register failed");
-        return;
-      }
-
-      // 2) Auto login để tạo session
-      const loginRes = await axios.post(
-        `${API_BASE}/login`,
-        { email: form.email.trim().toLowerCase(), password: form.password },
-        { headers: { "Content-Type": "application/json" }, withCredentials: true }
+      const res = await axios.post(
+        "http://localhost:8080/ctms/api/register",
+        form,
+        { headers: { "Content-Type": "application/json" } },
       );
 
-      if (loginRes.data?.success) {
-        if (loginRes.data.user) localStorage.setItem("user", JSON.stringify(loginRes.data.user));
-        if (loginRes.data.role) localStorage.setItem("role", loginRes.data.role);
-        navigate(loginRes.data.redirect || "/");
+      if (res.data.success) {
+        navigate("/login"); // basename đã tự xử lý
       } else {
-        // đăng ký ok nhưng login fail -> chuyển về login
-        setError(loginRes.data?.message || "Register ok but auto-login failed");
-        navigate("/login");
+        if (res.data.errors) {
+          setErrors(res.data.errors);
+        } else {
+          alert(res.data.message || "Register failed");
+        }
       }
-
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || "Server error");
-      console.error(err);
-    } finally {
-      setLoading(false);
+      if (err.response && err.response.status === 400) {
+        // backend trả errors dạng JSON
+        setErrors(err.response.data);
+      } else {
+        console.error(err);
+        alert("Server error");
+      }
     }
   };
 
   return (
     <div className="register-container fade-in">
-      <div className="register-left" style={{ backgroundImage: `url(${chess})` }} />
+      {/* LEFT SIDE */}
+      <div
+        className="register-left"
+        style={{ backgroundImage: `url(${chess})` }}
+      />
 
+      {/* RIGHT SIDE */}
       <div className="register-right">
         <div className="form-card">
           <h1>Create an Account</h1>
 
-          {!!error && <div style={{ color: "red", marginBottom: 12 }}>{error}</div>}
-
           <form onSubmit={handleSubmit}>
             <div className="form-grid">
+              {/* First Name */}
               <div>
                 <label>First Name</label>
-                <input name="firstName" value={form.firstName} onChange={handleChange} />
+                <input
+                  name="firstName"
+                  placeholder="First Name"
+                  value={form.firstName}
+                  onChange={handleChange}
+                />
+                {errors.firstName && (
+                  <p className="error">{errors.firstName}</p>
+                )}
               </div>
 
+              {/* Last Name */}
               <div>
                 <label>Last Name</label>
-                <input name="lastName" value={form.lastName} onChange={handleChange} />
+                <input
+                  name="lastName"
+                  placeholder="Last Name"
+                  value={form.lastName}
+                  onChange={handleChange}
+                />
+                {errors.lastName && <p className="error">{errors.lastName}</p>}
               </div>
 
+              {/* Username */}
               <div>
                 <label>User Name</label>
-                <input name="username" value={form.username} onChange={handleChange} />
+                <input
+                  name="username"
+                  placeholder="Username"
+                  value={form.username}
+                  onChange={handleChange}
+                />
+                {errors.username && <p className="error">{errors.username}</p>}
               </div>
 
+              {/* Phone */}
               <div>
                 <label>Phone Number</label>
-                <input name="phone" value={form.phone} onChange={handleChange} />
+                <input
+                  name="phone"
+                  placeholder="Phone Number"
+                  value={form.phone}
+                  onChange={handleChange}
+                />
+                {errors.phone && <p className="error">{errors.phone}</p>}
               </div>
 
+              {/* Email */}
               <div>
                 <label>Email Address</label>
-                <input type="email" name="email" value={form.email} onChange={handleChange} />
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email Address"
+                  value={form.email}
+                  onChange={handleChange}
+                />
+                {errors.email && <p className="error">{errors.email}</p>}
               </div>
 
+              {/* Address */}
               <div>
                 <label>Address</label>
-                <input name="address" value={form.address} onChange={handleChange} />
+                <input
+                  name="address"
+                  placeholder="Address"
+                  value={form.address}
+                  onChange={handleChange}
+                />
+                {errors.address && <p className="error">{errors.address}</p>}
               </div>
 
+              {/* Password */}
               <div>
                 <label>Password</label>
-                <input type="password" name="password" value={form.password} onChange={handleChange} />
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Password"
+                  value={form.password}
+                  onChange={handleChange}
+                />
+                {errors.password && <p className="error">{errors.password}</p>}
               </div>
 
+              {/* Confirm Password */}
               <div>
                 <label>Confirm Password</label>
-                <input type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} />
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  placeholder="Confirm Password"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                />
+                {errors.confirmPassword && (
+                  <p className="error">{errors.confirmPassword}</p>
+                )}
               </div>
             </div>
-
+            {/* Checkbox */}
             <div className="checkbox">
-              <input type="checkbox" name="agree" checked={form.agree} onChange={handleChange} />
-              <span>I agree to the Terms & Conditions</span>
+              <input
+                type="checkbox"
+                name="agree"
+                checked={form.agree}
+                onChange={handleChange}
+              />
+              <span>
+                I agree to the{" "}
+                <a
+                  href="https://docs.google.com/document/d/1U0PAg-QzNAmhrOqhWovNZVgVyaHm6-oWjUvwnPBkV24/edit"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Terms & Conditions
+                </a>
+              </span>
             </div>
 
-            <button type="submit" className="register-btn" disabled={loading}>
-              {loading ? "Registering..." : "Register"}
-            </button>
-          </form>
+            {errors.agree && <p className="error">{errors.agree}</p>}
 
-          <p className="login-text">
-            Already have an account? <Link to="/login">Login</Link>
-          </p>
+            <button type="submit" className="register-btn">
+              Register
+            </button>
+            <p className="login-text">
+              Already have an account? <Link to="/login">Login</Link>
+            </p>
+          </form>
         </div>
       </div>
     </div>

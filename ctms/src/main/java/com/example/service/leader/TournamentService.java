@@ -1,8 +1,14 @@
 package com.example.service.leader;
 
 import com.example.DAO.TournamentDAO;
+import com.example.DAO.TournamentRefereeDAO;
+import com.example.DAO.ReportDAO;
+import com.example.model.dto.TournamentDTO;
+import com.example.model.dto.TournamentPlayerDTO;
+import com.example.model.dto.TournamentRefereeDTO;
+import com.example.model.dto.TournamentReportDTO;
 import com.example.DAO.ParticipantDAO;
-import com.example.model.entity.Tournament;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -10,17 +16,21 @@ public class TournamentService {
 
     private final TournamentDAO tournamentDAO;
     private final ParticipantDAO participantDAO;
+    private final TournamentRefereeDAO refereeDAO;
+    private final ReportDAO reportDAO;
 
     public TournamentService() {
         this.tournamentDAO = new TournamentDAO();
         this.participantDAO = new ParticipantDAO();
+        this.refereeDAO = new TournamentRefereeDAO();
+        this.reportDAO = new ReportDAO();
     }
 
-    public List<Tournament> getAllTournamentsWithCurrentPlayers() {
+    public List<TournamentDTO> getAllTournamentsWithCurrentPlayers() {
 
-        List<Tournament> list = tournamentDAO.getAllTournaments();
+        List<TournamentDTO> list = tournamentDAO.getAllTournaments();
 
-        for (Tournament t : list) {
+        for (TournamentDTO t : list) {
             int count =
                 participantDAO.countParticipantsByTournament(
                     t.getTournamentId()
@@ -32,14 +42,64 @@ public class TournamentService {
         return list;
     }
 
-    public Tournament getTournamentByIdWithCurrentPlayers(int id) {
+    public TournamentDTO getTournamentByIdWithCurrentPlayers(int id) {
         if (id <= 0) return null;
-        Tournament t = tournamentDAO.getTournamentById(id);
+        TournamentDTO t = tournamentDAO.getTournamentById(id);
         if (t != null) {
             int count = participantDAO.countParticipantsByTournament(id);
             t.setCurrentPlayers(count);
+            t.setTournamentImages(tournamentDAO.getTournamentImages(id));
         }
         return t;
+    }
+
+    // =========================
+    // PLAYERS (JOIN)
+    // =========================
+    public List<TournamentPlayerDTO> getPlayersByTournament(int tournamentId) {
+        if (tournamentId <= 0) return List.of();
+        return participantDAO.getPlayersWithUserInfo(tournamentId);
+    }
+
+    // =========================
+    // REFEREES (JOIN)
+    // =========================
+    public List<TournamentRefereeDTO> getRefereesByTournament(int tournamentId) {
+        if (tournamentId <= 0) return List.of();
+        return refereeDAO.getRefereesByTournament(tournamentId);
+    }
+
+    public List<TournamentRefereeDTO> getAllRefereeUsers() {
+        return refereeDAO.getAllRefereeUsers();
+    }
+
+    public boolean assignRefereeToTournament(
+            int tournamentId,
+            int refereeId,
+            String refereeRole,
+            Integer assignedBy,
+            String note
+    ) {
+        if (tournamentId <= 0 || refereeId <= 0) return false;
+        String role = (refereeRole == null || refereeRole.isBlank()) ? "Assistant" : refereeRole.trim();
+        if (!"Chief".equalsIgnoreCase(role) && !"Assistant".equalsIgnoreCase(role)) {
+            return false;
+        }
+        String normalizedRole = "Chief".equalsIgnoreCase(role) ? "Chief" : "Assistant";
+        return refereeDAO.assignReferee(tournamentId, refereeId, normalizedRole, assignedBy, note);
+    }
+
+    public boolean removeRefereeFromTournament(int tournamentId, int refereeId) {
+        if (tournamentId <= 0 || refereeId <= 0) return false;
+        return refereeDAO.removeReferee(tournamentId, refereeId);
+    }
+
+    // =========================
+    // REPORTS (JOIN)
+    // =========================
+    public List<TournamentReportDTO> getReportsByTournament(int tournamentId) {
+        if (tournamentId <= 0) return List.of();
+        return reportDAO.getReportsByTournament(tournamentId);
     }
 
     // =========================
@@ -56,17 +116,16 @@ public class TournamentService {
     // =========================
     // CREATE
     // =========================
-    public boolean createTournament(Tournament t) {
+    public boolean createTournament(TournamentDTO t) {
 
         if (t == null) return false;
 
         // ---- REQUIRED FIELDS ----
         if (isBlank(t.getTournamentName())) return false;
-        if (t.getFormat() == null) return false;
+        if (isBlank(t.getFormat())) return false;
         if (isBlank(t.getCategories())) return false;
 
         // ---- PLAYER VALIDATION ----
-        if (t.getMinPlayer() == null || t.getMaxPlayer() == null) return false;
         if (t.getMinPlayer() < 0 || t.getMaxPlayer() < 0) return false;
         if (t.getMinPlayer() > t.getMaxPlayer()) return false;
 
@@ -79,49 +138,54 @@ public class TournamentService {
             t.setPrizePool(BigDecimal.ZERO);
         }
 
+        // create_at → DB DEFAULT
+        // status → DB DEFAULT (Pending)
+
         return tournamentDAO.createTournament(t);
     }
 
     // =========================
     // READ
     // =========================
-    public Tournament getTournamentById(int id) {
+    public TournamentDTO getTournamentById(int id) {
         if (id <= 0) return null;
         return tournamentDAO.getTournamentById(id);
     }
 
-    public List<Tournament> getAllTournaments() {
+    public List<TournamentDTO> getAllTournaments() {
         return tournamentDAO.getAllTournaments();
     }
 
     // =========================
     // UPDATE
     // =========================
-    public boolean updateTournament(Tournament t) {
+    public boolean updateTournament(TournamentDTO t) {
 
         if (t == null) return false;
         if (t.getTournamentId() <= 0) return false;
-        if (isBlank(t.getTournamentName())) return false;
-        if (isBlank(t.getLocation())) return false;
-        if (isBlank(t.getCategories())) return false;
-        if (isBlank(t.getDescription())) return false;
-        if (t.getFormat() == null) return false;
-        if (t.getMinPlayer() == null || t.getMaxPlayer() == null) return false;
-        if (t.getMinPlayer() < 0 || t.getMaxPlayer() < 0) return false;
+if (isBlank(t.getTournamentName())) return false;
         if (t.getMinPlayer() > t.getMaxPlayer()) return false;
 
         return tournamentDAO.updateTournament(t);
     }
 
     // =========================
-    // DELETE (SOFT DELETE)
+    // CANCEL (SOFT DELETE)
     // =========================
-    public boolean deleteTournament(int tournamentId, String reason) {
+    public boolean cancelTournament(int tournamentId, String reason) {
         if (tournamentId <= 0) return false;
         if (reason == null || reason.trim().isEmpty()) return false;
-
-        return tournamentDAO.deleteTournament(tournamentId, reason);
+        return tournamentDAO.cancelTournament(tournamentId, reason);
     }
+
+    // =========================
+    // DELETE (HARD DELETE)
+    // =========================
+    public boolean deleteTournament(int tournamentId) {
+        if (tournamentId <= 0) return false;
+        return tournamentDAO.deleteTournament(tournamentId);
+    }
+
     // =========================
     // UTIL
     // =========================

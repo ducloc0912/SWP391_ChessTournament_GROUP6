@@ -316,8 +316,29 @@ ul {
   transition: all 0.3s ease;
 }
 
+/* Icon profile: hình tròn, nhỏ (dùng chung mọi trang) */
+.user-btn--circle {
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+.user-btn--circle .user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .user-btn:hover {
   background: rgba(255, 255, 255, 0.05);
+}
+
+.user-btn--circle:hover {
+  border-color: rgba(251, 191, 36, 0.5);
 }
 
 .user-avatar {
@@ -341,17 +362,17 @@ ul {
   justify-content: center;
   overflow: hidden;
   background: linear-gradient(to bottom, #0a0a0a, #0f0a0a, #0a0a0a);
-  padding-top: 80px;
+  padding-top: 52px;
 }
 
-/* Hero Background */
+/* Hero Background - ảnh banner rõ hơn 50% (opacity tăng từ 0.08 lên ~0.12) */
 .hero-bg {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.08;
+  opacity: 0.12;
 }
 
 .hero-bg-image {
@@ -1181,16 +1202,108 @@ ul {
   background: rgba(251, 191, 36, 0.05);
 }
 
+/* Bố cục: trái = thanh feedback, phải = Cảm nhận người dùng (sau thêm chia sẻ / like) */
 .community-grid {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 48px;
+  width: 100%;
 }
 
-@media (min-width: 1024px) {
-  .community-grid {
-    grid-template-columns: 1fr 0.5fr;
+.community-grid--feedback-layout {
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 100%;
+}
+
+@media (min-width: 900px) {
+  .community-grid--feedback-layout {
+    flex-direction: row;
+    align-items: flex-start;
     gap: 48px;
   }
+  .feedback-bar { order: 1; }
+  .feedback-side { order: 2; }
+}
+
+.community .container {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.community .community-grid {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Trái: danh sách feedback (thanh feedback) */
+.feedback-bar {
+  flex: 1 1 60%;
+  min-width: 0;
+  order: 2;
+}
+
+/* Phải: tiêu đề Cảm nhận người dùng + chỗ cho chia sẻ / like sau */
+.feedback-side {
+  flex: 0 0 auto;
+  width: 100%;
+  order: 1;
+}
+
+@media (min-width: 900px) {
+  .feedback-side {
+    width: 320px;
+    position: sticky;
+    top: 100px;
+  }
+}
+
+.feedback-side__header {
+  margin-bottom: 24px;
+}
+
+.feedback-side__title {
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  margin-bottom: 12px;
+  text-align: left;
+  line-height: 1.2;
+}
+
+.feedback-side__subtitle {
+  font-size: 1rem;
+  color: #a1a1aa;
+  text-align: left;
+  line-height: 1.5;
+}
+
+/* Danh sách card feedback (giữ style card như cũ) */
+.testimonials-list--cards {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.testimonials-list--cards .testimonial-content {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.testimonials-list--cards .testimonial-avatar-wrapper {
+  margin: 0 auto;
+}
+
+.testimonials-list--cards .testimonial-stars {
+  justify-content: center;
+}
+
+.testimonials-list--cards .testimonial-author {
+  text-align: center;
 }
 
 /* Testimonials */
@@ -1218,6 +1331,32 @@ ul {
   text-align: left;
 }
 
+/* Cảm nhận người dùng: căn giữa trang, không lệch trái (bỏ bố cục 1/2 cũ) */
+.testimonials-wrapper--centered {
+  text-align: center;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+.testimonials-wrapper--centered .testimonials-header {
+  width: 100%;
+  text-align: center;
+}
+.testimonials-wrapper--centered .section-subtitle {
+  text-align: center;
+}
+.section-title--center {
+  text-align: center;
+}
+.testimonials-list--centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
 .testimonials-list {
   display: flex;
   flex-direction: column;
@@ -1232,8 +1371,16 @@ ul {
   padding: 24px;
   transition: all 0.5s ease;
   cursor: pointer;
+  min-height: 160px;
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  box-sizing: border-box;
 }
-
+.testimonials-list--centered .testimonial-card {
+  min-height: 160px;
+  max-width: 100%;
+}
 .testimonial-card:hover {
   transform: translateY(-8px);
   border-color: rgba(251, 191, 36, 0.3);
@@ -1257,6 +1404,25 @@ ul {
   position: relative;
   display: flex;
   gap: 20px;
+  width: 100%;
+  min-height: 0;
+}
+
+/* Căn đều, cùng chiều cao: card center, nội dung trong card căn giữa */
+.testimonials-list--centered .testimonial-content {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+.testimonials-list--centered .testimonial-content .testimonial-avatar-wrapper {
+  margin: 0 auto;
+}
+.testimonials-list--centered .testimonial-stars {
+  justify-content: center;
+}
+.testimonials-list--centered .testimonial-author {
+  text-align: center;
 }
 
 .testimonial-avatar-wrapper {

@@ -10,7 +10,8 @@ public class DBContext {
             "jdbc:sqlserver://localhost:1433;"
           + "databaseName=SWP391;"
           + "encrypt=true;"
-          + "trustServerCertificate=true";
+          + "trustServerCertificate=true;"
+          + "sendStringParametersAsUnicode=true";
 
     private static final String USER = "sa";
     private static final String PASSWORD = "123";

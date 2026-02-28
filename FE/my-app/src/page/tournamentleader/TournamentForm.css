@@ -1,0 +1,735 @@
+/* ===== CreateTournament ===== */
+
+.cw-page {
+  min-height: 100vh;
+  background: #b5b5b5;
+  padding: 16px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+@media (min-width: 768px) {
+  .cw-page { padding: 32px; }
+}
+
+.cw-container {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Header */
+.cw-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cw-page-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.cw-page-header p {
+  font-size: 14px;
+  color: #475569;
+  margin: 4px 0 0;
+}
+
+/* Wizard Card */
+.cw-wizard {
+  background: #f5f5f5;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 600px;
+}
+
+/* Step Indicator */
+.cw-steps-bar {
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 16px 24px;
+  overflow-x: auto;
+}
+
+.cw-steps-bar::-webkit-scrollbar { display: none; }
+
+.cw-steps-list {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 580px;
+}
+
+.cw-step-item {
+  display: flex;
+  align-items: center;
+}
+
+.cw-step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.cw-step-circle.active {
+  background: #61a9c2;
+  color: white;
+  box-shadow: 0 0 0 4px rgba(97, 169, 194, 0.2);
+  transform: scale(1.1);
+}
+
+.cw-step-circle.completed {
+  background: #22c55e;
+  color: white;
+}
+
+.cw-step-circle.pending {
+  background: #e2e8f0;
+  color: #94a3b8;
+}
+
+.cw-step-label {
+  margin-left: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.cw-step-label.active { color: #61a9c2; }
+.cw-step-label.completed { color: #0f172a; }
+.cw-step-label.pending { color: #94a3b8; }
+
+.cw-step-connector {
+  width: 48px;
+  height: 2px;
+  background: #e2e8f0;
+  margin: 0 16px;
+  flex-shrink: 0;
+}
+
+/* Step Content */
+.cw-step-content {
+  flex: 1;
+  padding: 24px;
+  animation: cwFadeIn 0.35s ease;
+}
+
+@media (min-width: 768px) {
+  .cw-step-content { padding: 40px; }
+}
+
+@keyframes cwFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Footer */
+.cw-footer {
+  background: white;
+  border-top: 1px solid #e2e8f0;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+}
+
+@media (min-width: 768px) {
+  .cw-footer { padding: 20px 40px; }
+}
+
+.cw-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cw-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cw-error-msg {
+  font-size: 14px;
+  color: #ef4444;
+  font-weight: 500;
+}
+
+/* Buttons */
+.cw-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.cw-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cw-btn-primary {
+  background: #61a9c2;
+  color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  min-width: 120px;
+}
+
+.cw-btn-primary:hover:not(:disabled) {
+  background: #4d8ea6;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+.cw-btn-ghost {
+  background: transparent;
+  color: #475569;
+}
+
+.cw-btn-ghost:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.cw-btn-danger {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid transparent;
+}
+
+.cw-btn-danger:hover {
+  background: #fecaca;
+}
+
+.cw-btn-outline {
+  background: rgba(255, 255, 255, 0.5);
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.cw-btn-outline:hover {
+  background: white;
+}
+
+/* ===== Form Fields ===== */
+
+.cw-form-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+@media (min-width: 640px) {
+  .cw-form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .cw-form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+.cw-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.cw-field.full {
+  grid-column: 1 / -1;
+}
+
+.cw-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.cw-label .req {
+  color: #ef4444;
+}
+
+.cw-input,
+.cw-select,
+.cw-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cw-input:focus,
+.cw-select:focus,
+.cw-textarea:focus {
+  border-color: #61a9c2;
+  box-shadow: 0 0 0 2px rgba(97, 169, 194, 0.2);
+}
+
+.cw-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.cw-field-error {
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Format Buttons */
+.cw-format-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cw-format-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.cw-format-btn:hover {
+  border-color: #61a9c2;
+  color: #61a9c2;
+}
+
+.cw-format-btn.active {
+  color: #61a9c2;
+  background: rgba(97, 169, 194, 0.08);
+  border-color: #61a9c2;
+}
+
+/* Section divider */
+.cw-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 24px 0;
+}
+
+.cw-section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cw-section-title svg {
+  color: #61a9c2;
+}
+
+/* Toggle / Switch */
+.cw-toggle-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.cw-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.cw-toggle-row + .cw-toggle-row {
+  border-top: 1px solid #f1f5f9;
+  margin-top: 8px;
+  padding-top: 16px;
+}
+
+.cw-toggle-info h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.cw-toggle-info p {
+  font-size: 13px;
+  color: #64748b;
+  margin: 2px 0 0;
+}
+
+.cw-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.cw-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.cw-switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: #d1d5db;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cw-switch input:checked + .cw-switch-track {
+  background: #61a9c2;
+}
+
+.cw-switch-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s;
+}
+
+.cw-switch input:checked + .cw-switch-track::after {
+  transform: translateX(20px);
+}
+
+/* ===== Referee Setup ===== */
+.cw-referee-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 768px) {
+  .cw-referee-layout { grid-template-columns: 1fr 1fr; }
+}
+
+.cw-referee-search {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.cw-referee-search svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+.cw-referee-search input {
+  width: 100%;
+  padding: 8px 16px 8px 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  outline: none;
+}
+
+.cw-referee-search input:focus {
+  border-color: #61a9c2;
+  box-shadow: 0 0 0 2px rgba(97, 169, 194, 0.2);
+}
+
+.cw-referee-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.cw-referee-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: border-color 0.2s;
+}
+
+.cw-referee-item:hover {
+  border-color: #61a9c2;
+}
+
+.cw-referee-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cw-referee-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.cw-referee-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
+}
+
+.cw-referee-role {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.cw-assigned-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cw-assigned-count {
+  font-size: 12px;
+  font-weight: 500;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #475569;
+}
+
+.cw-assigned-empty {
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  gap: 8px;
+  background: #f8fafc;
+  border: 2px dashed #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.cw-assigned-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cw-assigned-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid #f1f5f9;
+}
+
+.cw-remove-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cw-remove-btn:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.cw-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #fffbeb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #b45309;
+  margin-top: 12px;
+}
+
+/* ===== Review Step ===== */
+.cw-review-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1e40af;
+  margin-bottom: 24px;
+}
+
+.cw-review-notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.cw-review-notice strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.cw-review-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .cw-review-grid { grid-template-columns: 2fr 1fr; }
+}
+
+.cw-review-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.cw-review-card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.cw-review-card-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cw-review-card-body {
+  padding: 20px;
+}
+
+.cw-review-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #f8fafc;
+  font-size: 14px;
+}
+
+.cw-review-row:last-child {
+  border-bottom: none;
+}
+
+.cw-review-row .label {
+  color: #64748b;
+}
+
+.cw-review-row .value {
+  font-weight: 500;
+  color: #0f172a;
+}
+
+.cw-review-desc {
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.cw-review-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Timeline in review */
+.cw-review-timeline {
+  position: relative;
+  padding-left: 16px;
+  border-left: 2px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cw-review-timeline-item {
+  position: relative;
+}
+
+.cw-review-timeline-dot {
+  position: absolute;
+  left: -23px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #61a9c2;
+  border: 3px solid white;
+}
+
+.cw-review-timeline-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.cw-review-timeline-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
+}

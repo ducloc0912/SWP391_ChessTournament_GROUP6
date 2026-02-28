@@ -1,7 +1,7 @@
 package com.example.model.entity;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 import com.example.model.enums.TournamentFormat;
 import com.example.model.enums.TournamentStatus;
@@ -10,6 +10,8 @@ public class Tournament {
     private Integer tournamentId;
     private String tournamentName;
     private String description;
+    private String tournamentImage;
+    private String rules;
     private String location;
     private TournamentFormat format;
     private String categories;
@@ -17,23 +19,6 @@ public class Tournament {
     private Integer minPlayer;
     private BigDecimal entryFee;
     private BigDecimal prizePool;
-    private TournamentStatus status;
-    private Timestamp registrationDeadline;
-    private Timestamp startDate;
-    private Timestamp endDate;
-    private Integer createBy;
-    private Timestamp createAt;
-    private String notes;
-    private int currentPlayers;
-
-    public int getCurrentPlayers() {
-        return currentPlayers;
-    }
-
-    public void setCurrentPlayers(int currentPlayers) {
-        this.currentPlayers = currentPlayers;
-    }
-
     public Integer getTournamentId() {
         return tournamentId;
     }
@@ -56,6 +41,22 @@ public class Tournament {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getTournamentImage() {
+        return tournamentImage;
+    }
+
+    public void setTournamentImage(String tournamentImage) {
+        this.tournamentImage = tournamentImage;
+    }
+
+    public String getRules() {
+        return rules;
+    }
+
+    public void setRules(String rules) {
+        this.rules = rules;
     }
 
     public String getLocation() {
@@ -122,27 +123,27 @@ public class Tournament {
         this.status = status;
     }
 
-    public Timestamp getRegistrationDeadline() {
+    public LocalDateTime getRegistrationDeadline() {
         return registrationDeadline;
     }
 
-    public void setRegistrationDeadline(Timestamp registrationDeadline) {
+    public void setRegistrationDeadline(LocalDateTime registrationDeadline) {
         this.registrationDeadline = registrationDeadline;
     }
 
-    public Timestamp getStartDate() {
+    public LocalDateTime getStartDate() {
         return startDate;
     }
 
-    public void setStartDate(Timestamp startDate) {
+    public void setStartDate(LocalDateTime startDate) {
         this.startDate = startDate;
     }
 
-    public Timestamp getEndDate() {
+    public LocalDateTime getEndDate() {
         return endDate;
     }
 
-    public void setEndDate(Timestamp endDate) {
+    public void setEndDate(LocalDateTime endDate) {
         this.endDate = endDate;
     }
 
@@ -154,11 +155,11 @@ public class Tournament {
         this.createBy = createBy;
     }
 
-    public Timestamp getCreateAt() {
+    public LocalDateTime getCreateAt() {
         return createAt;
     }
 
-    public void setCreateAt(Timestamp createAt) {
+    public void setCreateAt(LocalDateTime createAt) {
         this.createAt = createAt;
     }
 
@@ -170,16 +171,27 @@ public class Tournament {
         this.notes = notes;
     }
 
+    private TournamentStatus status;
+    private LocalDateTime registrationDeadline;
+    private LocalDateTime startDate;
+    private LocalDateTime endDate;
+    private Integer createBy;
+    private LocalDateTime createAt;
+    private String notes;
+
     public Tournament() {}
 
-    public Tournament(Integer tournamentId, String tournamentName, String description, String location,
+    public Tournament(Integer tournamentId, String tournamentName, String description,
+                      String tournamentImage, String rules, String location,
                       TournamentFormat format, String categories, Integer maxPlayer, Integer minPlayer,
                       BigDecimal entryFee, BigDecimal prizePool, TournamentStatus status,
-                      Timestamp registrationDeadline, Timestamp startDate, Timestamp endDate,
-                      Integer createBy, Timestamp createAt, String notes) {
+                      LocalDateTime registrationDeadline, LocalDateTime startDate, LocalDateTime endDate,
+                      Integer createBy, LocalDateTime createAt, String notes) {
         this.tournamentId = tournamentId;
         this.tournamentName = tournamentName;
         this.description = description;
+        this.tournamentImage = tournamentImage;
+        this.rules = rules;
         this.location = location;
         this.format = format;
         this.categories = categories;

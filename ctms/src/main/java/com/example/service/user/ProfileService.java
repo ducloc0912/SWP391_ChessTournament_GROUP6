@@ -81,6 +81,9 @@ public class ProfileService {
             return res;
         }
     }
+    private static final java.util.regex.Pattern USERNAME_PATTERN = java.util.regex.Pattern.compile("^[a-zA-Z0-9_]{3,50}$");
+    private static final java.util.regex.Pattern PHONE_VN_PATTERN = java.util.regex.Pattern.compile("^0[0-9]{9}$");
+
      public Map<String, Object> updateProfile(int userId, String role,
                                             String username,
                                             String firstName,
@@ -92,16 +95,74 @@ public class ProfileService {
         Map<String, Object> res = new HashMap<>();
 
         try {
-            if (username != null && profileDAO.isUsernameTaken(username, userId)) {
+            // 1. Username validation
+            if (username != null && !username.isBlank()) {
+                String u = username.trim();
+                if (u.length() < 3 || u.length() > 50) {
+                    res.put("success", false);
+                    res.put("message", "Username phải từ 3 đến 50 ký tự.");
+                    return res;
+                }
+                if (!USERNAME_PATTERN.matcher(u).matches()) {
+                    res.put("success", false);
+                    res.put("message", "Username chỉ được dùng chữ cái, số và gạch dưới.");
+                    return res;
+                }
+                if (profileDAO.isUsernameTaken(u, userId)) {
+                    res.put("success", false);
+                    res.put("message", "Username đã tồn tại.");
+                    return res;
+                }
+            }
+
+            // 2. First name / Last name: not blank when provided
+            if (firstName != null && firstName.trim().isBlank()) {
                 res.put("success", false);
-                res.put("message", "Username already exists");
+                res.put("message", "Họ không được để trống.");
+                return res;
+            }
+            if (firstName != null && firstName.trim().length() > 50) {
+                res.put("success", false);
+                res.put("message", "Họ không được quá 50 ký tự.");
+                return res;
+            }
+            if (lastName != null && lastName.trim().isBlank()) {
+                res.put("success", false);
+                res.put("message", "Tên không được để trống.");
+                return res;
+            }
+            if (lastName != null && lastName.trim().length() > 50) {
+                res.put("success", false);
+                res.put("message", "Tên không được quá 50 ký tự.");
+                return res;
+            }
+
+            // 3. Phone: format VN 10 digits (0xxxxxxxxx) and unique
+            if (phoneNumber != null && !phoneNumber.isBlank()) {
+                String p = phoneNumber.trim();
+                if (!PHONE_VN_PATTERN.matcher(p).matches()) {
+                    res.put("success", false);
+                    res.put("message", "Số điện thoại không hợp lệ. VD: 0901234567 (10 số, bắt đầu bằng 0).");
+                    return res;
+                }
+                if (profileDAO.isPhoneTaken(p, userId)) {
+                    res.put("success", false);
+                    res.put("message", "Số điện thoại này đã được đăng ký bởi tài khoản khác.");
+                    return res;
+                }
+            }
+
+            // 4. Address: max length (servlet already limits; double-check)
+            if (address != null && address.length() > 255) {
+                res.put("success", false);
+                res.put("message", "Địa chỉ không được quá 255 ký tự.");
                 return res;
             }
 
             boolean ok = profileDAO.updateUserBasic(userId, username, firstName, lastName, phoneNumber, address, birthday, avatar);
             if (!ok) {
                 res.put("success", false);
-                res.put("message", "Update failed");
+                res.put("message", "Cập nhật thất bại.");
                 return res;
             }
 
@@ -109,9 +170,23 @@ public class ProfileService {
             return getProfile(userId, role);
 
         } catch (Exception e) {
+            Throwable t = e.getCause() != null ? e.getCause() : e;
+            String msg = t.getMessage() != null ? t.getMessage().toLowerCase() : "";
+            if (msg.contains("unique") || msg.contains("duplicate") || msg.contains("constraint")) {
+                if (msg.contains("username")) {
+                    res.put("success", false);
+                    res.put("message", "Username đã tồn tại.");
+                    return res;
+                }
+                if (msg.contains("phone") || msg.contains("phone_number")) {
+                    res.put("success", false);
+                    res.put("message", "Số điện thoại này đã được đăng ký.");
+                    return res;
+                }
+            }
             e.printStackTrace();
             res.put("success", false);
-            res.put("message", "Server error");
+            res.put("message", "Lỗi hệ thống. Vui lòng thử lại.");
             return res;
         }
     }

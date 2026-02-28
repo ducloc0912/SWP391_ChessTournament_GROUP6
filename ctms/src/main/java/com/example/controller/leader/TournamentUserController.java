@@ -1,4 +1,5 @@
 package com.example.controller.leader;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -22,6 +23,7 @@ public class TournamentUserController extends HttpServlet {
             throws IOException {
 
         resp.setContentType("application/json");
+        resp.setCharacterEncoding("UTF-8");
 
         String idsParam = req.getParameter("ids"); // "1,2,3"
         if (idsParam == null || idsParam.isBlank()) {
