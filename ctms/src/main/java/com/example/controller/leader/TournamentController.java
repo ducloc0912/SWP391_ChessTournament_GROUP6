@@ -1,6 +1,12 @@
 package com.example.controller.leader;
 
 import com.example.model.dto.TournamentDTO;
+import com.example.model.dto.TournamentPlayerDTO;
+import com.example.model.dto.TournamentRefereeDTO;
+import com.example.model.dto.TournamentReportDTO;
+import com.example.model.entity.User;
+import com.example.model.enums.TournamentFormat;
+import com.example.model.enums.TournamentStatus;
 import com.example.service.leader.TournamentService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -10,7 +16,10 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @WebServlet("/api/tournaments")
 public class TournamentController extends HttpServlet {
@@ -43,6 +52,75 @@ public class TournamentController extends HttpServlet {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
+        String action = request.getParameter("action");
+        if ("filters".equals(action)) {
+            Map<String, Object> data = new HashMap<>();
+            data.put("statuses", Arrays.stream(TournamentStatus.values()).map(Enum::name).toList());
+            data.put("formats", Arrays.stream(TournamentFormat.values()).map(Enum::name).toList());
+            response.getWriter().write(gson.toJson(data));
+            return;
+        }
+
+        if ("players".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Missing tournament id\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(tid);
+                List<TournamentPlayerDTO> players = tournamentService.getPlayersByTournament(tournamentId);
+                response.getWriter().write(gson.toJson(players));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Invalid tournament id\"}");
+            }
+            return;
+        }
+
+        if ("allReferees".equals(action)) {
+            List<TournamentRefereeDTO> all = tournamentService.getAllRefereeUsers();
+            response.getWriter().write(gson.toJson(all));
+            return;
+        }
+
+        if ("referees".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Missing tournament id\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(tid);
+                List<TournamentRefereeDTO> referees = tournamentService.getRefereesByTournament(tournamentId);
+                response.getWriter().write(gson.toJson(referees));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Invalid tournament id\"}");
+            }
+            return;
+        }
+
+        if ("reports".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Missing tournament id\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(tid);
+                List<TournamentReportDTO> reports = tournamentService.getReportsByTournament(tournamentId);
+                response.getWriter().write(gson.toJson(reports));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Invalid tournament id\"}");
+            }
+            return;
+        }
+
         String idParam = request.getParameter("id");
 
         if (idParam == null) {
@@ -74,6 +152,84 @@ public class TournamentController extends HttpServlet {
             throws ServletException, IOException {
 
         response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        String action = request.getParameter("action");
+        if ("createReferee".equals(action)) {
+            Map<?, ?> body = gson.fromJson(request.getReader(), Map.class);
+            String firstName = body == null || body.get("firstName") == null ? null : String.valueOf(body.get("firstName"));
+            String lastName = body == null || body.get("lastName") == null ? null : String.valueOf(body.get("lastName"));
+            String email = body == null || body.get("email") == null ? null : String.valueOf(body.get("email"));
+            String phoneNumber = body == null || body.get("phoneNumber") == null ? null : String.valueOf(body.get("phoneNumber"));
+            String address = body == null || body.get("address") == null ? null : String.valueOf(body.get("address"));
+
+            TournamentRefereeDTO created = tournamentService.createRefereeUser(
+                    firstName, lastName, email, phoneNumber, address
+            );
+            if (created == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Create referee failed (duplicate email/phone or invalid data)\"}");
+                return;
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("referee", created);
+            response.getWriter().write(gson.toJson(result));
+            return;
+        }
+
+        if ("assignReferee".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+                return;
+            }
+
+            int tournamentId;
+            try {
+                tournamentId = Integer.parseInt(tid);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+                return;
+            }
+
+            Map<?, ?> body = gson.fromJson(request.getReader(), Map.class);
+            if (body == null || body.get("refereeId") == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing refereeId\"}");
+                return;
+            }
+
+            int refereeId;
+            try {
+                refereeId = ((Number) body.get("refereeId")).intValue();
+            } catch (Exception e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid refereeId\"}");
+                return;
+            }
+
+            String refereeRole = body.get("refereeRole") == null ? "Assistant" : String.valueOf(body.get("refereeRole"));
+            String note = body.get("note") == null ? null : String.valueOf(body.get("note"));
+
+            HttpSession session = request.getSession(false);
+            Integer assignedBy = null;
+            if (session != null) {
+                Object userObj = session.getAttribute("user");
+                if (userObj instanceof User user && user.getUserId() != null) {
+                    assignedBy = user.getUserId();
+                }
+            }
+
+            boolean success = tournamentService.assignRefereeToTournament(
+                    tournamentId, refereeId, refereeRole, assignedBy, note
+            );
+            response.getWriter().write("{\"success\": " + success + "}");
+            return;
+        }
 
         TournamentDTO tournament =
                 gson.fromJson(request.getReader(), TournamentDTO.class);
@@ -120,7 +276,9 @@ public class TournamentController extends HttpServlet {
     }
 
     // =======================
-    // DELETE: SOFT DELETE
+    // DELETE: CANCEL or HARD DELETE
+    // ?id=1&reason=xxx  → cancel (soft delete)
+    // ?id=1&hard=true   → hard delete
     // =======================
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response)
@@ -129,19 +287,62 @@ public class TournamentController extends HttpServlet {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        String idParam = request.getParameter("id");
-        String reason = request.getParameter("reason");
+        String action = request.getParameter("action");
+        if ("removeReferee".equals(action)) {
+            String tid = request.getParameter("id");
+            String rid = request.getParameter("refereeId");
+            if (tid == null || rid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing id or refereeId\"}");
+                return;
+            }
 
-        if (idParam == null || reason == null || reason.isBlank()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write("{\"success\": false, \"message\": \"Missing id or reason\"}");
+            int tournamentId;
+            int refereeId;
+            try {
+                tournamentId = Integer.parseInt(tid);
+                refereeId = Integer.parseInt(rid);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid id or refereeId\"}");
+                return;
+            }
+
+            boolean success = tournamentService.removeRefereeFromTournament(tournamentId, refereeId);
+            response.getWriter().write("{\"success\": " + success + "}");
             return;
         }
 
-        int id = Integer.parseInt(idParam);
+        String idParam = request.getParameter("id");
+        if (idParam == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("{\"success\": false, \"message\": \"Missing id\"}");
+            return;
+        }
 
-        boolean success = tournamentService.deleteTournament(id, reason);
+        int id;
+        try {
+            id = Integer.parseInt(idParam);
+        } catch (NumberFormatException e) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("{\"success\": false, \"message\": \"Invalid id\"}");
+            return;
+        }
 
-        response.getWriter().write("{\"success\": " + success + "}");
+        boolean hard = "true".equals(request.getParameter("hard"));
+
+        if (hard) {
+            boolean success = tournamentService.deleteTournament(id);
+            response.getWriter().write("{\"success\": " + success + "}");
+        } else {
+            String reason = request.getParameter("reason");
+            if (reason == null || reason.isBlank()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing reason\"}");
+                return;
+            }
+            boolean success = tournamentService.cancelTournament(id, reason);
+            response.getWriter().write("{\"success\": " + success + "}");
+        }
     }
 }

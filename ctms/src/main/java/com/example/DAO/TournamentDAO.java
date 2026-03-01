@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.example.model.dto.PlayerTournamentDTO;
 import com.example.model.dto.TournamentDTO;
 import com.example.model.entity.*;
 import com.example.util.DBContext;
@@ -72,11 +73,12 @@ public class TournamentDAO extends DBContext {
     public boolean createTournament(TournamentDTO t) {
         String sql = """
                     INSERT INTO Tournaments
-                    (tournament_name, description, location, format, categories,
+                    (tournament_name, description, tournament_image, rules,
+                     location, format, categories,
                      max_player, min_player, entry_fee, prize_pool,
                      registration_deadline, start_date, end_date,
                      create_by, notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection conn = DBContext.getConnection();
@@ -84,18 +86,20 @@ public class TournamentDAO extends DBContext {
 
             ps.setString(1, t.getTournamentName());
             ps.setString(2, t.getDescription());
-            ps.setString(3, t.getLocation());
-            ps.setString(4, t.getFormat());
-            ps.setString(5, t.getCategories());
-            ps.setInt(6, t.getMaxPlayer());
-            ps.setInt(7, t.getMinPlayer());
-            ps.setBigDecimal(8, t.getEntryFee());
-            ps.setBigDecimal(9, t.getPrizePool());
-            ps.setTimestamp(10, t.getRegistrationDeadline());
-            ps.setTimestamp(11, t.getStartDate());
-            ps.setTimestamp(12, t.getEndDate());
-            ps.setInt(13, t.getCreateBy());
-            ps.setString(14, t.getNotes());
+            ps.setString(3, t.getTournamentImage());
+            ps.setString(4, t.getRules());
+            ps.setString(5, t.getLocation());
+            ps.setString(6, t.getFormat());
+            ps.setString(7, t.getCategories());
+            ps.setInt(8, t.getMaxPlayer());
+            ps.setInt(9, t.getMinPlayer());
+            ps.setBigDecimal(10, t.getEntryFee());
+            ps.setBigDecimal(11, t.getPrizePool());
+            ps.setTimestamp(12, t.getRegistrationDeadline());
+            ps.setTimestamp(13, t.getStartDate());
+            ps.setTimestamp(14, t.getEndDate());
+            ps.setInt(15, t.getCreateBy());
+            ps.setString(16, t.getNotes());
 
             return ps.executeUpdate() > 0;
 
@@ -156,6 +160,8 @@ public class TournamentDAO extends DBContext {
                     UPDATE Tournaments SET
                         tournament_name = ?,
                         description = ?,
+                        tournament_image = ?,
+                        rules = ?,
                         location = ?,
                         format = ?,
                         categories = ?,
@@ -175,18 +181,20 @@ public class TournamentDAO extends DBContext {
 
             ps.setString(1, t.getTournamentName());
             ps.setString(2, t.getDescription());
-            ps.setString(3, t.getLocation());
-            ps.setString(4, t.getFormat());
-            ps.setString(5, t.getCategories());
-            ps.setInt(6, t.getMaxPlayer());
-            ps.setInt(7, t.getMinPlayer());
-            ps.setBigDecimal(8, t.getEntryFee());
-            ps.setBigDecimal(9, t.getPrizePool());
-            ps.setTimestamp(10, t.getRegistrationDeadline());
-            ps.setTimestamp(11, t.getStartDate());
-            ps.setTimestamp(12, t.getEndDate());
-            ps.setString(13, t.getNotes());
-            ps.setInt(14, t.getTournamentId());
+            ps.setString(3, t.getTournamentImage());
+            ps.setString(4, t.getRules());
+            ps.setString(5, t.getLocation());
+            ps.setString(6, t.getFormat());
+            ps.setString(7, t.getCategories());
+            ps.setInt(8, t.getMaxPlayer());
+            ps.setInt(9, t.getMinPlayer());
+            ps.setBigDecimal(10, t.getEntryFee());
+            ps.setBigDecimal(11, t.getPrizePool());
+            ps.setTimestamp(12, t.getRegistrationDeadline());
+            ps.setTimestamp(13, t.getStartDate());
+            ps.setTimestamp(14, t.getEndDate());
+            ps.setString(15, t.getNotes());
+            ps.setInt(16, t.getTournamentId());
 
             return ps.executeUpdate() > 0;
 
@@ -197,10 +205,10 @@ public class TournamentDAO extends DBContext {
     }
 
     // =========================
-    // DELETE (SOFT DELETE)
+    // CANCEL (SOFT DELETE)
     // Status → Cancelled with reason
     // =========================
-    public boolean deleteTournament(int tournamentId, String reason) {
+    public boolean cancelTournament(int tournamentId, String reason) {
         String sql = """
                     UPDATE Tournaments
                     SET status = 'Cancelled',
@@ -221,9 +229,22 @@ public class TournamentDAO extends DBContext {
         return false;
     }
 
-    // DELETE (SOFT DELETE) - old method for backward compatibility
+    // =========================
+    // DELETE (HARD DELETE)
+    // =========================
     public boolean deleteTournament(int tournamentId) {
-        return deleteTournament(tournamentId, "Cancelled by admin");
+        String sql = "DELETE FROM Tournaments WHERE tournament_id = ?";
+
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, tournamentId);
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     private TournamentDTO mapResultSetToTournament(ResultSet rs) throws SQLException {
@@ -232,6 +253,8 @@ public class TournamentDAO extends DBContext {
         t.setTournamentId(rs.getInt("tournament_id"));
         t.setTournamentName(rs.getString("tournament_name"));
         t.setDescription(rs.getString("description"));
+        t.setTournamentImage(rs.getString("tournament_image"));
+        t.setRules(rs.getString("rules"));
         t.setLocation(rs.getString("location"));
         t.setFormat(rs.getString("format"));
         t.setCategories(rs.getString("categories"));
@@ -344,6 +367,166 @@ public class TournamentDAO extends DBContext {
                     row.put("ranking", rs.wasNull() ? null : ranking);
 
                     list.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+    public List<String> getTournamentImages(int tournamentId) {
+        List<String> images = new ArrayList<>();
+        String sql = """
+                SELECT image_url
+                FROM Tournament_Images
+                WHERE tournament_id = ?
+                ORDER BY display_order ASC, image_id ASC
+                """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String url = rs.getString("image_url");
+                    if (url != null && !url.isBlank()) {
+                        images.add(url);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return images;
+    }
+
+    public List<PlayerTournamentDTO> getPlayerTournamentCards(
+            Integer userId,
+            String keyword,
+            String format,
+            String dbStatus,
+            String entryType,
+            boolean registeredOnly,
+            String sortBy
+    ) {
+        List<PlayerTournamentDTO> list = new ArrayList<>();
+
+        StringBuilder sql = new StringBuilder("""
+                SELECT
+                    t.tournament_id,
+                    t.tournament_name,
+                    t.tournament_image,
+                    t.location,
+                    t.format,
+                    t.status,
+                    t.entry_fee,
+                    t.prize_pool,
+                    t.start_date,
+                    t.registration_deadline,
+                    t.max_player,
+                    COUNT(p.participant_id) AS current_players,
+                    CASE
+                        WHEN ? IS NOT NULL AND EXISTS (
+                            SELECT 1
+                            FROM Participants p2
+                            WHERE p2.tournament_id = t.tournament_id
+                              AND p2.user_id = ?
+                        ) THEN 1
+                        ELSE 0
+                    END AS is_registered
+                FROM Tournaments t
+                LEFT JOIN Participants p ON p.tournament_id = t.tournament_id
+                WHERE t.status <> 'Cancelled'
+                  AND t.status <> 'Rejected'
+                """);
+
+        List<Object> params = new ArrayList<>();
+        params.add(userId);
+        params.add(userId);
+
+        if (keyword != null && !keyword.isBlank()) {
+            sql.append(" AND (t.tournament_name LIKE ? OR t.location LIKE ?) ");
+            String q = "%" + keyword.trim() + "%";
+            params.add(q);
+            params.add(q);
+        }
+
+        if (format != null && !format.isBlank()) {
+            sql.append(" AND t.format = ? ");
+            params.add(format.trim());
+        }
+
+        if (dbStatus != null && !dbStatus.isBlank()) {
+            sql.append(" AND t.status = ? ");
+            params.add(dbStatus.trim());
+        }
+
+        if ("free".equalsIgnoreCase(entryType)) {
+            sql.append(" AND ISNULL(t.entry_fee, 0) = 0 ");
+        } else if ("paid".equalsIgnoreCase(entryType)) {
+            sql.append(" AND ISNULL(t.entry_fee, 0) > 0 ");
+        }
+
+        if (registeredOnly && userId != null) {
+            sql.append("""
+                     AND EXISTS (
+                        SELECT 1
+                        FROM Participants p3
+                        WHERE p3.tournament_id = t.tournament_id
+                          AND p3.user_id = ?
+                    )
+                    """);
+            params.add(userId);
+        }
+
+        sql.append("""
+                GROUP BY
+                    t.tournament_id, t.tournament_name, t.tournament_image, t.location,
+                    t.format, t.status, t.entry_fee, t.prize_pool, t.start_date,
+                    t.registration_deadline, t.max_player
+                """);
+
+        if ("startDate".equalsIgnoreCase(sortBy)) {
+            sql.append(" ORDER BY t.start_date ASC ");
+        } else if ("prizePool".equalsIgnoreCase(sortBy)) {
+            sql.append(" ORDER BY t.prize_pool DESC, t.start_date ASC ");
+        } else {
+            sql.append(" ORDER BY MAX(t.create_at) DESC ");
+        }
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            for (int i = 0; i < params.size(); i++) {
+                Object val = params.get(i);
+                int idx = i + 1;
+                if (val == null) {
+                    ps.setObject(idx, null);
+                } else if (val instanceof Integer) {
+                    ps.setInt(idx, (Integer) val);
+                } else {
+                    ps.setString(idx, String.valueOf(val));
+                }
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    PlayerTournamentDTO dto = new PlayerTournamentDTO();
+                    dto.setTournamentId(rs.getInt("tournament_id"));
+                    dto.setTournamentName(EncodingUtil.fixUtf8Mojibake(rs.getString("tournament_name")));
+                    dto.setTournamentImage(rs.getString("tournament_image"));
+                    dto.setLocation(rs.getString("location"));
+                    dto.setFormat(rs.getString("format"));
+                    dto.setStatus(rs.getString("status"));
+                    dto.setEntryFee(rs.getBigDecimal("entry_fee"));
+                    dto.setPrizePool(rs.getBigDecimal("prize_pool"));
+                    dto.setStartDate(rs.getTimestamp("start_date"));
+                    dto.setRegistrationDeadline(rs.getTimestamp("registration_deadline"));
+                    dto.setMaxPlayer(rs.getInt("max_player"));
+                    dto.setCurrentPlayers(rs.getInt("current_players"));
+                    dto.setRegistered(rs.getInt("is_registered") == 1);
+                    list.add(dto);
                 }
             }
         } catch (SQLException e) {

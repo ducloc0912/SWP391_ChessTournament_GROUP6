@@ -2,6 +2,7 @@ package com.example.model.dto;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.List;
 
 /**
  * DTO for tournament (String format/status, Timestamp dates).
@@ -28,6 +29,7 @@ public class TournamentDTO {
     private Timestamp createAt;
     private String notes;
     private int currentPlayers;
+    private List<String> tournamentImages;
 
     public Integer getTournamentId() { return tournamentId; }
     public void setTournamentId(Integer tournamentId) { this.tournamentId = tournamentId; }
@@ -69,4 +71,6 @@ public class TournamentDTO {
     public void setNotes(String notes) { this.notes = notes; }
     public int getCurrentPlayers() { return currentPlayers; }
     public void setCurrentPlayers(int currentPlayers) { this.currentPlayers = currentPlayers; }
+    public List<String> getTournamentImages() { return tournamentImages; }
+    public void setTournamentImages(List<String> tournamentImages) { this.tournamentImages = tournamentImages; }
 }

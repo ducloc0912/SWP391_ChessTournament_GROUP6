@@ -1,94 +1,102 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Search, Plus, Filter } from "lucide-react";
+import { Filter } from "lucide-react";
+import "../../assets/css/tournament-leader/FilterSection.css";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+
+const STATUS_LABELS = {
+  Pending: "Chờ duyệt",
+  Rejected: "Bị từ chối",
+  Delayed: "Hoãn",
+  Ongoing: "Đang diễn ra",
+  Completed: "Đã hoàn thành",
+  Cancelled: "Đã hủy",
+};
+
+const FORMAT_LABELS = {
+  RoundRobin: "Vòng tròn",
+  KnockOut: "Loại trực tiếp",
+  Hybrid: "Kết hợp",
+};
+
+const getStatusLabel = (s) => STATUS_LABELS[s] || s;
+const getFormatLabel = (f) => FORMAT_LABELS[f] || f;
 
 const FilterSection = ({
-  onSearchChange,
+  statusFilter,
+  typeFilter,
   onStatusChange,
   onTypeChange,
   onReset,
 }) => {
-  const navigate = useNavigate();
-
   const [statuses, setStatuses] = useState([]);
-  const [types, setTypes] = useState([]);
+  const [formats, setFormats] = useState([]);
 
   useEffect(() => {
     axios
-      .get("http://localhost:8080/ctms/api/tournaments/filters", { withCredentials: true })
+      .get(`${API_BASE}/api/tournaments?action=filters`, { withCredentials: true })
       .then((res) => {
         setStatuses(res.data.statuses || []);
-        setTypes(res.data.types || []);
+        setFormats(res.data.formats || []);
       })
       .catch((err) => console.error("Load filters error:", err));
   }, []);
 
-  const onCreate = () => {
-    navigate("/tournaments/create");
-  };
-
   return (
-    <div className="filter-card">
-      <div className="filter-container">
+    <div className="filter-sidebar">
+      <div className="filter-sidebar-header">
+        <h3 className="filter-sidebar-title">
+          <Filter size={18} />
+          Bộ lọc
+        </h3>
+        <button className="filter-reset-link" onClick={onReset}>
+          Đặt lại
+        </button>
+      </div>
 
-        {/* Search */}
-        <div className="filter-search">
-          <Search className="filter-search-icon" />
-          <input
-            type="text"
-            placeholder="Search tournament..."
-            className="filter-search-input"
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
+      <div className="filter-sidebar-body">
+        {/* Status */}
+        <div>
+          <label className="filter-section-label">Trạng thái</label>
+          <div className="filter-checkbox-group">
+            {statuses.map((status) => (
+              <label key={status} className="filter-checkbox-item">
+                <input
+                  type="checkbox"
+                  checked={statusFilter === status}
+                  onChange={() =>
+                    onStatusChange(statusFilter === status ? "" : status)
+                  }
+                />
+                <span>{getStatusLabel(status)}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
-        {/* Filters */}
-        <div className="filter-controls">
-          <div className="filter-label">
-            <Filter size={16} />
-            <span>Filters</span>
-          </div>
+        <div className="filter-divider" />
 
+        {/* Format */}
+        <div>
+          <label className="filter-section-label">Thể thức</label>
           <select
-            className="filter-select filter-select-status"
-            defaultValue=""
-            onChange={(e) => onStatusChange(e.target.value)}
-          >
-            <option value="">All Status</option>
-            {statuses.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="filter-select filter-select-type"
-            defaultValue=""
+            className="filter-select"
+            value={typeFilter}
             onChange={(e) => onTypeChange(e.target.value)}
           >
-            <option value="">All Types</option>
-            {types.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
+            <option value="">Tất cả thể thức</option>
+            {formats.map((f) => (
+              <option key={f} value={f}>{getFormatLabel(f)}</option>
             ))}
           </select>
-
-          <button className="filter-reset" onClick={onReset}>
-            Reset
-          </button>
         </div>
 
-        {/* Create */}
-        <button className="filter-create-btn" onClick={onCreate}>
-          <Plus size={18} />
-          Create Tournament
-        </button>
+        <div className="filter-divider" />
 
       </div>
     </div>
   );
 };
+
 export default FilterSection;
