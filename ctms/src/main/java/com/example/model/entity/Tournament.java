@@ -20,9 +20,8 @@ public class Tournament {
     private BigDecimal entryFee;
     private BigDecimal prizePool;
     public Integer getTournamentId() {
-        return tournamentId;
+         return tournamentId;
     }
-
     public void setTournamentId(Integer tournamentId) {
         this.tournamentId = tournamentId;
     }
