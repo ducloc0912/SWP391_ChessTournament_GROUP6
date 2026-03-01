@@ -1,9 +1,6 @@
-<<<<<<< HEAD
-=======
 create database SWP391
 
 use SWP391
->>>>>>> Dung
 /* =====================================================================
    SWP391 - CHESS TOURNAMENT MANAGEMENT SYSTEM (CTMS)
    Database Schema v2.1
@@ -126,8 +123,6 @@ CREATE TABLE Tournaments (
 GO
 
 /* =========================
-<<<<<<< HEAD
-=======
    TOURNAMENT IMAGES (NEW)
    ========================= */
 CREATE TABLE Tournament_Images (
@@ -141,7 +136,6 @@ CREATE TABLE Tournament_Images (
 GO
 
 /* =========================
->>>>>>> Dung
    TOURNAMENT STAFF & REFEREE (GIU NGUYEN, fix created_at -> create_at)
    ========================= */
 CREATE TABLE Tournament_Staff (
@@ -766,8 +760,6 @@ GO
 
 
 /* =========================
-<<<<<<< HEAD
-=======
    7. USERS (20 nguoi dung)
    ========================= */
 SET IDENTITY_INSERT Users ON;
@@ -1349,7 +1341,6 @@ GO
 
 
 /* =========================
->>>>>>> Dung
    VERIFICATION
    ========================= */
 PRINT N'';

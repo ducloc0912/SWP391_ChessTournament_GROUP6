@@ -33,11 +33,7 @@ const FilterSection = ({
 
   useEffect(() => {
     axios
-<<<<<<< HEAD
-      .get("http://localhost:8080/ctms/api/tournaments/filters", { withCredentials: true })
-=======
       .get("http://localhost:8080/ctms/api/tournaments?action=filters", { withCredentials: true })
->>>>>>> Dung
       .then((res) => {
         setStatuses(res.data.statuses || []);
         setFormats(res.data.formats || []);

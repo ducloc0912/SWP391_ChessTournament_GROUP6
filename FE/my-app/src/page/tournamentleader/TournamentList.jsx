@@ -1,13 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-<<<<<<< HEAD
-import MainHeader from "../../component/common/MainHeader";
-import SlidebarTournament from "../../component/tournament/SlideBarTournament";
-import FilterSection from "../../component/tournament/FilterSection";
-import TournamentTable from "../../component/tournament/TournamentTable";
-import "../../assets/css/tournament-leader.css";
-=======
 import {
   LayoutDashboard,
   Clock,
@@ -52,7 +45,6 @@ const FORMAT_LABELS = {
 
 const getStatusLabel = (s) => STATUS_LABELS[s] || s;
 const getFormatLabel = (f) => FORMAT_LABELS[f] || f;
->>>>>>> Dung
 
 const TournamentList = () => {
   const navigate = useNavigate();
@@ -62,17 +54,12 @@ const TournamentList = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [loading, setLoading] = useState(true);
-<<<<<<< HEAD
-
-  // User state for MainHeader
-=======
   const [currentPage, setCurrentPage] = useState(1);
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
 
->>>>>>> Dung
   const [user, setUser] = useState(() => {
     const stored = localStorage.getItem("user");
     return stored ? JSON.parse(stored) : null;
@@ -88,31 +75,16 @@ const TournamentList = () => {
   const fetchTournaments = async () => {
     try {
       setLoading(true);
-<<<<<<< HEAD
-      const res = await axios.get(
-        "http://localhost:8080/ctms/api/tournaments",
-        { withCredentials: true }
-      );
-      if (Array.isArray(res.data)) {
-        setTournaments(res.data);
-      } else {
-        console.error("API does not return array:", res.data);
-=======
       const res = await axios.get("http://localhost:8080/ctms/api/tournaments", {
         withCredentials: true,
       });
       if (Array.isArray(res.data)) {
         setTournaments(res.data);
       } else {
->>>>>>> Dung
         setTournaments([]);
       }
     } catch (err) {
       console.error(err);
-<<<<<<< HEAD
-      alert("Cannot load tournaments");
-=======
->>>>>>> Dung
       setTournaments([]);
     } finally {
       setLoading(false);
@@ -197,18 +169,6 @@ const TournamentList = () => {
   }
 
   return (
-<<<<<<< HEAD
-    <div className="tl-layout">
-      <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
-      <SlidebarTournament />
-
-      <div className="tl-main">
-        <main className="tl-content" style={{ marginTop: "60px" }}>
-          <div className="tl-container">
-            <div className="tl-page-header">
-              <h1>Tournament List</h1>
-              <p>Manage and track your chess tournaments</p>
-=======
     <div className="tl-page">
       <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
 
@@ -229,7 +189,6 @@ const TournamentList = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
->>>>>>> Dung
             </div>
             <button className="tl-create-btn" onClick={() => navigate("/tournaments/create")}>
               <Plus size={20} />
@@ -282,12 +241,6 @@ const TournamentList = () => {
             />
           </aside>
 
-<<<<<<< HEAD
-            <TournamentTable 
-              tournaments={filteredTournaments} 
-              refresh={fetchTournaments}
-            />
-=======
           <div className="tl-main-area">
             {filteredTournaments.length > 0 ? (
               <>
@@ -431,7 +384,6 @@ const TournamentList = () => {
                 </button>
               </div>
             )}
->>>>>>> Dung
           </div>
         </div>
       </div>
