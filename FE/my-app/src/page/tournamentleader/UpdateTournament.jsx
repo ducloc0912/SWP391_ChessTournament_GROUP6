@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import "../../assets/css/tournament-leader/TournamentForm.css";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+
 const STEPS = [
   { id: 1, title: "Thông tin cơ bản" },
   { id: 2, title: "Lịch trình & Luật" },
@@ -81,11 +83,11 @@ export default function UpdateTournamentPage() {
       try {
         const [tourRes, filterRes] = await Promise.all([
           axios.get(
-            `http://localhost:8080/ctms/api/tournaments?id=${id}`,
+            `${API_BASE}/api/tournaments?id=${id}`,
             { withCredentials: true }
           ),
           axios.get(
-            "http://localhost:8080/ctms/api/tournaments?action=filters",
+            `${API_BASE}/api/tournaments?action=filters`,
             { withCredentials: true }
           ),
         ]);
@@ -233,7 +235,7 @@ export default function UpdateTournamentPage() {
 
     try {
       await axios.put(
-        `http://localhost:8080/ctms/api/tournaments?id=${id}`,
+        `${API_BASE}/api/tournaments?id=${id}`,
         payload,
         { withCredentials: true }
       );

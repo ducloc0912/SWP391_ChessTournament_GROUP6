@@ -22,6 +22,8 @@ import MainHeader from "../../component/common/MainHeader";
 import FilterSection from "../../component/tournament/FilterSection";
 import "../../assets/css/tournament-leader/TournamentList.css";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+
 const EDITABLE_STATUSES = ["Pending", "Rejected", "Delayed", "Cancelled"];
 const CANCELLED_ABLE = ["Pending", "Ongoing", "Delayed"];
 const PAGE_SIZE = 6;
@@ -75,7 +77,7 @@ const TournamentList = () => {
   const fetchTournaments = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:8080/ctms/api/tournaments", {
+      const res = await axios.get(`${API_BASE}/api/tournaments`, {
         withCredentials: true,
       });
       if (Array.isArray(res.data)) {
@@ -135,7 +137,7 @@ const TournamentList = () => {
       return;
     }
     try {
-      await axios.delete("http://localhost:8080/ctms/api/tournaments", {
+      await axios.delete(`${API_BASE}/api/tournaments`, {
         params: { id: selectedTournament.tournamentId, reason: cancelReason },
         withCredentials: true,
       });

@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import "../../assets/css/tournament-leader/TournamentForm.css";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+
 const STEPS = [
   { id: 1, title: "Thông tin cơ bản" },
   { id: 2, title: "Lịch trình & Luật" },
@@ -76,7 +78,7 @@ export default function CreateTournamentPage() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:8080/ctms/api/tournaments?action=filters", {
+      .get(`${API_BASE}/api/tournaments?action=filters`, {
         withCredentials: true,
       })
       .then((res) => setFormats(res.data.formats || []))
@@ -198,7 +200,7 @@ export default function CreateTournamentPage() {
     };
 
     try {
-      await axios.post("http://localhost:8080/ctms/api/tournaments", payload, {
+      await axios.post(`${API_BASE}/api/tournaments`, payload, {
         withCredentials: true,
       });
       alert("Tạo giải đấu thành công!");

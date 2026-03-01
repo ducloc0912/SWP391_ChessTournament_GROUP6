@@ -3,6 +3,8 @@ import axios from "axios";
 import { Filter } from "lucide-react";
 import "../../assets/css/tournament-leader/FilterSection.css";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+
 const STATUS_LABELS = {
   Pending: "Chờ duyệt",
   Rejected: "Bị từ chối",
@@ -33,7 +35,7 @@ const FilterSection = ({
 
   useEffect(() => {
     axios
-      .get("http://localhost:8080/ctms/api/tournaments?action=filters", { withCredentials: true })
+      .get(`${API_BASE}/api/tournaments?action=filters`, { withCredentials: true })
       .then((res) => {
         setStatuses(res.data.statuses || []);
         setFormats(res.data.formats || []);

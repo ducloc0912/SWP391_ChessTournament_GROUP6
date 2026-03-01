@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import "../../assets/css/tournament-leader/TournamentDetail.css";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+
 const fmt = (raw) => {
   if (!raw) return "—";
   return raw.split(" ")[0].replaceAll("-", "/");
@@ -74,7 +76,7 @@ const TournamentDetail = () => {
 
   useEffect(() => {
     axios
-      .get(`http://localhost:8080/ctms/api/tournaments?id=${id}`, {
+      .get(`${API_BASE}/api/tournaments?id=${id}`, {
         withCredentials: true,
       })
       .then((res) => setTournament(res.data))
@@ -411,10 +413,13 @@ const ParticipantsTab = ({ tournamentId }) => {
   useEffect(() => {
     axios
       .get(
-        `http://localhost:8080/ctms/api/tournaments?action=players&id=${tournamentId}`,
+        `${API_BASE}/api/tournaments?action=players&id=${tournamentId}`,
         { withCredentials: true }
       )
-      .then((res) => setPlayers(res.data || []))
+      .then((res) => {
+        const list = Array.isArray(res.data) ? res.data : [];
+        setPlayers(list);
+      })
       .catch((err) => console.error("Lỗi tải danh sách người chơi:", err))
       .finally(() => setLoading(false));
   }, [tournamentId]);
@@ -668,14 +673,27 @@ const RefereesTab = ({ tournamentId }) => {
     address: "",
   });
 
+  const normalizeReferees = (raw) => {
+    if (!Array.isArray(raw)) return [];
+    const unique = new Map();
+    raw.forEach((item) => {
+      const id = item?.refereeId;
+      if (id === null || id === undefined) return;
+      if (!unique.has(id)) unique.set(id, item);
+    });
+    return Array.from(unique.values());
+  };
+
   const loadReferees = () => {
     setLoading(true);
     axios
       .get(
-        `http://localhost:8080/ctms/api/tournaments?action=referees&id=${tournamentId}`,
+        `${API_BASE}/api/tournaments?action=referees&id=${tournamentId}`,
         { withCredentials: true }
       )
-      .then((res) => setReferees(res.data || []))
+      .then((res) => {
+        setReferees(normalizeReferees(res.data));
+      })
       .catch((err) => console.error("Lỗi tải trọng tài:", err))
       .finally(() => setLoading(false));
   };
@@ -687,12 +705,12 @@ const RefereesTab = ({ tournamentId }) => {
   const loadAllReferees = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:8080/ctms/api/tournaments?action=allReferees",
+        `${API_BASE}/api/tournaments?action=allReferees`,
         {
           withCredentials: true,
         }
       );
-      setAllReferees(res.data || []);
+      setAllReferees(normalizeReferees(res.data));
     } catch (err) {
       console.error("Lỗi tải danh sách trọng tài:", err);
     }
@@ -705,8 +723,12 @@ const RefereesTab = ({ tournamentId }) => {
   const getInitials = (first, last) =>
     `${(first || "")[0] || ""}${(last || "")[0] || ""}`.toUpperCase();
 
-  const assignedSet = new Set(referees.map((r) => r.refereeId));
-  const availableReferees = allReferees.filter((r) => !assignedSet.has(r.refereeId));
+  const safeReferees = normalizeReferees(referees);
+  const safeAllReferees = normalizeReferees(allReferees);
+  const assignedSet = new Set(safeReferees.map((r) => r.refereeId));
+  const availableReferees = safeAllReferees.filter(
+    (r) => !assignedSet.has(r.refereeId)
+  );
 
   const handleAssign = async () => {
     if (!form.refereeId) {
@@ -716,7 +738,7 @@ const RefereesTab = ({ tournamentId }) => {
     setAssigning(true);
     try {
       const res = await axios.post(
-        `http://localhost:8080/ctms/api/tournaments?action=assignReferee&id=${tournamentId}`,
+        `${API_BASE}/api/tournaments?action=assignReferee&id=${tournamentId}`,
         {
           refereeId: Number(form.refereeId),
           refereeRole: form.refereeRole,
@@ -751,7 +773,7 @@ const RefereesTab = ({ tournamentId }) => {
     setCreating(true);
     try {
       const res = await axios.post(
-        "http://localhost:8080/ctms/api/tournaments?action=createReferee",
+        `${API_BASE}/api/tournaments?action=createReferee`,
         createForm,
         { withCredentials: true }
       );
@@ -780,7 +802,10 @@ const RefereesTab = ({ tournamentId }) => {
       );
     } catch (err) {
       console.error("Tạo trọng tài thất bại:", err);
-      alert("Tạo trọng tài thất bại. Email hoặc SĐT có thể đã tồn tại.");
+      const message =
+        err?.response?.data?.message ||
+        "Tạo trọng tài thất bại. Email hoặc SĐT có thể đã tồn tại.";
+      alert(message);
     } finally {
       setCreating(false);
     }
@@ -790,7 +815,7 @@ const RefereesTab = ({ tournamentId }) => {
     if (!window.confirm("Bạn có chắc muốn gỡ trọng tài này khỏi giải?")) return;
     try {
       await axios.delete(
-        `http://localhost:8080/ctms/api/tournaments?action=removeReferee&id=${tournamentId}&refereeId=${refereeId}`,
+        `${API_BASE}/api/tournaments?action=removeReferee&id=${tournamentId}&refereeId=${refereeId}`,
         { withCredentials: true }
       );
       loadReferees();
@@ -998,7 +1023,7 @@ const RefereesTab = ({ tournamentId }) => {
         <p style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
           Đang tải trọng tài…
         </p>
-      ) : referees.length === 0 ? (
+      ) : safeReferees.length === 0 ? (
         <div className="td-card" style={{ padding: "3rem", textAlign: "center", color: "#9ca3af" }}>
           Chưa có trọng tài nào được phân công cho giải này.
         </div>
@@ -1017,7 +1042,7 @@ const RefereesTab = ({ tournamentId }) => {
                 </tr>
               </thead>
               <tbody>
-                {referees.map((ref) => (
+                {safeReferees.map((ref) => (
                   <tr key={ref.refereeId}>
                     <td>
                       <span className="td-player-avatar">
@@ -1081,10 +1106,13 @@ const ReportsTab = ({ tournamentId }) => {
   useEffect(() => {
     axios
       .get(
-        `http://localhost:8080/ctms/api/tournaments?action=reports&id=${tournamentId}`,
+        `${API_BASE}/api/tournaments?action=reports&id=${tournamentId}`,
         { withCredentials: true }
       )
-      .then((res) => setReports(res.data || []))
+      .then((res) => {
+        const list = Array.isArray(res.data) ? res.data : [];
+        setReports(list);
+      })
       .catch((err) => console.error("Lỗi tải báo cáo:", err))
       .finally(() => setLoading(false));
   }, [tournamentId]);
