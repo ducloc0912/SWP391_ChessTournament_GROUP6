@@ -58,13 +58,13 @@ export default function ForgotPassword() {
 
         {/* Send OTP */}
         <button className="send-btn" onClick={handleSendOTP} disabled={loading}>
-          {loading ? "Sending..." : "Send OTP →"}
+          {loading ? "Sending..." : "Send OTP "}
         </button>
 
         {/* Footer */}
         <div className="forgot-footer">
           <span className="back-login" onClick={() => navigate("/login")}>
-            ← Back to Login
+            Back to Login
           </span>
         </div>
       </div>

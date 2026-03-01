@@ -161,7 +161,7 @@ const Verify = () => {
         </button>
 
         <Link to="/forgot-password" className="otp-back">
-          ← Back to Forgot Password
+          Back to Forgot Password
         </Link>
       </div>
     </div>
