@@ -13,7 +13,7 @@ import {
   Zap,
   Layers,
 } from "lucide-react";
-import "./TournamentForm.css";
+import "../../assets/css/tournament-leader/TournamentForm.css";
 
 const STEPS = [
   { id: 1, title: "Thông tin cơ bản" },
@@ -74,7 +74,6 @@ export default function UpdateTournamentPage() {
     endDate: "",
     notes: "",
     autoApprove: true,
-    allowLateReg: false,
   });
 
   useEffect(() => {
@@ -110,7 +109,6 @@ export default function UpdateTournamentPage() {
           endDate: t.endDate ? t.endDate.slice(0, 10) : "",
           notes: t.notes || "",
           autoApprove: true,
-          allowLateReg: false,
         });
 
         setFormats(filterRes.data.formats || []);
@@ -625,23 +623,6 @@ const RegistrationStep = ({ data, update }) => {
               type="checkbox"
               checked={data.autoApprove}
               onChange={(e) => update({ autoApprove: e.target.checked })}
-            />
-            <span className="cw-switch-track" />
-          </label>
-        </div>
-      </div>
-
-      <div className="cw-toggle-card">
-        <div className="cw-toggle-row">
-          <div className="cw-toggle-info">
-            <h4>Cho phép đăng ký muộn</h4>
-            <p>Người chơi có thể tham gia sau ngày bắt đầu</p>
-          </div>
-          <label className="cw-switch">
-            <input
-              type="checkbox"
-              checked={data.allowLateReg}
-              onChange={(e) => update({ allowLateReg: e.target.checked })}
             />
             <span className="cw-switch-track" />
           </label>

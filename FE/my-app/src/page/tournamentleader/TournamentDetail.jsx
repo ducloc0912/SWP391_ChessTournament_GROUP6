@@ -22,7 +22,7 @@ import {
   Plus,
   Eye,
 } from "lucide-react";
-import "./TournamentDetail.css";
+import "../../assets/css/tournament-leader/TournamentDetail.css";
 
 const fmt = (raw) => {
   if (!raw) return "—";
@@ -160,19 +160,8 @@ const TournamentDetail = () => {
                 <Edit size={16} /> Chỉnh sửa giải
               </button>
               <button className="td-btn td-btn-secondary">
-                <XCircle size={16} /> Đóng đăng ký
+                <XCircle size={16} /> Hủy giải đấu
               </button>
-              <div className="td-header-right-group">
-                <button className="td-btn td-btn-secondary td-btn-icon-only">
-                  <Download size={16} />
-                </button>
-                <button className="td-btn td-btn-secondary td-btn-icon-only">
-                  <Copy size={16} />
-                </button>
-                <button className="td-btn td-btn-danger td-btn-icon-only">
-                  <Trash2 size={16} />
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -663,11 +652,20 @@ const RefereesTab = ({ tournamentId }) => {
   const [allReferees, setAllReferees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({
     refereeId: "",
     refereeRole: "Assistant",
     note: "",
+  });
+  const [createForm, setCreateForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phoneNumber: "",
+    address: "",
   });
 
   const loadReferees = () => {
@@ -686,13 +684,22 @@ const RefereesTab = ({ tournamentId }) => {
     loadReferees();
   }, [tournamentId]);
 
+  const loadAllReferees = async () => {
+    try {
+      const res = await axios.get(
+        "http://localhost:8080/ctms/api/tournaments?action=allReferees",
+        {
+          withCredentials: true,
+        }
+      );
+      setAllReferees(res.data || []);
+    } catch (err) {
+      console.error("Lỗi tải danh sách trọng tài:", err);
+    }
+  };
+
   useEffect(() => {
-    axios
-      .get("http://localhost:8080/ctms/api/tournaments?action=allReferees", {
-        withCredentials: true,
-      })
-      .then((res) => setAllReferees(res.data || []))
-      .catch((err) => console.error("Lỗi tải danh sách trọng tài:", err));
+    loadAllReferees();
   }, []);
 
   const getInitials = (first, last) =>
@@ -708,7 +715,7 @@ const RefereesTab = ({ tournamentId }) => {
     }
     setAssigning(true);
     try {
-      await axios.post(
+      const res = await axios.post(
         `http://localhost:8080/ctms/api/tournaments?action=assignReferee&id=${tournamentId}`,
         {
           refereeId: Number(form.refereeId),
@@ -717,6 +724,9 @@ const RefereesTab = ({ tournamentId }) => {
         },
         { withCredentials: true }
       );
+      if (!res?.data?.success) {
+        throw new Error(res?.data?.message || "Assign referee failed");
+      }
       setAssignOpen(false);
       setForm({ refereeId: "", refereeRole: "Assistant", note: "" });
       loadReferees();
@@ -725,6 +735,54 @@ const RefereesTab = ({ tournamentId }) => {
       alert("Phân công trọng tài thất bại.");
     } finally {
       setAssigning(false);
+    }
+  };
+
+  const handleCreateReferee = async () => {
+    if (
+      !createForm.firstName.trim() ||
+      !createForm.lastName.trim() ||
+      !createForm.email.trim() ||
+      !createForm.phoneNumber.trim()
+    ) {
+      alert("Vui lòng nhập đủ Họ, Tên, Email và SĐT.");
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await axios.post(
+        "http://localhost:8080/ctms/api/tournaments?action=createReferee",
+        createForm,
+        { withCredentials: true }
+      );
+      if (!res?.data?.success) {
+        throw new Error(res?.data?.message || "Create referee failed");
+      }
+
+      const newRef = res.data?.referee;
+      setCreateOpen(false);
+      setCreateForm({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phoneNumber: "",
+        address: "",
+      });
+      await loadAllReferees();
+
+      if (newRef?.refereeId) {
+        setAssignOpen(true);
+        setForm((prev) => ({ ...prev, refereeId: String(newRef.refereeId) }));
+      }
+
+      alert(
+        "Đã tạo trọng tài mới thành công.\nMật khẩu mặc định: 12345."
+      );
+    } catch (err) {
+      console.error("Tạo trọng tài thất bại:", err);
+      alert("Tạo trọng tài thất bại. Email hoặc SĐT có thể đã tồn tại.");
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -746,13 +804,120 @@ const RefereesTab = ({ tournamentId }) => {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div className="td-referees-header">
         <h3>Trọng tài giải đấu</h3>
-        <button
-          className="td-btn td-btn-primary td-btn-sm"
-          onClick={() => setAssignOpen(true)}
-        >
-          <Plus size={14} /> Phân công trọng tài
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className="td-btn td-btn-secondary td-btn-sm"
+            onClick={() => setCreateOpen(true)}
+          >
+            <Plus size={14} /> Thêm trọng tài mới
+          </button>
+          <button
+            className="td-btn td-btn-primary td-btn-sm"
+            onClick={() => setAssignOpen(true)}
+          >
+            <Plus size={14} /> Phân công trọng tài
+          </button>
+        </div>
       </div>
+
+      {createOpen && (
+        <div className="td-card" style={{ padding: 16 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+              marginBottom: 12,
+            }}
+          >
+            <input
+              value={createForm.firstName}
+              onChange={(e) =>
+                setCreateForm((s) => ({ ...s, firstName: e.target.value }))
+              }
+              placeholder="Họ *"
+              style={{
+                height: 40,
+                borderRadius: 8,
+                border: "1px solid #d1d5db",
+                padding: "0 10px",
+              }}
+            />
+            <input
+              value={createForm.lastName}
+              onChange={(e) =>
+                setCreateForm((s) => ({ ...s, lastName: e.target.value }))
+              }
+              placeholder="Tên *"
+              style={{
+                height: 40,
+                borderRadius: 8,
+                border: "1px solid #d1d5db",
+                padding: "0 10px",
+              }}
+            />
+            <input
+              value={createForm.email}
+              onChange={(e) =>
+                setCreateForm((s) => ({ ...s, email: e.target.value }))
+              }
+              placeholder="Email *"
+              style={{
+                height: 40,
+                borderRadius: 8,
+                border: "1px solid #d1d5db",
+                padding: "0 10px",
+              }}
+            />
+            <input
+              value={createForm.phoneNumber}
+              onChange={(e) =>
+                setCreateForm((s) => ({ ...s, phoneNumber: e.target.value }))
+              }
+              placeholder="SĐT *"
+              style={{
+                height: 40,
+                borderRadius: 8,
+                border: "1px solid #d1d5db",
+                padding: "0 10px",
+              }}
+            />
+          </div>
+
+          <textarea
+            value={createForm.address}
+            onChange={(e) =>
+              setCreateForm((s) => ({ ...s, address: e.target.value }))
+            }
+            placeholder="Địa chỉ (không bắt buộc)"
+            rows={2}
+            style={{
+              width: "100%",
+              borderRadius: 8,
+              border: "1px solid #d1d5db",
+              padding: 10,
+              marginBottom: 12,
+            }}
+          />
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button
+              className="td-btn td-btn-secondary td-btn-sm"
+              onClick={() => setCreateOpen(false)}
+              disabled={creating}
+            >
+              Hủy
+            </button>
+            <button
+              className="td-btn td-btn-primary td-btn-sm"
+              onClick={handleCreateReferee}
+              disabled={creating}
+            >
+              {creating ? "Đang tạo..." : "Tạo trọng tài"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {assignOpen && (
         <div className="td-card" style={{ padding: 16 }}>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Filter } from "lucide-react";
-import "./FilterSection.css";
+import "../../assets/css/tournament-leader/FilterSection.css";
 
 const STATUS_LABELS = {
   Pending: "Chờ duyệt",

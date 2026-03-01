@@ -188,13 +188,8 @@ export default function PlayerTournamentList() {
       return;
     }
 
-    if (tournament.entryFee > 0) {
-      alert("Paid registration flow is not implemented yet.");
-      return;
-    }
-
     try {
-      await axios.post(
+      const res = await axios.post(
         "http://localhost:8080/ctms/api/participants",
         {
           tournamentId: tournament.id,
@@ -205,11 +200,18 @@ export default function PlayerTournamentList() {
         },
         { withCredentials: true }
       );
+      if (!res?.data?.success) {
+        throw new Error(res?.data?.message || "Register failed");
+      }
       await fetchTournaments();
       alert("Registered successfully!");
     } catch (err) {
       console.error("Register failed:", err);
-      alert("Register failed (maybe already registered).");
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Register failed (maybe already registered).";
+      alert(message);
     }
   };
 

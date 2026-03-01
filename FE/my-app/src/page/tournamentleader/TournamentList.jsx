@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import MainHeader from "../../component/common/MainHeader";
 import FilterSection from "../../component/tournament/FilterSection";
-import "./TournamentList.css";
+import "../../assets/css/tournament-leader/TournamentList.css";
 
 const EDITABLE_STATUSES = ["Pending", "Rejected", "Delayed", "Cancelled"];
 const CANCELLED_ABLE = ["Pending", "Ongoing", "Delayed"];
@@ -208,7 +208,7 @@ const TournamentList = () => {
           </div>
           <div className="tl-stat-card">
             <div>
-              <p className="tl-stat-label">Sắp diễn ra</p>
+              <p className="tl-stat-label">Chờ duyệt</p>
               <h3 className="tl-stat-value">{stats.upcoming}</h3>
             </div>
             <div className="tl-stat-icon blue"><Clock size={24} /></div>
