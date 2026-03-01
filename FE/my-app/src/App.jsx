@@ -13,6 +13,7 @@ import CreateTournament from "./page/tournamentleader/CreateTournament";
 import UpdateTournament from "./page/tournamentleader/UpdateTournament";
 import StaffDashboard from "./page/staff/StaffDashboard";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import WaitingList from "./page/user/WaitingList";
 //import AdminLayout from "./page/admin/AdminLayout"; import PlayerLayout from "./page/Player/PlayerLayout";
 // import RefereeLayout from "./page/referee/RefereeLayout";
 // import TournamentLeaderLayout from "./page/tournamentLeader/TournamentLeaderLayout";
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/tournaments/edit/:id" element={<UpdateTournament />} />
         <Route path="/staff" element={<Navigate to="/staff/dashboard" />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
+        <Route path="/tournaments/:id/waiting-list" element={<WaitingList />} />
       </Routes>
     </BrowserRouter>
   );

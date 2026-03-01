@@ -2,13 +2,24 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import {
-  ChevronDown, Trophy, Facebook, Twitter, Instagram, Youtube,
-  Mail, Clock, Leaf, TrendingUp, Radio, Star,
-  Sparkles, Zap, Crown
+  ChevronDown,
+  Trophy,
+  Facebook,
+  Twitter,
+  Instagram,
+  Youtube,
+  Mail,
+  Clock,
+  Leaf,
+  TrendingUp,
+  Radio,
+  Star,
+  Sparkles,
+  Zap,
+  Crown,
 } from "lucide-react";
 import { getSlogan } from "../../component/common/Slogon";
 import MainHeader from "../../component/common/MainHeader";
-
 
 // --- COMPONENTS CON ---
 function Button({ children, size = "md", className = "", ...props }) {
@@ -19,7 +30,12 @@ function Button({ children, size = "md", className = "", ...props }) {
   );
 }
 
-function ImageWithFallback({ src, alt = "", className = "", fallback = "https://ui-avatars.com/api/?name=User&background=random" }) {
+function ImageWithFallback({
+  src,
+  alt = "",
+  className = "",
+  fallback = "https://ui-avatars.com/api/?name=User&background=random",
+}) {
   const [imgSrc, setImgSrc] = useState(src);
   return (
     <img
@@ -33,8 +49,22 @@ function ImageWithFallback({ src, alt = "", className = "", fallback = "https://
 
 function formatDateTime(val) {
   if (val == null) return "—";
-  const d = typeof val === "string" ? new Date(val) : Array.isArray(val) ? new Date(val[0], (val[1] ?? 1) - 1, val[2] ?? 1, val[3] ?? 0, val[4] ?? 0, val[5] ?? 0) : new Date(val);
-  return isNaN(d.getTime()) ? "—" : d.toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short" });
+  const d =
+    typeof val === "string"
+      ? new Date(val)
+      : Array.isArray(val)
+        ? new Date(
+            val[0],
+            (val[1] ?? 1) - 1,
+            val[2] ?? 1,
+            val[3] ?? 0,
+            val[4] ?? 0,
+            val[5] ?? 0,
+          )
+        : new Date(val);
+  return isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short" });
 }
 
 function SimpleModal({ isOpen, onClose, title, children }) {
@@ -74,15 +104,42 @@ function SimpleModal({ isOpen, onClose, title, children }) {
         <button
           type="button"
           onClick={onClose}
-          style={{ position: "absolute", top: "15px", right: "20px", color: "#71717a", fontSize: "22px", background: "none", border: "none", cursor: "pointer" }}
+          style={{
+            position: "absolute",
+            top: "15px",
+            right: "20px",
+            color: "#71717a",
+            fontSize: "22px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+          }}
         >
           ✕
         </button>
-        <h2 className="text-gradient" style={{ marginBottom: "20px", fontSize: "24px" }}>{title}</h2>
-        <div style={{ color: "#a1a1aa", fontSize: "14px", lineHeight: "1.7", overflowY: "auto", paddingRight: "10px", flex: 1 }}>
+        <h2
+          className="text-gradient"
+          style={{ marginBottom: "20px", fontSize: "24px" }}
+        >
+          {title}
+        </h2>
+        <div
+          style={{
+            color: "#a1a1aa",
+            fontSize: "14px",
+            lineHeight: "1.7",
+            overflowY: "auto",
+            paddingRight: "10px",
+            flex: 1,
+          }}
+        >
           {children}
         </div>
-        <Button className="btn-primary" style={{ marginTop: "25px", width: "100%" }} onClick={onClose}>
+        <Button
+          className="btn-primary"
+          style={{ marginTop: "25px", width: "100%" }}
+          onClick={onClose}
+        >
           Đóng
         </Button>
       </div>
@@ -165,10 +222,38 @@ export default function HomePage() {
 
   // 3. DỮ LIỆU TĨNH (Benefits, Testimonials - Giữ nguyên của bạn)
   const benefits = [
-    { id: 1, title: "Tiết kiệm thời gian", description: "Tiết kiệm tới 90% thời gian...", icon: Clock, color: "amber", position: "top-left" },
-    { id: 2, title: "Tài nguyên giấy", description: "Không in ấn, bảo vệ môi trường...", icon: Leaf, color: "green", position: "top-right" },
-    { id: 3, title: "ELO tự động", description: "Hệ thống tự động tính điểm ELO...", icon: TrendingUp, color: "cyan", position: "bottom-left" },
-    { id: 4, title: "Truyền thông", description: "Công cụ quảng bá giải đấu...", icon: Radio, color: "purple", position: "bottom-right" },
+    {
+      id: 1,
+      title: "Tiết kiệm thời gian",
+      description: "Tiết kiệm tới 90% thời gian...",
+      icon: Clock,
+      color: "amber",
+      position: "top-left",
+    },
+    {
+      id: 2,
+      title: "Tài nguyên giấy",
+      description: "Không in ấn, bảo vệ môi trường...",
+      icon: Leaf,
+      color: "green",
+      position: "top-right",
+    },
+    {
+      id: 3,
+      title: "ELO tự động",
+      description: "Hệ thống tự động tính điểm ELO...",
+      icon: TrendingUp,
+      color: "cyan",
+      position: "bottom-left",
+    },
+    {
+      id: 4,
+      title: "Truyền thông",
+      description: "Công cụ quảng bá giải đấu...",
+      icon: Radio,
+      color: "purple",
+      position: "bottom-right",
+    },
   ];
 
   const location = useLocation();
@@ -185,28 +270,44 @@ export default function HomePage() {
       {/* --- HERO SECTION --- */}
       <section className="hero">
         <div className="hero-bg">
-          <img src="https://media.craiyon.com/2025-04-18/CGw-7cdIS6mlv69r_y_aEQ.webp" alt="Chess" className="hero-bg-image" />
+          <img
+            src="https://media.craiyon.com/2025-04-18/CGw-7cdIS6mlv69r_y_aEQ.webp"
+            alt="Chess"
+            className="hero-bg-image"
+          />
           <div className="hero-overlay"></div>
         </div>
-        
+
         {/* Decor Orbs */}
-        <div className="hero-orbs"><div className="hero-orb hero-orb-1"></div><div className="hero-orb hero-orb-2"></div></div>
+        <div className="hero-orbs">
+          <div className="hero-orb hero-orb-1"></div>
+          <div className="hero-orb hero-orb-2"></div>
+        </div>
 
         <div className="container">
           <div className="hero-content">
             <div className="hero-badge">
-              <Sparkles size={16} /><span>PREMIUM CHESS TOURNAMENTS</span><Sparkles size={16} />
+              <Sparkles size={16} />
+              <span>PREMIUM CHESS TOURNAMENTS</span>
+              <Sparkles size={16} />
             </div>
             <h1 className="hero-title">
               <div className="hero-title-line">MASTER</div>
               <div className="hero-title-line">THE BOARD.</div>
-              <div className="hero-title-line hero-title-gradient">CLAIM THE PRIZE.</div>
+              <div className="hero-title-line hero-title-gradient">
+                CLAIM THE PRIZE.
+              </div>
             </h1>
             <p className="hero-subtitle">
-              Compete with the best players, showcase your skills, and win <span className="text-highlight">massive prize pools</span>.
+              Compete with the best players, showcase your skills, and win{" "}
+              <span className="text-highlight">massive prize pools</span>.
             </p>
             <div className="hero-cta">
-              <Button size="lg" className="btn-primary" onClick={() => navigate(user ? "/tournaments" : "/register")}>
+              <Button
+                size="lg"
+                className="btn-primary"
+                onClick={() => navigate(user ? "/tournaments" : "/register")}
+              >
                 <span>JOIN TOURNAMENT NOW</span>
                 <Zap size={20} fill="currentColor" />
               </Button>
@@ -228,27 +329,74 @@ export default function HomePage() {
 
           <div className="steps-grid">
             {loading ? (
-              <p style={{ color: "white", textAlign: "center" }}>Loading tournaments...</p>
+              <p style={{ color: "white", textAlign: "center" }}>
+                Loading tournaments...
+              </p>
             ) : upcomingTournaments.length > 0 ? (
               upcomingTournaments.map((t, index) => (
-                <div key={t.tournamentId} className={`step-card step-card-${index === 0 ? 'amber' : index === 1 ? 'cyan' : 'green'}`}>
+                <div
+                  key={t.tournamentId}
+                  className={`step-card step-card-${index === 0 ? "amber" : index === 1 ? "cyan" : "green"}`}
+                >
                   <div className="step-number">0{index + 1}</div>
-                  <div className={`step-icon step-icon-${index === 0 ? 'amber' : index === 1 ? 'cyan' : 'green'}`}>
+                  <div
+                    className={`step-icon step-icon-${index === 0 ? "amber" : index === 1 ? "cyan" : "green"}`}
+                  >
                     <Trophy size={32} />
                   </div>
                   <h3 className="step-title">{t.tournamentName}</h3>
                   <ul className="step-list">
-                    <li><span className="step-dot"></span> Format: <strong>{t.format}</strong></li>
-                    <li><span className="step-dot"></span> Start: {new Date(t.startDate).toLocaleDateString()}</li>
-                    <li><span className="step-dot"></span> Prize: <strong>{t.prizePool?.toLocaleString()} VNĐ</strong></li>
+                    <li>
+                      <span className="step-dot"></span> Format:{" "}
+                      <strong>{t.format}</strong>
+                    </li>
+                    <li>
+                      <span className="step-dot"></span> Start:{" "}
+                      {new Date(t.startDate).toLocaleDateString()}
+                    </li>
+                    <li>
+                      <span className="step-dot"></span> Prize:{" "}
+                      <strong>{t.prizePool?.toLocaleString()} VNĐ</strong>
+                    </li>
                   </ul>
-                  <Button size="sm" className="btn-primary" style={{ width: "100%", marginTop: "15px" }} onClick={() => setSelectedTournament(t)}>
-                    View Details
-                  </Button>
+                  <div
+                    style={{ display: "flex", gap: "10px", marginTop: "15px" }}
+                  >
+                    <Button
+                      size="sm"
+                      className="btn-primary"
+                      style={{ flex: 1 }}
+                      onClick={() => setSelectedTournament(t)}
+                    >
+                      View Details
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      className="btn-primary"
+                      style={{ flex: 1 }}
+                      onClick={() => {
+                        if (!user) {
+                          navigate("/login");
+                          return;
+                        }
+                        navigate(
+                          `/tournaments/${t.tournamentId}/waiting-list`,
+                          {
+                            state: { autoRegister: true },
+                          },
+                        );
+                      }}
+                    >
+                      Register
+                    </Button>
+                  </div>
                 </div>
               ))
             ) : (
-              <p style={{ color: "#aaa", textAlign: "center", width: "100%" }}>Chưa có giải đấu nào sắp diễn ra.</p>
+              <p style={{ color: "#aaa", textAlign: "center", width: "100%" }}>
+                Chưa có giải đấu nào sắp diễn ra.
+              </p>
             )}
           </div>
         </div>
@@ -288,51 +436,145 @@ export default function HomePage() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
-              <h2 className="text-gradient" style={{ fontSize: "22px", margin: 0 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                marginBottom: "20px",
+              }}
+            >
+              <h2
+                className="text-gradient"
+                style={{ fontSize: "22px", margin: 0 }}
+              >
                 {selectedTournament.tournamentName}
               </h2>
               <button
                 type="button"
                 onClick={() => setSelectedTournament(null)}
-                style={{ background: "none", border: "none", color: "#71717a", fontSize: "22px", cursor: "pointer" }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#71717a",
+                  fontSize: "22px",
+                  cursor: "pointer",
+                }}
               >
                 ✕
               </button>
             </div>
-            <div style={{ color: "#a1a1aa", fontSize: "14px", lineHeight: "1.7", overflowY: "auto", paddingRight: "8px", flex: 1 }}>
+            <div
+              style={{
+                color: "#a1a1aa",
+                fontSize: "14px",
+                lineHeight: "1.7",
+                overflowY: "auto",
+                paddingRight: "8px",
+                flex: 1,
+              }}
+            >
               {selectedTournament.description && (
-                <p style={{ marginBottom: "16px" }}><strong style={{ color: "#e4e4e7" }}>Mô tả:</strong><br />{selectedTournament.description}</p>
+                <p style={{ marginBottom: "16px" }}>
+                  <strong style={{ color: "#e4e4e7" }}>Mô tả:</strong>
+                  <br />
+                  {selectedTournament.description}
+                </p>
               )}
               <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                <li style={{ marginBottom: "10px" }}><strong style={{ color: "#e4e4e7" }}>Địa điểm:</strong> {selectedTournament.location || "—"}</li>
-                <li style={{ marginBottom: "10px" }}><strong style={{ color: "#e4e4e7" }}>Format:</strong> {selectedTournament.format || "—"}</li>
-                <li style={{ marginBottom: "10px" }}><strong style={{ color: "#e4e4e7" }}>Hạng mục:</strong> {selectedTournament.categories || "—"}</li>
-                <li style={{ marginBottom: "10px" }}><strong style={{ color: "#e4e4e7" }}>Số người chơi:</strong> {selectedTournament.minPlayer ?? "—"} – {selectedTournament.maxPlayer ?? "—"}</li>
-                <li style={{ marginBottom: "10px" }}><strong style={{ color: "#e4e4e7" }}>Lệ phí đăng ký:</strong> {selectedTournament.entryFee != null ? `${Number(selectedTournament.entryFee).toLocaleString("vi-VN")} VNĐ` : "—"}</li>
-                <li style={{ marginBottom: "10px" }}><strong style={{ color: "#e4e4e7" }}>Giải thưởng:</strong> {selectedTournament.prizePool != null ? `${Number(selectedTournament.prizePool).toLocaleString("vi-VN")} VNĐ` : "—"}</li>
-                <li style={{ marginBottom: "10px" }}><strong style={{ color: "#e4e4e7" }}>Trạng thái:</strong> {selectedTournament.status || "—"}</li>
-                <li style={{ marginBottom: "10px" }}><strong style={{ color: "#e4e4e7" }}>Hạn đăng ký:</strong> {formatDateTime(selectedTournament.registrationDeadline)}</li>
-                <li style={{ marginBottom: "10px" }}><strong style={{ color: "#e4e4e7" }}>Ngày bắt đầu:</strong> {formatDateTime(selectedTournament.startDate)}</li>
-                <li style={{ marginBottom: "10px" }}><strong style={{ color: "#e4e4e7" }}>Ngày kết thúc:</strong> {formatDateTime(selectedTournament.endDate)}</li>
+                <li style={{ marginBottom: "10px" }}>
+                  <strong style={{ color: "#e4e4e7" }}>Địa điểm:</strong>{" "}
+                  {selectedTournament.location || "—"}
+                </li>
+                <li style={{ marginBottom: "10px" }}>
+                  <strong style={{ color: "#e4e4e7" }}>Format:</strong>{" "}
+                  {selectedTournament.format || "—"}
+                </li>
+                <li style={{ marginBottom: "10px" }}>
+                  <strong style={{ color: "#e4e4e7" }}>Hạng mục:</strong>{" "}
+                  {selectedTournament.categories || "—"}
+                </li>
+                <li style={{ marginBottom: "10px" }}>
+                  <strong style={{ color: "#e4e4e7" }}>Số người chơi:</strong>{" "}
+                  {selectedTournament.minPlayer ?? "—"} –{" "}
+                  {selectedTournament.maxPlayer ?? "—"}
+                </li>
+                <li style={{ marginBottom: "10px" }}>
+                  <strong style={{ color: "#e4e4e7" }}>Lệ phí đăng ký:</strong>{" "}
+                  {selectedTournament.entryFee != null
+                    ? `${Number(selectedTournament.entryFee).toLocaleString("vi-VN")} VNĐ`
+                    : "—"}
+                </li>
+                <li style={{ marginBottom: "10px" }}>
+                  <strong style={{ color: "#e4e4e7" }}>Giải thưởng:</strong>{" "}
+                  {selectedTournament.prizePool != null
+                    ? `${Number(selectedTournament.prizePool).toLocaleString("vi-VN")} VNĐ`
+                    : "—"}
+                </li>
+                <li style={{ marginBottom: "10px" }}>
+                  <strong style={{ color: "#e4e4e7" }}>Trạng thái:</strong>{" "}
+                  {selectedTournament.status || "—"}
+                </li>
+                <li style={{ marginBottom: "10px" }}>
+                  <strong style={{ color: "#e4e4e7" }}>Hạn đăng ký:</strong>{" "}
+                  {formatDateTime(selectedTournament.registrationDeadline)}
+                </li>
+                <li style={{ marginBottom: "10px" }}>
+                  <strong style={{ color: "#e4e4e7" }}>Ngày bắt đầu:</strong>{" "}
+                  {formatDateTime(selectedTournament.startDate)}
+                </li>
+                <li style={{ marginBottom: "10px" }}>
+                  <strong style={{ color: "#e4e4e7" }}>Ngày kết thúc:</strong>{" "}
+                  {formatDateTime(selectedTournament.endDate)}
+                </li>
               </ul>
               {selectedTournament.notes && (
-                <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #27272a" }}>
-                  <strong style={{ color: "#e4e4e7" }}>Luật lệ / Ghi chú:</strong>
-                  <p style={{ marginTop: "8px", whiteSpace: "pre-wrap" }}>{selectedTournament.notes}</p>
+                <div
+                  style={{
+                    marginTop: "16px",
+                    paddingTop: "16px",
+                    borderTop: "1px solid #27272a",
+                  }}
+                >
+                  <strong style={{ color: "#e4e4e7" }}>
+                    Luật lệ / Ghi chú:
+                  </strong>
+                  <p style={{ marginTop: "8px", whiteSpace: "pre-wrap" }}>
+                    {selectedTournament.notes}
+                  </p>
                 </div>
               )}
             </div>
-            <Button className="btn-primary" style={{ marginTop: "20px", width: "100%" }} onClick={() => setSelectedTournament(null)}>
-              Đóng
-            </Button>
+            <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
+              <Button
+                className="btn-primary"
+                style={{ flex: 1 }}
+                onClick={() => {
+                  navigate(
+                    `/tournaments/${selectedTournament.tournamentId}/waiting-list`,
+                  );
+                }}
+              >
+                Xem Danh Sách Chờ
+              </Button>
+
+              <Button
+                className="btn-primary"
+                style={{ flex: 1 }}
+                onClick={() => setSelectedTournament(null)}
+              >
+                Đóng
+              </Button>
+            </div>
           </div>
         </>
       )}
 
       {/* --- DYNAMIC SECTION: TOP PLAYERS (TỪ API) --- */}
       <section className="benefits">
-        <div className="benefits-bg-orbs"><div className="benefits-orb benefits-orb-1"></div></div>
+        <div className="benefits-bg-orbs">
+          <div className="benefits-orb benefits-orb-1"></div>
+        </div>
 
         {selectedPlayer && (
           <div
@@ -405,14 +647,38 @@ export default function HomePage() {
                 Rank {selectedPlayer.rank}
               </div>
             </div>
-            <h3 className="benefit-title" style={{ fontSize: "1.5rem", marginBottom: "6px", color: "#fff" }}>
+            <h3
+              className="benefit-title"
+              style={{ fontSize: "1.5rem", marginBottom: "6px", color: "#fff" }}
+            >
               {selectedPlayer.firstName} {selectedPlayer.lastName}
             </h3>
-            <p className="benefit-description" style={{ fontSize: "1rem", color: "#a1a1aa", marginBottom: "16px" }}>
+            <p
+              className="benefit-description"
+              style={{
+                fontSize: "1rem",
+                color: "#a1a1aa",
+                marginBottom: "16px",
+              }}
+            >
               Grandmaster
             </p>
-            <div style={{ marginTop: "auto", borderTop: "1px solid #333", paddingTop: "16px", width: "100%" }}>
-              <p style={{ color: "#fbbf24", fontStyle: "italic", fontSize: "1rem", margin: 0 }}>
+            <div
+              style={{
+                marginTop: "auto",
+                borderTop: "1px solid #333",
+                paddingTop: "16px",
+                width: "100%",
+              }}
+            >
+              <p
+                style={{
+                  color: "#fbbf24",
+                  fontStyle: "italic",
+                  fontSize: "1rem",
+                  margin: 0,
+                }}
+              >
                 "{getSlogan(selectedPlayer.userId)}"
               </p>
             </div>
@@ -428,9 +694,19 @@ export default function HomePage() {
             </h2>
           </div>
 
-          <div className="benefits-grid" style={{ display: "flex", justifyContent: "center", gap: "20px", flexWrap: "wrap" }}>
+          <div
+            className="benefits-grid"
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: "20px",
+              flexWrap: "wrap",
+            }}
+          >
             {loading ? (
-              <p style={{ color: "white", textAlign: "center", width: "100%" }}>Đang tải danh sách player...</p>
+              <p style={{ color: "white", textAlign: "center", width: "100%" }}>
+                Đang tải danh sách player...
+              </p>
             ) : topPlayers.length > 0 ? (
               topPlayers.map((player) => (
                 <div
@@ -445,26 +721,69 @@ export default function HomePage() {
                   onClick={() => setSelectedPlayer(player)}
                 >
                   <div className="benefit-card-overlay"></div>
-                  <div className="benefit-card-content" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <div
+                    className="benefit-card-content"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                    }}
+                  >
                     <div style={{ position: "relative", marginBottom: "15px" }}>
-                      <div className="benefit-icon benefit-icon-amber" style={{ width: "80px", height: "80px", padding: 0, overflow: "hidden" }}>
-                        <ImageWithFallback src={player.avatar} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <div
+                        className="benefit-icon benefit-icon-amber"
+                        style={{
+                          width: "80px",
+                          height: "80px",
+                          padding: 0,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <ImageWithFallback
+                          src={player.avatar}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
                       </div>
-                      <div style={{ position: "absolute", bottom: "-10px", left: "50%", transform: "translateX(-50%)", background: "#fbbf24", color: "black", padding: "2px 8px", borderRadius: "10px", fontSize: "12px", fontWeight: "bold" }}>
+                      <div
+                        style={{
+                          position: "absolute",
+                          bottom: "-10px",
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          background: "#fbbf24",
+                          color: "black",
+                          padding: "2px 8px",
+                          borderRadius: "10px",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                        }}
+                      >
                         Rank {player.rank}
                       </div>
                     </div>
-                    <h3 className="benefit-title" style={{ fontSize: "1.2rem", marginBottom: "5px" }}>
+                    <h3
+                      className="benefit-title"
+                      style={{ fontSize: "1.2rem", marginBottom: "5px" }}
+                    >
                       {player.firstName} {player.lastName}
                     </h3>
-                    <p className="benefit-description" style={{ fontSize: "0.9rem" }}>
+                    <p
+                      className="benefit-description"
+                      style={{ fontSize: "0.9rem" }}
+                    >
                       Grandmaster
                     </p>
                   </div>
                 </div>
               ))
             ) : (
-              <p style={{ color: "#aaa", textAlign: "center", width: "100%" }}>Chưa có dữ liệu player.</p>
+              <p style={{ color: "#aaa", textAlign: "center", width: "100%" }}>
+                Chưa có dữ liệu player.
+              </p>
             )}
           </div>
         </div>
@@ -504,14 +823,21 @@ export default function HomePage() {
               {benefits.map((benefit) => {
                 const Icon = benefit.icon;
                 return (
-                  <div key={benefit.id} className={`benefit-card benefit-card-${benefit.color} benefit-card-${benefit.position}`}>
+                  <div
+                    key={benefit.id}
+                    className={`benefit-card benefit-card-${benefit.color} benefit-card-${benefit.position}`}
+                  >
                     <div className="benefit-card-overlay"></div>
                     <div className="benefit-card-content">
-                      <div className={`benefit-icon benefit-icon-${benefit.color}`}>
+                      <div
+                        className={`benefit-icon benefit-icon-${benefit.color}`}
+                      >
                         <Icon size={28} strokeWidth={2.5} />
                       </div>
                       <h3 className="benefit-title">{benefit.title}</h3>
-                      <p className="benefit-description">{benefit.description}</p>
+                      <p className="benefit-description">
+                        {benefit.description}
+                      </p>
                     </div>
                   </div>
                 );
@@ -524,15 +850,22 @@ export default function HomePage() {
             {benefits.map((benefit) => {
               const Icon = benefit.icon;
               return (
-                <div key={benefit.id} className={`benefit-card-mobile benefit-card-mobile-${benefit.color}`}>
+                <div
+                  key={benefit.id}
+                  className={`benefit-card-mobile benefit-card-mobile-${benefit.color}`}
+                >
                   <div className="benefit-card-overlay"></div>
                   <div className="benefit-card-mobile-content">
-                    <div className={`benefit-icon benefit-icon-${benefit.color}`}>
+                    <div
+                      className={`benefit-icon benefit-icon-${benefit.color}`}
+                    >
                       <Icon size={28} strokeWidth={2.5} />
                     </div>
                     <div className="benefit-text">
                       <h3 className="benefit-title">{benefit.title}</h3>
-                      <p className="benefit-description">{benefit.description}</p>
+                      <p className="benefit-description">
+                        {benefit.description}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -557,7 +890,7 @@ export default function HomePage() {
                 {loading ? (
                   <p style={{ color: "#fff" }}>Đang tải đánh giá...</p>
                 ) : topFeedbacks.length > 0 ? (
-                  (topFeedbacks.slice(0, 5)).map((fb) => (
+                  topFeedbacks.slice(0, 5).map((fb) => (
                     <div key={fb.feedbackId} className="testimonial-card">
                       <div className="testimonial-card-overlay"></div>
                       <div className="testimonial-content">
@@ -575,8 +908,16 @@ export default function HomePage() {
                               <Star
                                 key={index}
                                 size={16}
-                                fill={index < (fb.starRating || 0) ? "#fbbf24" : "none"}
-                                color={index < (fb.starRating || 0) ? "#fbbf24" : "#4b5563"}
+                                fill={
+                                  index < (fb.starRating || 0)
+                                    ? "#fbbf24"
+                                    : "none"
+                                }
+                                color={
+                                  index < (fb.starRating || 0)
+                                    ? "#fbbf24"
+                                    : "#4b5563"
+                                }
                               />
                             ))}
                           </div>
@@ -584,7 +925,14 @@ export default function HomePage() {
                           <div className="testimonial-author">
                             {fb.firstName} {fb.lastName}
                             {fb.tournamentId != null && (
-                              <span style={{ display: "block", fontSize: "0.75rem", color: "#aaa", marginTop: "4px" }}>
+                              <span
+                                style={{
+                                  display: "block",
+                                  fontSize: "0.75rem",
+                                  color: "#aaa",
+                                  marginTop: "4px",
+                                }}
+                              >
                                 Giải đấu #{fb.tournamentId}
                               </span>
                             )}
@@ -594,7 +942,9 @@ export default function HomePage() {
                     </div>
                   ))
                 ) : (
-                  <p style={{ color: "#9ca3af", fontStyle: "italic" }}>Chưa có đánh giá nào.</p>
+                  <p style={{ color: "#9ca3af", fontStyle: "italic" }}>
+                    Chưa có đánh giá nào.
+                  </p>
                 )}
               </div>
             </div>
@@ -606,7 +956,9 @@ export default function HomePage() {
                   <span className="text-white">Cảm nhận </span>
                   <span className="text-gradient-green">người dùng</span>
                 </h2>
-                <p className="feedback-side__subtitle">Chia sẻ từ cộng đồng người dùng Chess Arena</p>
+                <p className="feedback-side__subtitle">
+                  Chia sẻ từ cộng đồng người dùng Chess Arena
+                </p>
               </div>
               {/* Chỗ để sau thêm nút Chia sẻ / Like */}
             </div>
@@ -628,17 +980,28 @@ export default function HomePage() {
                 </div>
                 <div className="footer-logo-text">
                   <span className="footer-logo-title">CHESS ARENA</span>
-                  <span className="footer-logo-subtitle">TOURNAMENT PLATFORM</span>
+                  <span className="footer-logo-subtitle">
+                    TOURNAMENT PLATFORM
+                  </span>
                 </div>
               </div>
               <p className="footer-description">
-                Nền tảng giải đấu cờ vua chuyên nghiệp hàng đầu với giải thưởng lớn và cộng đồng chất lượng.
+                Nền tảng giải đấu cờ vua chuyên nghiệp hàng đầu với giải thưởng
+                lớn và cộng đồng chất lượng.
               </p>
               <div className="footer-social">
-                <a href="#" className="social-link"><Facebook size={20} /></a>
-                <a href="#" className="social-link"><Twitter size={20} /></a>
-                <a href="#" className="social-link"><Instagram size={20} /></a>
-                <a href="#" className="social-link"><Youtube size={20} /></a>
+                <a href="#" className="social-link">
+                  <Facebook size={20} />
+                </a>
+                <a href="#" className="social-link">
+                  <Twitter size={20} />
+                </a>
+                <a href="#" className="social-link">
+                  <Instagram size={20} />
+                </a>
+                <a href="#" className="social-link">
+                  <Youtube size={20} />
+                </a>
               </div>
             </div>
 
@@ -646,15 +1009,38 @@ export default function HomePage() {
             <div className="footer-links">
               <h3 className="footer-links-title">Liên Kết</h3>
               <ul className="footer-links-list">
-                <li><a href="#" className="footer-link"><span className="footer-link-dot"></span>Trang Chủ</a></li>
-                <li><a href="#" className="footer-link"><span className="footer-link-dot"></span>Giải Đấu</a></li>
-                <li><a href="#" className="footer-link"><span className="footer-link-dot"></span>Bảng Xếp Hạng</a></li>
                 <li>
-                  <a href="#!" className="footer-link" onClick={(e) => { e.preventDefault(); setShowGuide(true); }}>
+                  <a href="#" className="footer-link">
+                    <span className="footer-link-dot"></span>Trang Chủ
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="footer-link">
+                    <span className="footer-link-dot"></span>Giải Đấu
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="footer-link">
+                    <span className="footer-link-dot"></span>Bảng Xếp Hạng
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#!"
+                    className="footer-link"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowGuide(true);
+                    }}
+                  >
                     <span className="footer-link-dot"></span>Cách Chơi
                   </a>
                 </li>
-                <li><a href="#" className="footer-link"><span className="footer-link-dot"></span>Blog</a></li>
+                <li>
+                  <a href="#" className="footer-link">
+                    <span className="footer-link-dot"></span>Blog
+                  </a>
+                </li>
               </ul>
             </div>
 
@@ -662,34 +1048,69 @@ export default function HomePage() {
             <div className="footer-links">
               <h3 className="footer-links-title">Hỗ Trợ</h3>
               <ul className="footer-links-list">
-                <li><a href="#" className="footer-link"><span className="footer-link-dot"></span>Trung Tâm Trợ Giúp</a></li>
                 <li>
-                  <a href="#!" className="footer-link" onClick={(e) => { e.preventDefault(); setShowTerms(true); }}>
+                  <a href="#" className="footer-link">
+                    <span className="footer-link-dot"></span>Trung Tâm Trợ Giúp
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#!"
+                    className="footer-link"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowTerms(true);
+                    }}
+                  >
                     <span className="footer-link-dot"></span>Điều Khoản Dịch Vụ
                   </a>
                 </li>
                 <li>
-                  <a href="#!" className="footer-link" onClick={(e) => { e.preventDefault(); setShowPrivacy(true); }}>
+                  <a
+                    href="#!"
+                    className="footer-link"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowPrivacy(true);
+                    }}
+                  >
                     <span className="footer-link-dot"></span>Chính Sách Bảo Mật
                   </a>
                 </li>
                 <li>
-                  <a href="#!" className="footer-link" onClick={(e) => { e.preventDefault(); setShowFaq(true); }}>
+                  <a
+                    href="#!"
+                    className="footer-link"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowFaq(true);
+                    }}
+                  >
                     <span className="footer-link-dot"></span>Câu Hỏi Thường Gặp
                   </a>
                 </li>
-                <li><a href="#" className="footer-link"><span className="footer-link-dot"></span>Liên Hệ</a></li>
+                <li>
+                  <a href="#" className="footer-link">
+                    <span className="footer-link-dot"></span>Liên Hệ
+                  </a>
+                </li>
               </ul>
             </div>
 
             {/* Newsletter */}
             <div className="footer-newsletter">
               <h3 className="footer-links-title">Đăng Ký Nhận Tin</h3>
-              <p className="footer-newsletter-text">Nhận thông tin giải đấu mới và ưu đãi đặc biệt.</p>
+              <p className="footer-newsletter-text">
+                Nhận thông tin giải đấu mới và ưu đãi đặc biệt.
+              </p>
               <div className="newsletter-form">
                 <div className="newsletter-input-wrapper">
                   <Mail size={20} className="newsletter-icon" />
-                  <input type="email" placeholder="Email của bạn" className="newsletter-input" />
+                  <input
+                    type="email"
+                    placeholder="Email của bạn"
+                    className="newsletter-input"
+                  />
                 </div>
                 <Button className="btn-newsletter">Đăng Ký</Button>
               </div>
@@ -698,58 +1119,152 @@ export default function HomePage() {
 
           {/* Bottom Bar */}
           <div className="footer-bottom">
-            <p className="footer-copyright">© 2026 Chess Arena. All rights reserved.</p>
+            <p className="footer-copyright">
+              © 2026 Chess Arena. All rights reserved.
+            </p>
             <div className="footer-bottom-links">
-              <a href="#" className="footer-bottom-link">Privacy</a>
-              <a href="#" className="footer-bottom-link">Terms</a>
-              <a href="#" className="footer-bottom-link">Cookies</a>
+              <a href="#" className="footer-bottom-link">
+                Privacy
+              </a>
+              <a href="#" className="footer-bottom-link">
+                Terms
+              </a>
+              <a href="#" className="footer-bottom-link">
+                Cookies
+              </a>
             </div>
           </div>
         </div>
       </footer>
 
-      <SimpleModal isOpen={showGuide} onClose={() => setShowGuide(false)} title="Cách Chơi">
-        <p style={{ marginBottom: "10px", color: "#fff", fontWeight: "bold" }}>1. Đăng ký</p>
+      <SimpleModal
+        isOpen={showGuide}
+        onClose={() => setShowGuide(false)}
+        title="Cách Chơi"
+      >
+        <p style={{ marginBottom: "10px", color: "#fff", fontWeight: "bold" }}>
+          1. Đăng ký
+        </p>
         <p>Tạo tài khoản để tham gia các giải đấu.</p>
-        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>2. Chọn giải</p>
+        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>
+          2. Chọn giải
+        </p>
         <p>Tìm kiếm các giải đấu "Live" hoặc sắp tới.</p>
-        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>3. Thi đấu</p>
+        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>
+          3. Thi đấu
+        </p>
         <p>Tuân thủ luật ELO tự động và thời gian quy định.</p>
-        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>4. Nhận thưởng</p>
+        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>
+          4. Nhận thưởng
+        </p>
         <p>Đạt thứ hạng cao để nhận quỹ thưởng hấp dẫn.</p>
       </SimpleModal>
 
-      <SimpleModal isOpen={showTerms} onClose={() => setShowTerms(false)} title="Điều Khoản Dịch Vụ">
-        <p style={{ marginBottom: "10px", color: "#fff", fontWeight: "bold" }}>1. Quy định chung</p>
-        <p>Bằng việc sử dụng Chess Arena, bạn đồng ý tuân thủ các quy tắc ứng xử văn minh và không gian lận.</p>
-        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>2. Tài khoản người dùng</p>
-        <p>Mỗi người dùng chỉ được sở hữu một tài khoản duy nhất. Mọi hành vi tạo nhiều tài khoản để trục lợi giải thưởng sẽ bị khóa vĩnh viễn.</p>
-        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>3. Giải đấu và Giải thưởng</p>
-        <p>Kết quả giải đấu được hệ thống tự động ghi nhận dựa trên điểm ELO và các trận đấu thực tế. Quyết định của Ban Quản Trị là quyết định cuối cùng.</p>
-        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>4. Bảo mật</p>
-        <p>Chúng tôi cam kết bảo vệ dữ liệu cá nhân của bạn và không chia sẻ cho bên thứ ba khi chưa có sự đồng ý.</p>
+      <SimpleModal
+        isOpen={showTerms}
+        onClose={() => setShowTerms(false)}
+        title="Điều Khoản Dịch Vụ"
+      >
+        <p style={{ marginBottom: "10px", color: "#fff", fontWeight: "bold" }}>
+          1. Quy định chung
+        </p>
+        <p>
+          Bằng việc sử dụng Chess Arena, bạn đồng ý tuân thủ các quy tắc ứng xử
+          văn minh và không gian lận.
+        </p>
+        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>
+          2. Tài khoản người dùng
+        </p>
+        <p>
+          Mỗi người dùng chỉ được sở hữu một tài khoản duy nhất. Mọi hành vi tạo
+          nhiều tài khoản để trục lợi giải thưởng sẽ bị khóa vĩnh viễn.
+        </p>
+        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>
+          3. Giải đấu và Giải thưởng
+        </p>
+        <p>
+          Kết quả giải đấu được hệ thống tự động ghi nhận dựa trên điểm ELO và
+          các trận đấu thực tế. Quyết định của Ban Quản Trị là quyết định cuối
+          cùng.
+        </p>
+        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>
+          4. Bảo mật
+        </p>
+        <p>
+          Chúng tôi cam kết bảo vệ dữ liệu cá nhân của bạn và không chia sẻ cho
+          bên thứ ba khi chưa có sự đồng ý.
+        </p>
       </SimpleModal>
 
-      <SimpleModal isOpen={showPrivacy} onClose={() => setShowPrivacy(false)} title="Chính Sách Bảo Mật">
-        <p style={{ marginBottom: "10px", color: "#fff", fontWeight: "bold" }}>1. Thu thập thông tin</p>
-        <p>Chúng tôi thu thập thông tin bạn cung cấp khi đăng ký (email, tên, ảnh đại diện) và dữ liệu khi tham gia giải đấu để vận hành nền tảng.</p>
-        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>2. Sử dụng thông tin</p>
-        <p>Thông tin được dùng để quản lý tài khoản, xếp hạng, trao giải và gửi thông báo liên quan đến giải đấu. Chúng tôi không bán dữ liệu cá nhân cho bên thứ ba.</p>
-        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>3. Bảo mật dữ liệu</p>
-        <p>Dữ liệu được mã hóa và lưu trữ an toàn. Chỉ nhân sự được ủy quyền mới có quyền truy cập khi cần hỗ trợ hoặc xử lý sự cố.</p>
-        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>4. Quyền của bạn</p>
-        <p>Bạn có quyền yêu cầu xem, chỉnh sửa hoặc xóa dữ liệu cá nhân. Liên hệ bộ phận hỗ trợ qua email hoặc form Liên hệ trên website.</p>
+      <SimpleModal
+        isOpen={showPrivacy}
+        onClose={() => setShowPrivacy(false)}
+        title="Chính Sách Bảo Mật"
+      >
+        <p style={{ marginBottom: "10px", color: "#fff", fontWeight: "bold" }}>
+          1. Thu thập thông tin
+        </p>
+        <p>
+          Chúng tôi thu thập thông tin bạn cung cấp khi đăng ký (email, tên, ảnh
+          đại diện) và dữ liệu khi tham gia giải đấu để vận hành nền tảng.
+        </p>
+        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>
+          2. Sử dụng thông tin
+        </p>
+        <p>
+          Thông tin được dùng để quản lý tài khoản, xếp hạng, trao giải và gửi
+          thông báo liên quan đến giải đấu. Chúng tôi không bán dữ liệu cá nhân
+          cho bên thứ ba.
+        </p>
+        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>
+          3. Bảo mật dữ liệu
+        </p>
+        <p>
+          Dữ liệu được mã hóa và lưu trữ an toàn. Chỉ nhân sự được ủy quyền mới
+          có quyền truy cập khi cần hỗ trợ hoặc xử lý sự cố.
+        </p>
+        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>
+          4. Quyền của bạn
+        </p>
+        <p>
+          Bạn có quyền yêu cầu xem, chỉnh sửa hoặc xóa dữ liệu cá nhân. Liên hệ
+          bộ phận hỗ trợ qua email hoặc form Liên hệ trên website.
+        </p>
       </SimpleModal>
 
-      <SimpleModal isOpen={showFaq} onClose={() => setShowFaq(false)} title="Câu Hỏi Thường Gặp">
-        <p style={{ marginBottom: "10px", color: "#fff", fontWeight: "bold" }}>Làm sao để đăng ký tham gia giải đấu?</p>
-        <p>Bạn cần tạo tài khoản, đăng nhập, sau đó vào mục Tournaments để xem danh sách giải và bấm "Đăng ký" tại giải muốn tham gia.</p>
-        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>Điểm ELO được tính như thế nào?</p>
-        <p>Hệ thống tính ELO dựa trên kết quả các trận đấu: thắng/thua/hòa và rating đối thủ. ELO cập nhật tự động sau mỗi trận.</p>
-        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>Làm thế nào để nhận giải thưởng?</p>
-        <p>Sau khi giải kết thúc, Ban tổ chức sẽ liên hệ qua email/điện thoại đã đăng ký để xác nhận thông tin và chuyển quà/thưởng.</p>
-        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>Tôi quên mật khẩu thì làm sao?</p>
-        <p>Trên trang Đăng nhập, bấm "Quên mật khẩu" và nhập email đăng ký. Hệ thống sẽ gửi link đặt lại mật khẩu qua email.</p>
+      <SimpleModal
+        isOpen={showFaq}
+        onClose={() => setShowFaq(false)}
+        title="Câu Hỏi Thường Gặp"
+      >
+        <p style={{ marginBottom: "10px", color: "#fff", fontWeight: "bold" }}>
+          Làm sao để đăng ký tham gia giải đấu?
+        </p>
+        <p>
+          Bạn cần tạo tài khoản, đăng nhập, sau đó vào mục Tournaments để xem
+          danh sách giải và bấm "Đăng ký" tại giải muốn tham gia.
+        </p>
+        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>
+          Điểm ELO được tính như thế nào?
+        </p>
+        <p>
+          Hệ thống tính ELO dựa trên kết quả các trận đấu: thắng/thua/hòa và
+          rating đối thủ. ELO cập nhật tự động sau mỗi trận.
+        </p>
+        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>
+          Làm thế nào để nhận giải thưởng?
+        </p>
+        <p>
+          Sau khi giải kết thúc, Ban tổ chức sẽ liên hệ qua email/điện thoại đã
+          đăng ký để xác nhận thông tin và chuyển quà/thưởng.
+        </p>
+        <p style={{ margin: "15px 0 10px", color: "#fff", fontWeight: "bold" }}>
+          Tôi quên mật khẩu thì làm sao?
+        </p>
+        <p>
+          Trên trang Đăng nhập, bấm "Quên mật khẩu" và nhập email đăng ký. Hệ
+          thống sẽ gửi link đặt lại mật khẩu qua email.
+        </p>
       </SimpleModal>
     </div>
   );

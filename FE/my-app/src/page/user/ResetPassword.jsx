@@ -46,14 +46,14 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="reset-wrapper">
-      <div className="reset-card">
-        <h2 className="reset-title">Reset Password</h2>
+    <div className="rp-wrapper">
+      <div className="rp-card">
+        <h2 className="rp-title">Reset Password</h2>
 
         {/* NEW PASSWORD */}
-        <div className="reset-group">
+        <div className="rp-group">
           <label>New Password</label>
-          <div className="reset-input">
+          <div className="rp-input">
             <input
               type={showNewPassword ? "text" : "password"}
               placeholder="Enter new password"
@@ -67,9 +67,9 @@ const ResetPassword = () => {
         </div>
 
         {/* CONFIRM PASSWORD */}
-        <div className="reset-group">
+        <div className="rp-group">
           <label>Confirm Password</label>
-          <div className="reset-input">
+          <div className="rp-input">
             <input
               type={showConfirmPassword ? "text" : "password"}
               placeholder="Re-enter new password"
@@ -82,15 +82,21 @@ const ResetPassword = () => {
           </div>
         </div>
 
-        {error && <p className="error">{error}</p>}
+        {error && <p className="rp-error">{error}</p>}
 
-        <button className="reset-btn" onClick={handleReset} disabled={loading}>
+        <button
+          className="rp-reset-btn"
+          onClick={handleReset}
+          disabled={loading}
+        >
           {loading ? "Processing..." : "Reset password"}
         </button>
 
-        <button className="cancel-btn" onClick={() => navigate("/")}>
-          ← Cancel
+        <button className="rp-cancel-btn" onClick={() => navigate("/")}>
+          Cancel
         </button>
+
+        <p className="rp-footer">PROFESSIONAL - SECURE ENCRYPTION</p>
       </div>
     </div>
   );
