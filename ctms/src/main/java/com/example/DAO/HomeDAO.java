@@ -8,8 +8,11 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.example.model.entity.BlogPost;
 import com.example.model.entity.Tournament;
 import com.example.model.entity.User;
+import com.example.model.enums.BlogCategory;
+import com.example.model.enums.BlogStatus;
 import com.example.model.enums.TournamentFormat;
 import com.example.model.enums.TournamentStatus;
 import com.example.util.DBContext;
@@ -94,5 +97,62 @@ public class HomeDAO extends DBContext {
             e.printStackTrace();
         }
         return list;
+    }
+
+    // 3. Lấy 3 blog public mới nhất cho trang home (không yêu cầu đăng nhập)
+    public List<BlogPost> getLatestPublicBlogs() {
+        List<BlogPost> list = new ArrayList<>();
+        String sql = """
+                SELECT TOP 3 *
+                FROM Blog_Post
+                WHERE status = 'Public'
+                ORDER BY ISNULL(publish_at, create_at) DESC
+                """;
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                BlogPost b = new BlogPost();
+                b.setBlogPostId(rs.getInt("blog_post_id"));
+                b.setTitle(EncodingUtil.fixUtf8Mojibake(rs.getString("title")));
+                b.setSummary(EncodingUtil.fixUtf8Mojibake(rs.getString("summary")));
+                b.setContent(EncodingUtil.fixUtf8Mojibake(rs.getString("content")));
+                b.setThumbnailUrl(rs.getString("thumbnail_url"));
+                b.setAuthorId(rs.getInt("author_id"));
+                b.setCategories(parseCategory(rs.getString("categories")));
+                b.setStatus(parseStatus(rs.getString("status")));
+                b.setViews(rs.getInt("views"));
+                b.setPublishAt(rs.getTimestamp("publish_at"));
+                b.setCreateAt(rs.getTimestamp("create_at"));
+                b.setUpdateAt(rs.getTimestamp("update_at"));
+                list.add(b);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+    private BlogCategory parseCategory(String value) {
+        if (value == null) return null;
+        for (BlogCategory category : BlogCategory.values()) {
+            if (category.name().equalsIgnoreCase(value)) {
+                return category;
+            }
+        }
+        return null;
+    }
+
+    private BlogStatus parseStatus(String value) {
+        if (value == null) return null;
+        for (BlogStatus status : BlogStatus.values()) {
+            if (status.name().equalsIgnoreCase(value)) {
+                return status;
+            }
+        }
+        return null;
     }
 }

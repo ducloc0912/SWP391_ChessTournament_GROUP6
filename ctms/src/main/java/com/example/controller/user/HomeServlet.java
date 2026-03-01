@@ -36,11 +36,13 @@ public class HomeServlet extends HttpServlet {
             List<Tournament> upcomingTournaments = dao.getUpcomingTournaments();
             List<User> topPlayers = dao.getTopPlayers();
             List<FeedbackDTO> topFeedbacks = feedbackService.getHomepageFeedbacks(10);
+            List<BlogPost> latestBlogs = dao.getLatestPublicBlogs();
 
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("upcomingTournaments", upcomingTournaments);
             responseData.put("topPlayers", topPlayers);
             responseData.put("topFeedbacks", topFeedbacks);
+            responseData.put("latestBlogs", latestBlogs);
             
             // 4. Convert sang JSON (LocalDateTime -> ISO string cho FE)
             Gson gson = new GsonBuilder()

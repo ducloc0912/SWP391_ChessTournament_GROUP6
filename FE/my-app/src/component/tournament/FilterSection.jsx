@@ -44,24 +44,24 @@ const FilterSection = ({
   }, []);
 
   return (
-    <div className="filter-sidebar">
-      <div className="filter-sidebar-header">
-        <h3 className="filter-sidebar-title">
+    <div className="tlf-sidebar">
+      <div className="tlf-header">
+        <h3 className="tlf-title">
           <Filter size={18} />
           Bộ lọc
         </h3>
-        <button className="filter-reset-link" onClick={onReset}>
+        <button className="tlf-reset-link" onClick={onReset}>
           Đặt lại
         </button>
       </div>
 
-      <div className="filter-sidebar-body">
+      <div className="tlf-body">
         {/* Status */}
         <div>
-          <label className="filter-section-label">Trạng thái</label>
-          <div className="filter-checkbox-group">
+          <label className="tlf-section-label">Trạng thái</label>
+          <div className="tlf-checkbox-group">
             {statuses.map((status) => (
-              <label key={status} className="filter-checkbox-item">
+              <label key={status} className="tlf-checkbox-item">
                 <input
                   type="checkbox"
                   checked={statusFilter === status}
@@ -75,13 +75,13 @@ const FilterSection = ({
           </div>
         </div>
 
-        <div className="filter-divider" />
+        <div className="tlf-divider" />
 
         {/* Format */}
         <div>
-          <label className="filter-section-label">Thể thức</label>
+          <label className="tlf-section-label">Thể thức</label>
           <select
-            className="filter-select"
+            className="tlf-select"
             value={typeFilter}
             onChange={(e) => onTypeChange(e.target.value)}
           >
@@ -92,7 +92,7 @@ const FilterSection = ({
           </select>
         </div>
 
-        <div className="filter-divider" />
+        <div className="tlf-divider" />
 
       </div>
     </div>

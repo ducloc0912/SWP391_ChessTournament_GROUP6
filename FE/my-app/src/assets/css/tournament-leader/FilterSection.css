@@ -1,241 +1,104 @@
-/* ===== Filter Sidebar ===== */
-.filter-sidebar {
-  background: #f5f5f5;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  position: sticky;
-  top: 24px;
+/* TL tournament filter scope */
+.tlf-sidebar {
+  background: #ffffff;
+  border: 1px solid #ece8e1;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
 }
 
-.filter-sidebar-header {
+.tlf-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
-.filter-sidebar-title {
-  font-weight: 700;
-  color: #1f2937;
+.tlf-title {
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 15px;
+  font-weight: 800;
+  color: #101828;
 }
 
-.filter-sidebar-title svg {
-  color: #61A9C2;
+.tlf-title svg {
+  color: #ff4655;
 }
 
-.filter-reset-link {
-  font-size: 12px;
-  color: #6b7280;
-  background: none;
+.tlf-reset-link {
   border: none;
-  cursor: pointer;
+  background: transparent;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 700;
   text-decoration: underline;
-  padding: 0;
+  cursor: pointer;
 }
 
-.filter-reset-link:hover {
-  color: #61A9C2;
+.tlf-reset-link:hover {
+  color: #ff4655;
 }
 
-.filter-sidebar-body {
+.tlf-body {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 14px;
 }
 
-.filter-divider {
+.tlf-divider {
   height: 1px;
-  background: #e5e7eb;
+  background: #ece8e1;
 }
 
-/* Section label */
-.filter-section-label {
+.tlf-section-label {
   display: block;
+  margin-bottom: 10px;
+  color: #667085;
   font-size: 11px;
-  font-weight: 600;
-  color: #6b7280;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 12px;
 }
 
-/* Checkboxes */
-.filter-checkbox-group {
+.tlf-checkbox-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.filter-checkbox-item {
+.tlf-checkbox-item {
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
 }
 
-.filter-checkbox-item input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1px solid #d1d5db;
-  accent-color: #61A9C2;
-  cursor: pointer;
+.tlf-checkbox-item input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #ff4655;
 }
 
-.filter-checkbox-item span {
+.tlf-checkbox-item span {
+  color: #344054;
   font-size: 14px;
-  color: #4b5563;
-  transition: color 0.2s;
 }
 
-.filter-checkbox-item:hover span {
-  color: #111827;
-}
-
-/* Select */
-.filter-select {
+.tlf-select {
   width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  background: #fff;
+  color: #101828;
+  font-size: 14px;
   padding: 10px 12px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #374151;
-  outline: none;
-  cursor: pointer;
-}
-
-.filter-select:focus {
-  border-color: #61A9C2;
-  box-shadow: 0 0 0 2px rgba(97, 169, 194, 0.2);
-}
-
-/* Date range */
-.filter-date-range {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.filter-date-range input[type="date"] {
-  width: 100%;
-  padding: 8px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 12px;
-  color: #4b5563;
   outline: none;
 }
 
-.filter-date-range input[type="date"]:focus {
-  border-color: #61A9C2;
-}
-
-.filter-date-sep {
-  color: #9ca3af;
-  flex-shrink: 0;
-}
-
-/* Number range */
-.filter-number-range {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.filter-number-range input[type="number"] {
-  width: 100%;
-  padding: 8px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #4b5563;
-  outline: none;
-}
-
-.filter-number-range input[type="number"]:focus {
-  border-color: #61A9C2;
-}
-
-.filter-range-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #9ca3af;
-  padding: 0 4px;
-  margin-top: 4px;
-}
-
-/* Fee toggle */
-.filter-fee-group {
-  display: flex;
-  gap: 8px;
-}
-
-.filter-fee-btn {
-  flex: 1;
-  padding: 8px 12px;
-  font-size: 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: white;
-  color: #4b5563;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
-}
-
-.filter-fee-btn:hover {
-  border-color: #61A9C2;
-  color: #61A9C2;
-}
-
-.filter-fee-btn.active {
-  border-color: #61A9C2;
-  background: rgba(97, 169, 194, 0.08);
-  color: #61A9C2;
-  font-weight: 600;
-}
-
-/* Sort select */
-.filter-sort-select {
-  width: 100%;
-  padding: 10px 12px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #374151;
-  outline: none;
-  cursor: pointer;
-}
-
-.filter-sort-select:focus {
-  border-color: #61A9C2;
-}
-
-/* Apply button */
-.filter-apply-btn {
-  width: 100%;
-  padding: 10px;
-  background: #61A9C2;
-  color: white;
-  font-weight: 500;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(97, 169, 194, 0.2);
-  transition: background 0.2s;
-  margin-top: 8px;
-}
-
-.filter-apply-btn:hover {
-  background: #4a8ba3;
+.tlf-select:focus {
+  border-color: #ff4655;
+  box-shadow: 0 0 0 3px rgba(255, 70, 85, 0.16);
 }

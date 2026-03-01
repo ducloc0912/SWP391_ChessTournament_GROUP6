@@ -232,8 +232,8 @@ const TournamentList = () => {
         </div>
 
         {/* Content: Sidebar + Grid */}
-        <div className="tl-content-layout">
-          <aside className="tl-sidebar">
+        <div className="tld-content-layout">
+          <aside className="tld-filter-wrap">
             <FilterSection
               statusFilter={statusFilter}
               typeFilter={typeFilter}
@@ -243,7 +243,7 @@ const TournamentList = () => {
             />
           </aside>
 
-          <div className="tl-main-area">
+          <div className="tld-main-area">
             {filteredTournaments.length > 0 ? (
               <>
                 <div className="tl-card-grid">
@@ -392,24 +392,24 @@ const TournamentList = () => {
 
       {/* Cancel Modal */}
       {showConfirm && (
-        <div className="modal-overlay">
-          <div className="modal">
+        <div className="tl-modal-overlay">
+          <div className="tl-modal">
             <h3>Hủy giải đấu</h3>
             <p>
               Bạn chắc chắn muốn hủy giải{" "}
               <strong>{selectedTournament?.tournamentName}</strong>?
             </p>
-            <label className="modal-label">Lý do hủy giải</label>
+            <label className="tl-modal-label">Lý do hủy giải</label>
             <textarea
-              className="modal-textarea"
+              className="tl-modal-textarea"
               rows={4}
               placeholder="Nhập lý do hủy giải..."
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
             />
-            <div className="modal-actions">
+            <div className="tl-modal-actions">
               <button
-                className="btn-cancel"
+                className="tl-btn-cancel"
                 onClick={() => {
                   setShowConfirm(false);
                   setSelectedTournament(null);
@@ -417,7 +417,7 @@ const TournamentList = () => {
               >
                 Hủy
               </button>
-              <button className="btn-confirm" onClick={handleConfirmCancel}>
+              <button className="tl-btn-confirm" onClick={handleConfirmCancel}>
                 Đồng ý
               </button>
             </div>

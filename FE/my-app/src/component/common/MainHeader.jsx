@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Bell, Crown, LogOut } from "lucide-react";
+import { Bell, Crown, LogOut, Menu, X } from "lucide-react";
 import "./MainHeader.css";
 
 function ImageWithFallback({ src, alt = "", className = "", fallback = "https://ui-avatars.com/api/?name=User&background=random" }) {
@@ -20,14 +20,21 @@ function ImageWithFallback({ src, alt = "", className = "", fallback = "https://
  * - Logo bên trái, nav giữa, user actions bên phải.
  * - Icon profile: hình tròn, nhỏ (32px).
  */
-export default function MainHeader({ user, onLogout, currentPath = "/" }) {
+export default function MainHeader({
+  user,
+  onLogout,
+  currentPath = "/",
+  menuItems = null,
+}) {
   const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = React.useState(false);
 
-  const navLinks = [
+  const defaultMenuItems = [
     { to: "/home", label: "Home" },
     { to: "/tournaments", label: "Tournaments" },
     { to: "/blog", label: "Blog" },
   ];
+  const navItems = menuItems && menuItems.length > 0 ? menuItems : defaultMenuItems;
 
   const isActive = (path) => {
     if (path === "/home") return currentPath === "/" || currentPath === "/home";
@@ -40,6 +47,19 @@ export default function MainHeader({ user, onLogout, currentPath = "/" }) {
 
   const avatarUrl = user?.avatar;
   const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=6366f1&color=fff&size=64`;
+
+  const handleMenuAction = (item) => {
+    if (item.to) {
+      navigate(item.to);
+      setMobileOpen(false);
+      return;
+    }
+    if (item.sectionId) {
+      const el = document.getElementById(item.sectionId);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setMobileOpen(false);
+    }
+  };
 
   return (
     <header className="header main-header">
@@ -54,15 +74,30 @@ export default function MainHeader({ user, onLogout, currentPath = "/" }) {
           </div>
 
           <nav className="nav">
-            {navLinks.map(({ to, label }) => (
-              <Link
-                key={to}
-                to={to}
-                className={`nav-link ${isActive(to) ? "nav-link-active" : ""}`}
-              >
-                {label}
-              </Link>
-            ))}
+            {navItems.map((item, idx) => {
+              const key = item.to || item.sectionId || `${item.label}-${idx}`;
+              if (item.to) {
+                return (
+                  <Link
+                    key={key}
+                    to={item.to}
+                    className={`nav-link ${isActive(item.to) ? "nav-link-active" : ""}`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              }
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className="nav-link nav-link-button"
+                  onClick={() => handleMenuAction(item)}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </nav>
 
           <div className="header-actions">
@@ -101,19 +136,58 @@ export default function MainHeader({ user, onLogout, currentPath = "/" }) {
                   className="btn btn-sm"
                   onClick={() => navigate("/login")}
                 >
-                  Login
+                  Sign In
                 </button>
                 <button
                   type="button"
                   className="btn btn-sm btn-primary"
                   onClick={() => navigate("/register")}
                 >
-                  Register
+                  Play Now
                 </button>
               </div>
             )}
           </div>
+
+          <button
+            type="button"
+            className="mobile-menu-btn"
+            onClick={() => setMobileOpen((prev) => !prev)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
+
+        {mobileOpen && (
+          <div className="mobile-nav">
+            {navItems.map((item, idx) => {
+              const key = item.to || item.sectionId || `${item.label}-${idx}`;
+              if (item.to) {
+                return (
+                  <Link
+                    key={key}
+                    to={item.to}
+                    className={`mobile-nav-link ${isActive(item.to) ? "active" : ""}`}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              }
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className="mobile-nav-link"
+                  onClick={() => handleMenuAction(item)}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </header>
   );
