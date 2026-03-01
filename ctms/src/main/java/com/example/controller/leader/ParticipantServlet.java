@@ -1,21 +1,22 @@
 package com.example.controller.leader;
 
 import com.example.DAO.ParticipantDAO;
+import com.example.DAO.TournamentDAO;
+import com.example.model.dto.TournamentDTO;
 import com.example.model.entity.Participant;
-import com.example.model.enums.ParticipantStatus;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.util.List;
 
 @WebServlet("/api/participants")
 public class ParticipantServlet extends HttpServlet {
 
     private ParticipantDAO dao = new ParticipantDAO();
+    private TournamentDAO tournamentDAO = new TournamentDAO();
     private Gson gson;
 
     @Override
@@ -69,7 +70,48 @@ public class ParticipantServlet extends HttpServlet {
         resp.setCharacterEncoding("UTF-8");
 
         Participant p = gson.fromJson(req.getReader(), Participant.class);
+        if (p == null || p.getTournamentId() == null || p.getUserId() == null) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.getWriter().write("{\"success\": false, \"message\": \"Missing tournamentId or userId\"}");
+            return;
+        }
+
+        TournamentDTO tournament = tournamentDAO.getTournamentById(p.getTournamentId());
+        if (tournament == null) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.getWriter().write("{\"success\": false, \"message\": \"Tournament not found\"}");
+            return;
+        }
+
+        if (!"Ongoing".equalsIgnoreCase(tournament.getStatus())) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.getWriter().write("{\"success\": false, \"message\": \"Only Ongoing tournaments can be registered\"}");
+            return;
+        }
+
+        if (tournament.getRegistrationDeadline() != null
+                && System.currentTimeMillis() > tournament.getRegistrationDeadline().getTime()) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.getWriter().write("{\"success\": false, \"message\": \"Registration deadline has passed\"}");
+            return;
+        }
+
+        Integer maxPlayer = tournament.getMaxPlayer();
+        if (maxPlayer != null && maxPlayer > 0) {
+            int currentPlayers = dao.countParticipantsByTournament(p.getTournamentId());
+            if (currentPlayers >= maxPlayer) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp.getWriter().write("{\"success\": false, \"message\": \"Tournament is full\"}");
+                return;
+            }
+        }
+
         boolean ok = dao.createParticipant(p);
+        if (!ok) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.getWriter().write("{\"success\": false, \"message\": \"Register failed (maybe already registered)\"}");
+            return;
+        }
 
         resp.getWriter().write("{\"success\": " + ok + "}");
     }

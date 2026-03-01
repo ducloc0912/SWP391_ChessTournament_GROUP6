@@ -1,4 +1,5 @@
 import React from 'react';
+import '../../assets/css/tournament-leader/FormSection.css';
 
 export function FormSection({
   id,

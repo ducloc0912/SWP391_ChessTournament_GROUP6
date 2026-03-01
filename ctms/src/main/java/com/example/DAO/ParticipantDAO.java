@@ -3,6 +3,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.example.model.dto.TournamentPlayerDTO;
 import com.example.model.entity.Participant;
 import com.example.model.enums.ParticipantStatus;
 import com.example.util.DBContext;
@@ -148,7 +149,45 @@ try (Connection conn = getConnection();
         return false;
     }
 
-    // 7) COUNT by Tournament
+    // 7) GET players with user info by Tournament ID (JOIN)
+    public List<TournamentPlayerDTO> getPlayersWithUserInfo(int tournamentId) {
+        List<TournamentPlayerDTO> list = new ArrayList<>();
+        String sql = """
+            SELECT p.participant_id, p.user_id, u.first_name, u.last_name,
+                   u.email, u.avatar, u.rank,
+                   p.status, p.registration_date, p.is_paid, p.seed, p.title_at_registration
+            FROM Participants p
+            JOIN Users u ON p.user_id = u.user_id
+            WHERE p.tournament_id = ?
+            ORDER BY p.registration_date
+        """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                TournamentPlayerDTO dto = new TournamentPlayerDTO();
+                dto.setParticipantId(rs.getInt("participant_id"));
+                dto.setUserId(rs.getInt("user_id"));
+                dto.setFirstName(rs.getString("first_name"));
+                dto.setLastName(rs.getString("last_name"));
+                dto.setEmail(rs.getString("email"));
+                dto.setAvatar(rs.getString("avatar"));
+                dto.setRank((Integer) rs.getObject("rank"));
+                dto.setStatus(rs.getString("status"));
+                dto.setRegistrationDate(rs.getTimestamp("registration_date"));
+                dto.setIsPaid(rs.getBoolean("is_paid"));
+                dto.setSeed((Integer) rs.getObject("seed"));
+                dto.setTitleAtRegistration(rs.getString("title_at_registration"));
+                list.add(dto);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // 8) COUNT by Tournament
     public int countParticipantsByTournament(int tournamentId) {
         String sql = "SELECT COUNT(*) AS total FROM Participants WHERE tournament_id = ?";
         try (Connection conn = getConnection();

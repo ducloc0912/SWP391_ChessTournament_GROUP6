@@ -206,7 +206,18 @@ export default function HomePage() {
               Compete with the best players, showcase your skills, and win <span className="text-highlight">massive prize pools</span>.
             </p>
             <div className="hero-cta">
-              <Button size="lg" className="btn-primary" onClick={() => navigate(user ? "/tournaments" : "/register")}>
+              <Button
+                size="lg"
+                className="btn-primary"
+                onClick={() => {
+                  if (!user) {
+                    navigate("/register");
+                    return;
+                  }
+                  const role = (localStorage.getItem("role") || "").toLowerCase();
+                  navigate(role.includes("leader") ? "/tournaments" : "/player/tournaments");
+                }}
+              >
                 <span>JOIN TOURNAMENT NOW</span>
                 <Zap size={20} fill="currentColor" />
               </Button>

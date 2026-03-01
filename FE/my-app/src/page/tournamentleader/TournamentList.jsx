@@ -1,11 +1,58 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
+<<<<<<< HEAD
 import MainHeader from "../../component/common/MainHeader";
 import SlidebarTournament from "../../component/tournament/SlideBarTournament";
 import FilterSection from "../../component/tournament/FilterSection";
 import TournamentTable from "../../component/tournament/TournamentTable";
 import "../../assets/css/tournament-leader.css";
+=======
+import {
+  LayoutDashboard,
+  Clock,
+  PlayCircle,
+  CheckCircle,
+  Search,
+  Plus,
+  Calendar,
+  MapPin,
+  Users,
+  Trophy,
+  Eye,
+  Edit2,
+  XCircle,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import MainHeader from "../../component/common/MainHeader";
+import FilterSection from "../../component/tournament/FilterSection";
+import "../../assets/css/tournament-leader/TournamentList.css";
+
+const EDITABLE_STATUSES = ["Pending", "Rejected", "Delayed", "Cancelled"];
+const CANCELLED_ABLE = ["Pending", "Ongoing", "Delayed"];
+const PAGE_SIZE = 6;
+
+const STATUS_LABELS = {
+  Pending: "Chờ duyệt",
+  Rejected: "Bị từ chối",
+  Delayed: "Hoãn",
+  Ongoing: "Đang diễn ra",
+  Completed: "Đã hoàn thành",
+  Cancelled: "Đã hủy",
+  Upcoming: "Sắp diễn ra",
+  Finished: "Đã kết thúc",
+};
+
+const FORMAT_LABELS = {
+  RoundRobin: "Vòng tròn",
+  KnockOut: "Loại trực tiếp",
+  Hybrid: "Kết hợp",
+};
+
+const getStatusLabel = (s) => STATUS_LABELS[s] || s;
+const getFormatLabel = (f) => FORMAT_LABELS[f] || f;
+>>>>>>> Dung
 
 const TournamentList = () => {
   const navigate = useNavigate();
@@ -15,8 +62,17 @@ const TournamentList = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [loading, setLoading] = useState(true);
+<<<<<<< HEAD
 
   // User state for MainHeader
+=======
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [selectedTournament, setSelectedTournament] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+
+>>>>>>> Dung
   const [user, setUser] = useState(() => {
     const stored = localStorage.getItem("user");
     return stored ? JSON.parse(stored) : null;
@@ -32,6 +88,7 @@ const TournamentList = () => {
   const fetchTournaments = async () => {
     try {
       setLoading(true);
+<<<<<<< HEAD
       const res = await axios.get(
         "http://localhost:8080/ctms/api/tournaments",
         { withCredentials: true }
@@ -40,11 +97,22 @@ const TournamentList = () => {
         setTournaments(res.data);
       } else {
         console.error("API does not return array:", res.data);
+=======
+      const res = await axios.get("http://localhost:8080/ctms/api/tournaments", {
+        withCredentials: true,
+      });
+      if (Array.isArray(res.data)) {
+        setTournaments(res.data);
+      } else {
+>>>>>>> Dung
         setTournaments([]);
       }
     } catch (err) {
       console.error(err);
+<<<<<<< HEAD
       alert("Cannot load tournaments");
+=======
+>>>>>>> Dung
       setTournaments([]);
     } finally {
       setLoading(false);
@@ -55,26 +123,27 @@ const TournamentList = () => {
     fetchTournaments();
   }, []);
 
-  // 👉 FILTER
   const filteredTournaments = useMemo(() => {
-    // ✅ CHỐT CHẶN LẦN 2 (rất quan trọng)
     if (!Array.isArray(tournaments)) return [];
-
     return tournaments.filter((t) => {
       const matchesSearch =
-        t.tournamentName
-          ?.toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        t.location
-          ?.toLowerCase()
-          .includes(searchQuery.toLowerCase());
-
+        t.tournamentName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.location?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter ? t.status === statusFilter : true;
       const matchesType = typeFilter ? t.format === typeFilter : true;
-
       return matchesSearch && matchesStatus && matchesType;
     });
   }, [tournaments, searchQuery, statusFilter, typeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTournaments.length / PAGE_SIZE));
+  const paginatedTournaments = filteredTournaments.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, typeFilter]);
 
   const handleReset = () => {
     setSearchQuery("");
@@ -82,9 +151,53 @@ const TournamentList = () => {
     setTypeFilter("");
   };
 
-  if (loading) return <p>Loading tournaments...</p>;
+  const handleOpenConfirm = (tournament) => {
+    setSelectedTournament(tournament);
+    setCancelReason("");
+    setShowConfirm(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelReason.trim()) {
+      alert("Vui lòng nhập lý do hủy giải!");
+      return;
+    }
+    try {
+      await axios.delete("http://localhost:8080/ctms/api/tournaments", {
+        params: { id: selectedTournament.tournamentId, reason: cancelReason },
+        withCredentials: true,
+      });
+      setShowConfirm(false);
+      setSelectedTournament(null);
+      setCancelReason("");
+      alert("Hủy giải thành công!");
+      fetchTournaments();
+    } catch (err) {
+      console.error(err);
+      alert("Hủy giải thất bại!");
+    }
+  };
+
+  /* Stats */
+  const stats = useMemo(() => {
+    const total = tournaments.length;
+    const upcoming = tournaments.filter((t) => t.status === "Upcoming" || t.status === "Pending").length;
+    const ongoing = tournaments.filter((t) => t.status === "Ongoing").length;
+    const finished = tournaments.filter((t) => t.status === "Finished" || t.status === "Completed").length;
+    return { total, upcoming, ongoing, finished };
+  }, [tournaments]);
+
+  if (loading) {
+    return (
+      <div className="tl-page">
+        <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
+        <div className="tl-loading">Đang tải danh sách giải đấu...</div>
+      </div>
+    );
+  }
 
   return (
+<<<<<<< HEAD
     <div className="tl-layout">
       <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
       <SlidebarTournament />
@@ -95,26 +208,268 @@ const TournamentList = () => {
             <div className="tl-page-header">
               <h1>Tournament List</h1>
               <p>Manage and track your chess tournaments</p>
-            </div>
+=======
+    <div className="tl-page">
+      <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
 
+      <div className="tl-body">
+        {/* Header */}
+        <div className="tl-header-section">
+          <div>
+            <h1 className="tl-header-title">Giải đấu của tôi</h1>
+            <p className="tl-header-subtitle">Quản lý và theo dõi các giải cờ vua của bạn</p>
+          </div>
+          <div className="tl-header-actions">
+            <div className="tl-search-box">
+              <Search className="tl-search-icon" size={18} />
+              <input
+                type="text"
+                placeholder="Tìm kiếm giải đấu..."
+                className="tl-search-input"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+>>>>>>> Dung
+            </div>
+            <button className="tl-create-btn" onClick={() => navigate("/tournaments/create")}>
+              <Plus size={20} />
+              Tạo giải đấu
+            </button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="tl-stats-grid">
+          <div className="tl-stat-card">
+            <div>
+              <p className="tl-stat-label">Tổng giải đấu</p>
+              <h3 className="tl-stat-value">{stats.total}</h3>
+            </div>
+            <div className="tl-stat-icon indigo"><LayoutDashboard size={24} /></div>
+          </div>
+          <div className="tl-stat-card">
+            <div>
+              <p className="tl-stat-label">Chờ duyệt</p>
+              <h3 className="tl-stat-value">{stats.upcoming}</h3>
+            </div>
+            <div className="tl-stat-icon blue"><Clock size={24} /></div>
+          </div>
+          <div className="tl-stat-card">
+            <div>
+              <p className="tl-stat-label">Đang diễn ra</p>
+              <h3 className="tl-stat-value">{stats.ongoing}</h3>
+            </div>
+            <div className="tl-stat-icon emerald"><PlayCircle size={24} /></div>
+          </div>
+          <div className="tl-stat-card">
+            <div>
+              <p className="tl-stat-label">Đã kết thúc</p>
+              <h3 className="tl-stat-value">{stats.finished}</h3>
+            </div>
+            <div className="tl-stat-icon gray"><CheckCircle size={24} /></div>
+          </div>
+        </div>
+
+        {/* Content: Sidebar + Grid */}
+        <div className="tl-content-layout">
+          <aside className="tl-sidebar">
             <FilterSection
-              onSearchChange={setSearchQuery}
+              statusFilter={statusFilter}
+              typeFilter={typeFilter}
               onStatusChange={setStatusFilter}
               onTypeChange={setTypeFilter}
               onReset={handleReset}
             />
+          </aside>
 
+<<<<<<< HEAD
             <TournamentTable 
               tournaments={filteredTournaments} 
               refresh={fetchTournaments}
             />
-          </div>
+=======
+          <div className="tl-main-area">
+            {filteredTournaments.length > 0 ? (
+              <>
+                <div className="tl-card-grid">
+                  {paginatedTournaments.map((t) => {
+                    const progress = t.maxPlayer > 0
+                      ? Math.round((t.currentPlayers / t.maxPlayer) * 100)
+                      : 0;
 
-          <footer className="tl-footer">
-            © 2024 Chess Tournament Management System
-          </footer>
-        </main>
-</div>
+                    return (
+                      <div className="tl-tournament-card" key={t.tournamentId}>
+                        <div className="tl-card-banner">
+                          <div className="tl-card-banner-overlay" />
+                          <Trophy size={48} className="tl-card-banner-icon" />
+                          <span className={`tl-card-status-badge ${t.status}`}>
+                            {getStatusLabel(t.status)}
+                          </span>
+                        </div>
+
+                        <div className="tl-card-content">
+                          <span className="tl-card-format">{getFormatLabel(t.format)}</span>
+                          <h3 className="tl-card-name">{t.tournamentName}</h3>
+
+                          <div className="tl-card-details">
+                            <div className="tl-card-detail-row">
+                              <MapPin size={16} />
+                              {t.location || "—"}
+                            </div>
+                            <div className="tl-card-detail-row">
+                              <Calendar size={16} />
+                              {t.startDate?.split(" ")[0].replaceAll("-", "/")} – {t.endDate?.split(" ")[0].replaceAll("-", "/")}
+                            </div>
+                            <div className="tl-card-detail-row">
+                              <Trophy size={16} />
+                              Quỹ thưởng: ${t.prizePool ?? 0}
+                            </div>
+                            <div className="tl-card-detail-row">
+                              <Clock size={16} />
+                              Hạn đăng ký: {t.registrationDeadline?.split(" ")[0].replaceAll("-", "/")}
+                            </div>
+                          </div>
+
+                          <div className="tl-card-progress">
+                            <div className="tl-card-progress-header">
+                              <span className="tl-card-progress-label">
+                                <Users size={14} />
+                                {t.currentPlayers}/{t.maxPlayer} người chơi
+                              </span>
+                              <span className="tl-card-progress-pct">{progress}%</span>
+                            </div>
+                            <div className="tl-card-progress-bar">
+                              <div
+                                className="tl-card-progress-fill"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="tl-card-footer">
+                          <button
+                            className="tl-card-manage-btn"
+                            onClick={() => navigate(`/tournaments/${t.tournamentId}`)}
+                          >
+                            Quản lý
+                          </button>
+                          <div className="tl-card-actions">
+                            <button
+                              className="tl-card-action-btn"
+                              title="Xem chi tiết"
+                              onClick={() => navigate(`/tournaments/${t.tournamentId}`)}
+                            >
+                              <Eye size={18} />
+                            </button>
+                            {EDITABLE_STATUSES.includes(t.status) && (
+                              <button
+                                className="tl-card-action-btn"
+                                title="Chỉnh sửa"
+                                onClick={() => navigate(`/tournaments/edit/${t.tournamentId}`)}
+                              >
+                                <Edit2 size={18} />
+                              </button>
+                            )}
+                            {CANCELLED_ABLE.includes(t.status) && (
+                              <button
+                                className="tl-card-action-btn danger"
+                                title="Hủy giải"
+                                onClick={() => handleOpenConfirm(t)}
+                              >
+                                <XCircle size={18} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="tl-pagination">
+                    <button
+                      className="tl-page-btn"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage((p) => p - 1)}
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+                      <button
+                        key={num}
+                        className={`tl-page-num ${currentPage === num ? "active" : ""}`}
+                        onClick={() => setCurrentPage(num)}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                    <button
+                      className="tl-page-btn"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage((p) => p + 1)}
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="tl-empty-state">
+                <div className="tl-empty-icon-wrap">
+                  <LayoutDashboard size={40} />
+                </div>
+                <h3>Không tìm thấy giải đấu</h3>
+                <p>Bạn chưa tạo giải đấu nào hoặc bộ lọc đang quá chặt.</p>
+                <button
+                  className="tl-empty-create-btn"
+                  onClick={() => navigate("/tournaments/create")}
+                >
+                  Tạo giải đấu
+                </button>
+              </div>
+            )}
+>>>>>>> Dung
+          </div>
+        </div>
+      </div>
+
+      {/* Cancel Modal */}
+      {showConfirm && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Hủy giải đấu</h3>
+            <p>
+              Bạn chắc chắn muốn hủy giải{" "}
+              <strong>{selectedTournament?.tournamentName}</strong>?
+            </p>
+            <label className="modal-label">Lý do hủy giải</label>
+            <textarea
+              className="modal-textarea"
+              rows={4}
+              placeholder="Nhập lý do hủy giải..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+            />
+            <div className="modal-actions">
+              <button
+                className="btn-cancel"
+                onClick={() => {
+                  setShowConfirm(false);
+                  setSelectedTournament(null);
+                }}
+              >
+                Hủy
+              </button>
+              <button className="btn-confirm" onClick={handleConfirmCancel}>
+                Đồng ý
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

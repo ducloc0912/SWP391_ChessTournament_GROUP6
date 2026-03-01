@@ -4,7 +4,6 @@ import "./assets/css/HomePage.css";
 import "./assets/css/Login.css";
 import "./assets/css/Register.css";
 import "./assets/css/UserProfile.css";
-import "./assets/css/tournament-leader.css";
 import React from "react";
 import "./index.css";
 import App from "./App.jsx";

@@ -6,6 +6,7 @@ import Verify from "./page/user/Verify";
 import ResetPassword from "./page/user/ResetPassword";
 import HomePage from "./page/home/HomePage";
 import Profile from "./page/user/UserProfile";
+import PlayerTournamentList from "./page/user/PlayerTournamentList";
 import AdminLayout from "./page/admin/AdminLayout";
 import TournamentList from "./page/tournamentleader/TournamentList";
 import TournamentDetail from "./page/tournamentleader/TournamentDetail";
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/verify-otp" element={<Verify />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/player/tournaments" element={<PlayerTournamentList />} />
         <Route path="/admin/dashboard" element={<AdminLayout />} />
         <Route path="/tournaments" element={<TournamentList />} />
         <Route path="/tournaments/:id" element={<TournamentDetail />} />
