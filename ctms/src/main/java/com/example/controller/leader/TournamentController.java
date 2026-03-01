@@ -155,6 +155,30 @@ public class TournamentController extends HttpServlet {
         response.setCharacterEncoding("UTF-8");
 
         String action = request.getParameter("action");
+        if ("createReferee".equals(action)) {
+            Map<?, ?> body = gson.fromJson(request.getReader(), Map.class);
+            String firstName = body == null || body.get("firstName") == null ? null : String.valueOf(body.get("firstName"));
+            String lastName = body == null || body.get("lastName") == null ? null : String.valueOf(body.get("lastName"));
+            String email = body == null || body.get("email") == null ? null : String.valueOf(body.get("email"));
+            String phoneNumber = body == null || body.get("phoneNumber") == null ? null : String.valueOf(body.get("phoneNumber"));
+            String address = body == null || body.get("address") == null ? null : String.valueOf(body.get("address"));
+
+            TournamentRefereeDTO created = tournamentService.createRefereeUser(
+                    firstName, lastName, email, phoneNumber, address
+            );
+            if (created == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Create referee failed (duplicate email/phone or invalid data)\"}");
+                return;
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("referee", created);
+            response.getWriter().write(gson.toJson(result));
+            return;
+        }
+
         if ("assignReferee".equals(action)) {
             String tid = request.getParameter("id");
             if (tid == null) {
@@ -172,7 +196,7 @@ public class TournamentController extends HttpServlet {
                 return;
             }
 
-            Map<String, Object> body = gson.fromJson(request.getReader(), Map.class);
+            Map<?, ?> body = gson.fromJson(request.getReader(), Map.class);
             if (body == null || body.get("refereeId") == null) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 response.getWriter().write("{\"success\": false, \"message\": \"Missing refereeId\"}");

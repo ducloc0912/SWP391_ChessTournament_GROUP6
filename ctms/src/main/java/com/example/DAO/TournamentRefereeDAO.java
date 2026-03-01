@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -142,5 +143,104 @@ public class TournamentRefereeDAO extends DBContext {
             e.printStackTrace();
         }
         return false;
+    }
+
+    public TournamentRefereeDTO createRefereeUser(
+            String firstName,
+            String lastName,
+            String email,
+            String phoneNumber,
+            String address,
+            String username,
+            String password
+    ) {
+        String checkSql = """
+            SELECT 1
+            FROM Users
+            WHERE email = ? OR phone_number = ?
+        """;
+        String insertUserSql = """
+            INSERT INTO Users (username, first_name, last_name, email, phone_number, address, password, is_active, create_at, balance)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1, GETDATE(), 0)
+        """;
+        String roleSql = "SELECT role_id FROM Roles WHERE role_name = 'Referee'";
+        String insertRoleSql = "INSERT INTO User_Role (user_id, role_id) VALUES (?, ?)";
+
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                try (PreparedStatement cps = conn.prepareStatement(checkSql)) {
+                    cps.setString(1, email);
+                    cps.setString(2, phoneNumber);
+                    try (ResultSet rs = cps.executeQuery()) {
+                        if (rs.next()) {
+                            conn.rollback();
+                            return null;
+                        }
+                    }
+                }
+
+                int newUserId;
+                try (PreparedStatement ips = conn.prepareStatement(insertUserSql, Statement.RETURN_GENERATED_KEYS)) {
+                    ips.setString(1, username);
+                    ips.setString(2, firstName);
+                    ips.setString(3, lastName);
+                    ips.setString(4, email);
+                    ips.setString(5, phoneNumber);
+                    ips.setString(6, address);
+                    ips.setString(7, password);
+                    int affected = ips.executeUpdate();
+                    if (affected == 0) {
+                        conn.rollback();
+                        return null;
+                    }
+                    try (ResultSet rs = ips.getGeneratedKeys()) {
+                        if (!rs.next()) {
+                            conn.rollback();
+                            return null;
+                        }
+                        newUserId = rs.getInt(1);
+                    }
+                }
+
+                int refereeRoleId = 0;
+                try (PreparedStatement rps = conn.prepareStatement(roleSql);
+                     ResultSet rs = rps.executeQuery()) {
+                    if (rs.next()) {
+                        refereeRoleId = rs.getInt("role_id");
+                    }
+                }
+                if (refereeRoleId <= 0) {
+                    conn.rollback();
+                    return null;
+                }
+
+                try (PreparedStatement urps = conn.prepareStatement(insertRoleSql)) {
+                    urps.setInt(1, newUserId);
+                    urps.setInt(2, refereeRoleId);
+                    if (urps.executeUpdate() == 0) {
+                        conn.rollback();
+                        return null;
+                    }
+                }
+
+                conn.commit();
+
+                TournamentRefereeDTO dto = new TournamentRefereeDTO();
+                dto.setRefereeId(newUserId);
+                dto.setFirstName(firstName);
+                dto.setLastName(lastName);
+                dto.setEmail(email);
+                return dto;
+            } catch (SQLException e) {
+                conn.rollback();
+                e.printStackTrace();
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }
