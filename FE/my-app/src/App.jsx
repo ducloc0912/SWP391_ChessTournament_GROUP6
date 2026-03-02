@@ -7,6 +7,7 @@ import ResetPassword from "./page/user/ResetPassword";
 import HomePage from "./page/home/HomePage";
 import Profile from "./page/user/UserProfile";
 import PlayerTournamentList from "./page/user/PlayerTournamentList";
+import PendingTournamentRegistrations from "./page/user/PendingTournamentRegistrations";
 import AdminLayout from "./page/admin/AdminLayout";
 import TournamentList from "./page/tournamentleader/TournamentList";
 import TournamentDetail from "./page/tournamentleader/TournamentDetail";
@@ -32,6 +33,10 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/player/tournaments" element={<PlayerTournamentList />} />
+        <Route
+          path="/player/pending-registrations"
+          element={<PendingTournamentRegistrations />}
+        />
         <Route path="/admin/dashboard" element={<AdminLayout />} />
         <Route path="/tournaments" element={<TournamentList />} />
         <Route path="/tournaments/:id" element={<TournamentDetail />} />
