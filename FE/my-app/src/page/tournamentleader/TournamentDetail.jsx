@@ -9,7 +9,6 @@ import {
   MapPin,
   Edit2,
   Trash2,
-  CheckCircle2,
   Clock,
   LayoutDashboard,
   Users2,
@@ -25,7 +24,6 @@ import {
   Plus,
   MoreVertical,
   AlertCircle,
-  Eye,
 } from "lucide-react";
 
 const Badge = ({ children, variant }) => (
@@ -48,15 +46,13 @@ const StatCard = ({ label, value, icon, accent, onClick }) => (
 
 const TournamentDetail = () => {
   const { id } = useParams(); // lấy tournamentId từ URL
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
 
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showApprovedModal, setShowApprovedModal] = useState(false);
   const [approvedPlayers, setApprovedPlayers] = useState([]);
-  const [loadingApproved, setLoadingApproved] = useState(false);
-  const [approvedSearch, setApprovedSearch] = useState("");
-  const [approvedRankFilter, setApprovedRankFilter] = useState("");
+  const [waitingPlayers, setWaitingPlayers] = useState([]);
 
   useEffect(() => {
     const fetchTournament = async () => {
@@ -80,7 +76,6 @@ const TournamentDetail = () => {
   }, [id]);
 
   const fetchApprovedPlayers = async () => {
-    setLoadingApproved(true);
     try {
       const res = await axios.get(
         `http://localhost:8080/ctms/api/waiting-list?tournamentId=${id}`,
@@ -88,46 +83,23 @@ const TournamentDetail = () => {
       );
       const rows = res.data?.data || [];
       setApprovedPlayers(rows.filter((r) => r.status === "Approved"));
+      setWaitingPlayers(
+        rows.filter((r) => String(r.status || "").toLowerCase() !== "approved"),
+      );
     } catch (err) {
       console.error("Error loading approved players:", err);
       setApprovedPlayers([]);
-    } finally {
-      setLoadingApproved(false);
+      setWaitingPlayers([]);
     }
-  };
-
-  const openApprovedModal = async () => {
-    setShowApprovedModal(true);
-    await fetchApprovedPlayers();
   };
 
   useEffect(() => {
     fetchApprovedPlayers();
   }, [id]);
 
-  const filteredApprovedPlayers = approvedPlayers.filter((p) => {
-    const matchesEmail = (p.registrationEmail || "")
-      .toLowerCase()
-      .includes(approvedSearch.trim().toLowerCase());
-    const rank = Number(p.rankAtRegistration ?? 0);
-    const matchesRank = (() => {
-      if (!approvedRankFilter) return true;
-      if (approvedRankFilter === "lt1000") return rank < 1000;
-      if (approvedRankFilter === "1000-1199")
-        return rank >= 1000 && rank <= 1199;
-      if (approvedRankFilter === "1200-1399")
-        return rank >= 1200 && rank <= 1399;
-      if (approvedRankFilter === "1400-1599")
-        return rank >= 1400 && rank <= 1599;
-      if (approvedRankFilter === "ge1600") return rank >= 1600;
-      return true;
-    })();
-    return matchesEmail && matchesRank;
-  });
-
   const tabs = [
     { label: "Overview", icon: <LayoutDashboard size={18} /> },
-    { label: "Waiting List", icon: <Users2 size={18} /> },
+    { label: "Participants", icon: <Users2 size={18} /> },
     { label: "Bracket & Schedule", icon: <GitBranch size={18} /> },
     { label: "Referees", icon: <ShieldCheck size={18} /> },
     { label: "Reports", icon: <FileText size={18} /> },
@@ -181,11 +153,11 @@ const TournamentDetail = () => {
       {/* STATS */}
       <section className="td-stats-row">
         <StatCard
-          label="Participants"
-          value={`${approvedPlayers.length}/${tournament.maxPlayer}`}
+          label="Waiting List"
+          value={`${waitingPlayers.length}`}
           icon={<Users />}
           accent="indigo"
-          onClick={openApprovedModal}
+          onClick={() => navigate(`/tournaments/${id}/waiting-list`)}
         />
         <StatCard
           label="Total Matches"
@@ -220,136 +192,13 @@ const TournamentDetail = () => {
         <div className="td-tab-content">
           {activeTab === 0 && <OverviewTab tournament={tournament} />}
           {activeTab === 1 && (
-            <WaitingListTab
-              tournamentId={tournament.tournamentId}
-              onApprovedChanged={fetchApprovedPlayers}
-            />
+            <ParticipantsTab tournamentId={tournament.tournamentId} />
           )}
           {activeTab === 2 && <BracketTab />}
           {activeTab === 3 && <RefereeTab />}
           {activeTab === 4 && <ReportsTab />}
         </div>
       </section>
-
-      {showApprovedModal && (
-        <div
-          className="modal-overlay"
-          onClick={() => setShowApprovedModal(false)}
-        >
-          <div
-            className="modal"
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: "min(98vw, 1120px)", maxWidth: 1120 }}
-          >
-            <h3>Danh sách người chơi đã duyệt</h3>
-
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                marginBottom: 12,
-                flexWrap: "nowrap",
-              }}
-            >
-              <input
-                type="text"
-                placeholder="Tìm kiếm bằng email..."
-                value={approvedSearch}
-                onChange={(e) => setApprovedSearch(e.target.value)}
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "8px 10px",
-                  minWidth: 220,
-                }}
-              />
-              <select
-                value={approvedRankFilter}
-                onChange={(e) => setApprovedRankFilter(e.target.value)}
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "8px 10px",
-                  background: "#fff",
-                }}
-              >
-                <option value="">Tất cả mốc rank</option>
-                <option value="lt1000">Dưới 1000</option>
-                <option value="1000-1199">1000 - 1199</option>
-                <option value="1200-1399">1200 - 1399</option>
-                <option value="1400-1599">1400 - 1599</option>
-                <option value="ge1600">Từ 1600 trở lên</option>
-              </select>
-              <button
-                className="btn-cancel"
-                onClick={() => {
-                  setApprovedSearch("");
-                  setApprovedRankFilter("");
-                }}
-                style={{ fontWeight: 700, whiteSpace: "nowrap", color: "#0f172a", opacity: 1 }}
-              >
-                Xóa lọc
-              </button>
-            </div>
-
-            <div style={{ maxHeight: "45vh", overflowY: "auto" }}>
-              <table className="td-players-table">
-                <thead>
-                  <tr>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>STT</th>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>Họ và tên</th>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>Tên in-game</th>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>Email</th>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>SĐT</th>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>Rank</th>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>Thời điểm đăng ký</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loadingApproved ? (
-                    <tr>
-                      <td colSpan={7}>Đang tải...</td>
-                    </tr>
-                  ) : filteredApprovedPlayers.length === 0 ? (
-                    <tr>
-                      <td colSpan={7}>Chưa có người chơi nào được duyệt.</td>
-                    </tr>
-                  ) : (
-                    filteredApprovedPlayers.map((p, idx) => (
-                      <tr key={p.waitingId}>
-                        <td>{idx + 1}</td>
-                        <td>{p.registrationFullName || "-"}</td>
-                        <td>{p.registrationUsername || "-"}</td>
-                        <td>{p.registrationEmail || "-"}</td>
-                        <td>{p.registrationPhone || "-"}</td>
-                        <td>{p.rankAtRegistration ?? "-"}</td>
-                        <td>
-                          {p.registrationDate
-                            ? new Date(p.registrationDate).toLocaleString(
-                                "vi-VN",
-                              )
-                            : "-"}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="modal-actions">
-              <button
-                className="btn-cancel"
-                onClick={() => setShowApprovedModal(false)}
-                style={{ fontWeight: 700, color: "#0f172a", opacity: 1 }}
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -411,15 +260,13 @@ const OverviewTab = ({ tournament }) => {
   );
 };
 
-const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
+const ParticipantsTab = ({ tournamentId }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [rankFilter, setRankFilter] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewTarget, setViewTarget] = useState(null);
-  const [banner, setBanner] = useState(null);
 
-  const fetchWaitingList = async () => {
+  const fetchParticipants = async () => {
     try {
       const res = await axios.get(
         `http://localhost:8080/ctms/api/waiting-list?tournamentId=${tournamentId}`,
@@ -427,7 +274,7 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
       );
       setRows(res.data?.data || []);
     } catch (err) {
-      console.error("Error loading waiting list:", err);
+      console.error("Error loading participants:", err);
       setRows([]);
     } finally {
       setLoading(false);
@@ -435,11 +282,11 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
   };
 
   useEffect(() => {
-    fetchWaitingList();
+    fetchParticipants();
   }, [tournamentId]);
 
   const filteredRows = rows.filter((r) => {
-    if (String(r.status || "").toLowerCase() === "approved") return false;
+    if (String(r.status || "").toLowerCase() !== "approved") return false;
     const matchesEmail = (r.registrationEmail || "")
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
@@ -456,71 +303,8 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
     return matchesEmail && matchesRank;
   });
 
-  const handleView = (row) => {
-    setViewTarget(row);
-  };
-
-  const handleApprove = async (row) => {
-    try {
-      const res = await axios.put(
-        `http://localhost:8080/ctms/api/waiting-list?id=${row.waitingId}&action=approve`,
-        {},
-        { withCredentials: true },
-      );
-      setBanner({
-        type: "success",
-        text: res?.data?.message || "Duyệt thành công",
-      });
-      await fetchWaitingList();
-      if (typeof onApprovedChanged === "function") {
-        await onApprovedChanged();
-      }
-    } catch (err) {
-      setBanner({
-        type: "error",
-        text: err?.response?.data?.message || "Duyệt thất bại",
-      });
-    }
-  };
-
-  const handleDelete = async (row) => {
-    try {
-      const res = await axios.delete(
-        `http://localhost:8080/ctms/api/waiting-list?id=${row.waitingId}`,
-        { withCredentials: true },
-      );
-      setBanner({
-        type: "success",
-        text: res?.data?.message || "Xóa thành công",
-      });
-      await fetchWaitingList();
-      if (typeof onApprovedChanged === "function") {
-        await onApprovedChanged();
-      }
-    } catch (err) {
-      setBanner({
-        type: "error",
-        text: err?.response?.data?.message || "Xóa thất bại",
-      });
-    }
-  };
-
   return (
     <div className="td-players-tab">
-      {banner && (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: "10px 12px",
-            borderRadius: 8,
-            color: banner.type === "success" ? "#065f46" : "#991b1b",
-            backgroundColor: banner.type === "success" ? "#d1fae5" : "#fee2e2",
-            border: `1px solid ${banner.type === "success" ? "#6ee7b7" : "#fca5a5"}`,
-          }}
-        >
-          {banner.text}
-        </div>
-      )}
       <div className="td-players-header">
         <div className="td-players-search">
           <Search className="td-players-search-icon" size={18} />
@@ -589,26 +373,43 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
         <table className="td-players-table">
           <thead>
             <tr>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>Họ và tên</th>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>Tên in-game</th>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>Email</th>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>SĐT</th>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>Rank</th>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>Thời điểm đăng ký</th>
-                    <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>Trạng thái</th>
-                    <th className="text-right" style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>
-                Actions
+              <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>
+                Họ và tên
+              </th>
+              <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>
+                Tên in-game
+              </th>
+              <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>
+                Email
+              </th>
+              <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>
+                SĐT
+              </th>
+              <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>
+                Rank
+              </th>
+              <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>
+                Thời điểm đăng ký
+              </th>
+              <th style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}>
+                Trạng thái
+              </th>
+              <th
+                className="text-right"
+                style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}
+              >
+                Ghi chú
               </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8}>Loading waiting list...</td>
+                <td colSpan={8}>Loading participants...</td>
               </tr>
             ) : filteredRows.length === 0 ? (
               <tr>
-                <td colSpan={8}>No waiting players found.</td>
+                <td colSpan={8}>No approved participants found.</td>
               </tr>
             ) : (
               filteredRows.map((row) => (
@@ -624,111 +425,13 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
                       : "-"}
                   </td>
                   <td>{row.status || "-"}</td>
-                  <td className="text-right">
-                    <div style={{ display: "inline-flex", gap: 10 }}>
-                      <button
-                        onClick={() => handleView(row)}
-                        style={{
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                        }}
-                        title="Xem"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(row)}
-                        style={{
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                        }}
-                        title="Xóa"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleApprove(row)}
-                        style={{
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                        }}
-                        title="Duyệt"
-                      >
-                        <CheckCircle2 size={16} />
-                      </button>
-                    </div>
-                  </td>
+                  <td className="text-right">{row.note || "-"}</td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
-
-      {viewTarget && (
-        <div className="modal-overlay" onClick={() => setViewTarget(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Thông tin người chơi</h3>
-            <p>
-              <strong style={{ fontWeight: 800, color: "#0f172a" }}>Họ và tên:</strong>{" "}
-              <span style={{ fontWeight: 500, color: "#334155" }}>
-                {viewTarget.registrationFullName || "-"}
-              </span>
-            </p>
-            <p>
-              <strong style={{ fontWeight: 800, color: "#0f172a" }}>Tên in-game:</strong>{" "}
-              <span style={{ fontWeight: 500, color: "#334155" }}>
-                {viewTarget.registrationUsername || "-"}
-              </span>
-            </p>
-            <p>
-              <strong style={{ fontWeight: 800, color: "#0f172a" }}>Email:</strong>{" "}
-              <span style={{ fontWeight: 500, color: "#334155" }}>
-                {viewTarget.registrationEmail || "-"}
-              </span>
-            </p>
-            <p>
-              <strong style={{ fontWeight: 800, color: "#0f172a" }}>SĐT:</strong>{" "}
-              <span style={{ fontWeight: 500, color: "#334155" }}>
-                {viewTarget.registrationPhone || "-"}
-              </span>
-            </p>
-            <p>
-              <strong style={{ fontWeight: 800, color: "#0f172a" }}>Rank:</strong>{" "}
-              <span style={{ fontWeight: 500, color: "#334155" }}>
-                {viewTarget.rankAtRegistration ?? "-"}
-              </span>
-            </p>
-            <p>
-              <strong style={{ fontWeight: 800, color: "#0f172a" }}>Thời điểm đăng ký:</strong>{" "}
-              <span style={{ fontWeight: 500, color: "#334155" }}>
-                {viewTarget.registrationDate
-                  ? new Date(viewTarget.registrationDate).toLocaleString("vi-VN")
-                  : "-"}
-              </span>
-            </p>
-            <p>
-              <strong style={{ fontWeight: 800, color: "#0f172a" }}>Trạng thái:</strong>{" "}
-              <span style={{ fontWeight: 500, color: "#334155" }}>
-                {viewTarget.status || "-"}
-              </span>
-            </p>
-
-            <div className="modal-actions">
-              <button
-                className="btn-cancel"
-                onClick={() => setViewTarget(null)}
-                style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

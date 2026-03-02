@@ -13,6 +13,9 @@ import {
 } from "lucide-react";
 import MainHeader from "../../component/common/MainHeader";
 import "../../assets/css/HomePage.css";
+import {
+  validateRegistrationForm,
+} from "../../utils/registrationValidation";
 
 import imgHero from "../../assets/image/952792579ca4f9e0836ceca4cc253c01.jpg";
 import imgSlide1 from "../../assets/image/08118f77077fd9e6795319a2c6428cbc.jpg";
@@ -30,7 +33,11 @@ const formatDate = (raw) => {
   const d = new Date(raw);
   return Number.isNaN(d.getTime())
     ? "—"
-    : d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+    : d.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
 };
 
 const formatCurrency = (val) => {
@@ -38,6 +45,16 @@ const formatCurrency = (val) => {
   if (Number.isNaN(num)) return "—";
   return `${num.toLocaleString("vi-VN")}₫`;
 };
+
+const buildRegisterFormFromUser = (u) => ({
+  fullName: `${u?.firstName || ""} ${u?.lastName || ""}`.trim(),
+  username: u?.username || "",
+  email: u?.email || "",
+  phone: u?.phoneNumber || "",
+  rankAtRegistration:
+    u?.rank === null || u?.rank === undefined ? "" : String(u.rank),
+  note: "",
+});
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -50,6 +67,25 @@ export default function HomePage() {
   const [latestBlogs, setLatestBlogs] = useState([]);
   const [loadingHome, setLoadingHome] = useState(true);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [showTournamentModal, setShowTournamentModal] = useState(false);
+  const [selectedTournamentForModal, setSelectedTournamentForModal] =
+    useState(null);
+  const [showApprovedPlayersModal, setShowApprovedPlayersModal] =
+    useState(false);
+  const [approvedPlayers, setApprovedPlayers] = useState([]);
+  const [loadingApprovedPlayers, setLoadingApprovedPlayers] = useState(false);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [registerTournament, setRegisterTournament] = useState(null);
+  const [registerSubmitting, setRegisterSubmitting] = useState(false);
+  const [registerForm, setRegisterForm] = useState({
+    fullName: "",
+    username: "",
+    email: "",
+    phone: "",
+    rankAtRegistration: "",
+    note: "",
+  });
+  const [registerErrors, setRegisterErrors] = useState({});
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -84,7 +120,8 @@ export default function HomePage() {
   const seasonSlides = useMemo(() => {
     const fromTournament = upcomingTournaments.map((t, idx) => ({
       id: t.tournamentId || `banner-${idx}`,
-      image: t.tournamentImage || FALLBACK_BANNERS[idx % FALLBACK_BANNERS.length],
+      image:
+        t.tournamentImage || FALLBACK_BANNERS[idx % FALLBACK_BANNERS.length],
       title: t.tournamentName || "Upcoming Tournament",
       subtitle: `${t.location || "Online"} • ${formatDate(t.startDate)}`,
       format: t.format || "—",
@@ -125,18 +162,165 @@ export default function HomePage() {
 
   const activeSlide = seasonSlides[slideIndex] || seasonSlides[0];
 
-  const handleRegisterFromBanner = () => {
+  const resolveCurrentTournament = () =>
+    upcomingTournaments.find(
+      (t) => Number(t.tournamentId) === Number(activeSlide?.tournamentId),
+    ) || null;
+
+  const handleRegisterFromBanner = async () => {
     if (!user) {
       navigate("/login");
       return;
     }
-    if (activeSlide?.tournamentId) {
-      navigate(`/tournaments/${activeSlide.tournamentId}/waiting-list`, {
-        state: { autoRegister: true },
-      });
+    if (!activeSlide?.tournamentId) {
+      navigate("/player/tournaments");
       return;
     }
-    navigate("/player/tournaments");
+
+    const currentTournament = resolveCurrentTournament();
+    const registrationDeadline =
+      currentTournament?.registrationDeadline ||
+      activeSlide?.registrationDeadline;
+    if (registrationDeadline) {
+      const deadlineTime = new Date(registrationDeadline).getTime();
+      if (!Number.isNaN(deadlineTime) && Date.now() > deadlineTime) {
+        alert("Đã quá hạn đăng ký giải đấu.");
+        return;
+      }
+    }
+
+    try {
+      const waitingRes = await axios.get(`${API_BASE}/api/waiting-list`, {
+        params: { tournamentId: activeSlide.tournamentId },
+        withCredentials: true,
+      });
+      const list = Array.isArray(waitingRes?.data?.data)
+        ? waitingRes.data.data
+        : [];
+      const alreadyRegistered = list.some(
+        (row) => Number(row.userId) === Number(user?.userId),
+      );
+      if (alreadyRegistered) {
+        alert("Bạn đã đăng ký giải đấu rồi.");
+        return;
+      }
+    } catch (error) {
+      alert("Không thể kiểm tra trạng thái đăng ký. Vui lòng thử lại.");
+      return;
+    }
+    if (currentTournament) {
+      setRegisterTournament({ ...currentTournament });
+    } else {
+      setRegisterTournament({
+        tournamentId: activeSlide.tournamentId,
+        tournamentName: activeSlide.title,
+      });
+    }
+    setRegisterForm(buildRegisterFormFromUser(user));
+    setRegisterErrors({});
+    setShowRegisterModal(true);
+  };
+
+  const handleOpenTournamentModal = () => {
+    if (!activeSlide?.tournamentId) {
+      navigate("/tournaments");
+      return;
+    }
+    const currentTournament = resolveCurrentTournament();
+    if (currentTournament) {
+      setSelectedTournamentForModal({ ...currentTournament });
+    } else {
+      setSelectedTournamentForModal({
+        tournamentId: activeSlide.tournamentId,
+        tournamentName: activeSlide.title,
+        format: activeSlide.format,
+        location: activeSlide.location,
+        registrationDeadline: activeSlide.registrationDeadline,
+        minPlayer: activeSlide.minPlayer,
+        maxPlayer: activeSlide.maxPlayer,
+        prizePool: activeSlide.prizePool,
+      });
+    }
+    setShowTournamentModal(true);
+  };
+
+  const fetchApprovedPlayers = async (tournamentId) => {
+    if (!tournamentId) return;
+    setLoadingApprovedPlayers(true);
+    try {
+      const res = await axios.get(`${API_BASE}/api/waiting-list`, {
+        params: { tournamentId },
+        withCredentials: true,
+      });
+      const rows = Array.isArray(res?.data?.data) ? res.data.data : [];
+      setApprovedPlayers(
+        rows.filter((r) => String(r.status || "").toLowerCase() === "approved"),
+      );
+    } catch (error) {
+      console.error("Load approved players failed:", error);
+      setApprovedPlayers([]);
+    } finally {
+      setLoadingApprovedPlayers(false);
+    }
+  };
+
+  const handleOpenApprovedPlayersModal = async () => {
+    const tournamentId = selectedTournamentForModal?.tournamentId;
+    if (!tournamentId) return;
+    setShowTournamentModal(false);
+    setShowApprovedPlayersModal(true);
+    await fetchApprovedPlayers(tournamentId);
+  };
+
+  const handleRegisterFormChange = (field, value) => {
+    setRegisterForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const submitRegister = async () => {
+    const normalized = {
+      ...registerForm,
+      fullName: registerForm.fullName.trim(),
+      username: registerForm.username.trim(),
+      email: registerForm.email.trim().toLowerCase(),
+      phone: registerForm.phone.trim(),
+      rankAtRegistration: String(registerForm.rankAtRegistration ?? "").trim(),
+      note: registerForm.note?.trim() || "",
+    };
+
+    const allErrors = validateRegistrationForm(normalized);
+    if (Object.keys(allErrors).length > 0) {
+      setRegisterErrors(allErrors);
+      return;
+    }
+
+    setRegisterSubmitting(true);
+    setRegisterErrors({});
+    try {
+      const payload = {
+        tournamentId: Number(registerTournament?.tournamentId),
+        fullName: normalized.fullName,
+        username: normalized.username,
+        email: normalized.email,
+        phone: normalized.phone,
+        rankAtRegistration: Number(normalized.rankAtRegistration),
+        rank: Number(normalized.rankAtRegistration),
+        note: normalized.note,
+      };
+      const res = await axios.post(`${API_BASE}/api/waiting-list`, payload, {
+        withCredentials: true,
+      });
+
+      setShowRegisterModal(false);
+      alert(res?.data?.message || "Đăng ký thành công.");
+      navigate("/player/pending-registrations");
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
+      alert(msg);
+      setShowRegisterModal(false);
+    } finally {
+      setRegisterSubmitting(false);
+    }
   };
 
   const handleLogout = () => {
@@ -175,14 +359,24 @@ export default function HomePage() {
             <br />
             CLAIM THE PRIZE
           </h1>
-          <p>Thi đấu chiến thuật, theo dõi lịch đấu thông minh và chinh phục giải thưởng lớn.</p>
+          <p>
+            Thi đấu chiến thuật, theo dõi lịch đấu thông minh và chinh phục giải
+            thưởng lớn.
+          </p>
           <div className="hpv-hero-actions">
-            <button className="hpv-btn hpv-btn-primary" onClick={() => navigate("/tournaments")}>
+            <button
+              className="hpv-btn hpv-btn-primary"
+              onClick={() => navigate("/tournaments")}
+            >
               Explore Tournaments
             </button>
             <button
               className="hpv-btn hpv-btn-outline"
-              onClick={() => document.getElementById("hpv-season")?.scrollIntoView({ behavior: "smooth" })}
+              onClick={() =>
+                document
+                  .getElementById("hpv-season")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
             >
               View Season <ArrowRight size={16} />
             </button>
@@ -194,17 +388,27 @@ export default function HomePage() {
         <div className="hpv-container">
           <div className="hpv-section-head">
             <h2>TOURNAMENT</h2>
-            <p>Banner giải đấu được tải trực tiếp từ tournament và hiển thị dạng slide 4 banner.</p>
+            <p>
+              Banner giải đấu được tải trực tiếp từ tournament và hiển thị dạng
+              slide 4 banner.
+            </p>
           </div>
 
           <div className="hpv-season-slider">
-            <img src={activeSlide?.image || imgSlide1} alt={activeSlide?.title} className="hpv-season-image" />
+            <img
+              src={activeSlide?.image || imgSlide1}
+              alt={activeSlide?.title}
+              className="hpv-season-image"
+            />
             <div className="hpv-season-overlay" />
             <div className="hpv-season-content">
               <h3>{activeSlide?.title}</h3>
               <p>{activeSlide?.subtitle}</p>
               <div className="hpv-season-actions">
-                <button className="hpv-btn hpv-btn-primary" onClick={activeSlide?.cta}>
+                <button
+                  className="hpv-btn hpv-btn-primary"
+                  onClick={handleOpenTournamentModal}
+                >
                   Xem chi tiết giải
                 </button>
                 <button
@@ -218,14 +422,21 @@ export default function HomePage() {
 
             <button
               className="hpv-slider-arrow left"
-              onClick={() => setSlideIndex((prev) => (prev - 1 + seasonSlides.length) % seasonSlides.length)}
+              onClick={() =>
+                setSlideIndex(
+                  (prev) =>
+                    (prev - 1 + seasonSlides.length) % seasonSlides.length,
+                )
+              }
               aria-label="Previous banner"
             >
               <ChevronLeft size={20} />
             </button>
             <button
               className="hpv-slider-arrow right"
-              onClick={() => setSlideIndex((prev) => (prev + 1) % seasonSlides.length)}
+              onClick={() =>
+                setSlideIndex((prev) => (prev + 1) % seasonSlides.length)
+              }
               aria-label="Next banner"
             >
               <ChevronRight size={20} />
@@ -251,7 +462,8 @@ export default function HomePage() {
             <div className="hpv-detail-item">
               <span className="label">Số người chơi</span>
               <strong>
-                {activeSlide?.minPlayer ?? "—"} - {activeSlide?.maxPlayer ?? "—"}
+                {activeSlide?.minPlayer ?? "—"} -{" "}
+                {activeSlide?.maxPlayer ?? "—"}
               </strong>
             </div>
             <div className="hpv-detail-item">
@@ -280,9 +492,15 @@ export default function HomePage() {
               <div className="hpv-empty-card">Đang tải bài viết mới...</div>
             ) : latestBlogs.length > 0 ? (
               latestBlogs.map((blog, idx) => (
-                <article key={blog.blogPostId || `blog-${idx}`} className="hpv-latest-card">
+                <article
+                  key={blog.blogPostId || `blog-${idx}`}
+                  className="hpv-latest-card"
+                >
                   <img
-                    src={blog.thumbnailUrl || FALLBACK_BANNERS[idx % FALLBACK_BANNERS.length]}
+                    src={
+                      blog.thumbnailUrl ||
+                      FALLBACK_BANNERS[idx % FALLBACK_BANNERS.length]
+                    }
                     alt={blog.title}
                   />
                   <div className="hpv-latest-body">
@@ -296,9 +514,7 @@ export default function HomePage() {
                 </article>
               ))
             ) : (
-              <div className="hpv-empty-card">
-                Chưa có blog public.
-              </div>
+              <div className="hpv-empty-card">Chưa có blog public.</div>
             )}
           </div>
         </div>
@@ -309,10 +525,13 @@ export default function HomePage() {
           <div>
             <h2>TOP PLAYERS</h2>
             <p>
-              Theo dõi những kỳ thủ có thứ hạng cao và hoạt động mạnh nhất trên hệ thống. Dữ liệu
-              được đồng bộ realtime từ bảng xếp hạng.
+              Theo dõi những kỳ thủ có thứ hạng cao và hoạt động mạnh nhất trên
+              hệ thống. Dữ liệu được đồng bộ realtime từ bảng xếp hạng.
             </p>
-            <button className="hpv-btn hpv-btn-primary" onClick={() => navigate("/player/tournaments")}>
+            <button
+              className="hpv-btn hpv-btn-primary"
+              onClick={() => navigate("/player/tournaments")}
+            >
               Join Tournament
             </button>
           </div>
@@ -320,18 +539,29 @@ export default function HomePage() {
             {loadingHome ? (
               <div className="hpv-empty-card">Đang tải top player...</div>
             ) : normalizeList(topPlayers).length > 0 ? (
-              normalizeList(topPlayers).slice(0, 5).map((p, idx) => (
-                <div key={p.userId || `p-${idx}`} className="hpv-player-item">
-                  <span className="hpv-player-rank">#{idx + 1}</span>
-                  <div className="hpv-player-avatar">
-                    <img src={p.avatar || FALLBACK_BANNERS[idx % FALLBACK_BANNERS.length]} alt={p.firstName} />
+              normalizeList(topPlayers)
+                .slice(0, 5)
+                .map((p, idx) => (
+                  <div key={p.userId || `p-${idx}`} className="hpv-player-item">
+                    <span className="hpv-player-rank">#{idx + 1}</span>
+                    <div className="hpv-player-avatar">
+                      <img
+                        src={
+                          p.avatar ||
+                          FALLBACK_BANNERS[idx % FALLBACK_BANNERS.length]
+                        }
+                        alt={p.firstName}
+                      />
+                    </div>
+                    <div>
+                      <h4>
+                        {`${p.firstName || ""} ${p.lastName || ""}`.trim() ||
+                          "Unknown player"}
+                      </h4>
+                      <p>Rank: {p.rank ?? "—"}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4>{`${p.firstName || ""} ${p.lastName || ""}`.trim() || "Unknown player"}</h4>
-                    <p>Rank: {p.rank ?? "—"}</p>
-                  </div>
-                </div>
-              ))
+                ))
             ) : (
               <div className="hpv-empty-note">Chưa có dữ liệu top players.</div>
             )}
@@ -343,26 +573,41 @@ export default function HomePage() {
         <div className="hpv-container">
           <div className="hpv-section-head">
             <h2>COMMUNITY FEEDBACK</h2>
-            <p>Chia sẻ của người chơi về trải nghiệm thi đấu và quản lý giải trên nền tảng.</p>
+            <p>
+              Chia sẻ của người chơi về trải nghiệm thi đấu và quản lý giải trên
+              nền tảng.
+            </p>
           </div>
           <div className="hpv-feedback-grid">
             {normalizeList(topFeedbacks).length > 0 ? (
-              normalizeList(topFeedbacks).slice(0, 3).map((fb, idx) => (
-                <div key={fb.feedbackId || `fb-${idx}`} className="hpv-feedback-card">
-                  <div className="hpv-feedback-stars">
-                    {Array.from({ length: 5 }).map((_, sIdx) => (
-                      <Star
-                        key={`${idx}-${sIdx}`}
-                        size={14}
-                        fill={sIdx < (fb.starRating || 0) ? "#ff4655" : "none"}
-                        color={sIdx < (fb.starRating || 0) ? "#ff4655" : "#475569"}
-                      />
-                    ))}
+              normalizeList(topFeedbacks)
+                .slice(0, 3)
+                .map((fb, idx) => (
+                  <div
+                    key={fb.feedbackId || `fb-${idx}`}
+                    className="hpv-feedback-card"
+                  >
+                    <div className="hpv-feedback-stars">
+                      {Array.from({ length: 5 }).map((_, sIdx) => (
+                        <Star
+                          key={`${idx}-${sIdx}`}
+                          size={14}
+                          fill={
+                            sIdx < (fb.starRating || 0) ? "#ff4655" : "none"
+                          }
+                          color={
+                            sIdx < (fb.starRating || 0) ? "#ff4655" : "#475569"
+                          }
+                        />
+                      ))}
+                    </div>
+                    <p>{fb.comment || "Great tournament experience!"}</p>
+                    <span>
+                      {`${fb.firstName || ""} ${fb.lastName || ""}`.trim() ||
+                        "User"}
+                    </span>
                   </div>
-                  <p>{fb.comment || "Great tournament experience!"}</p>
-                  <span>{`${fb.firstName || ""} ${fb.lastName || ""}`.trim() || "User"}</span>
-                </div>
-              ))
+                ))
             ) : (
               <div className="hpv-empty-note hpv-empty-note-dark">
                 Chưa có phản hồi cộng đồng.
@@ -385,15 +630,416 @@ export default function HomePage() {
             <button onClick={() => navigate("/player/tournaments")}>
               <Users size={14} /> Join
             </button>
-            <button onClick={() => document.getElementById("hpv-latest")?.scrollIntoView({ behavior: "smooth" })}>
+            <button
+              onClick={() =>
+                document
+                  .getElementById("hpv-latest")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
               <Clock3 size={14} /> Latest
             </button>
-            <button onClick={() => document.getElementById("hpv-feedback")?.scrollIntoView({ behavior: "smooth" })}>
+            <button
+              onClick={() =>
+                document
+                  .getElementById("hpv-feedback")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
               <Calendar size={14} /> Feedback
             </button>
           </div>
         </div>
       </footer>
+
+      {showTournamentModal && (
+        <div
+          onClick={() => {
+            setShowTournamentModal(false);
+            setSelectedTournamentForModal(null);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.6)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(92vw, 680px)",
+              maxHeight: "85vh",
+              overflowY: "auto",
+              borderRadius: 14,
+              background: "#fff",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+              padding: 20,
+            }}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: 12 }}>
+              Chi tiết giải đấu
+            </h3>
+            <div style={{ display: "grid", gap: 10, lineHeight: 1.6 }}>
+              <p style={{ margin: 0 }}>
+                <b>Tên giải:</b>{" "}
+                {selectedTournamentForModal?.tournamentName || "—"}
+              </p>
+              <p style={{ margin: 0 }}>
+                <b>Thể thức:</b> {selectedTournamentForModal?.format || "—"}
+              </p>
+              <p style={{ margin: 0 }}>
+                <b>Địa điểm:</b> {selectedTournamentForModal?.location || "—"}
+              </p>
+              <p style={{ margin: 0 }}>
+                <b>Thời gian:</b>{" "}
+                {formatDate(selectedTournamentForModal?.startDate)} -{" "}
+                {formatDate(selectedTournamentForModal?.endDate)}
+              </p>
+              <p style={{ margin: 0 }}>
+                <b>Hạn đăng ký:</b>{" "}
+                {formatDate(selectedTournamentForModal?.registrationDeadline)}
+              </p>
+              <p style={{ margin: 0 }}>
+                <b>Số người chơi:</b>{" "}
+                {selectedTournamentForModal?.minPlayer ?? "—"} -{" "}
+                {selectedTournamentForModal?.maxPlayer ?? "—"}
+              </p>
+              <p style={{ margin: 0 }}>
+                <b>Quỹ thưởng:</b>{" "}
+                {formatCurrency(selectedTournamentForModal?.prizePool)}
+              </p>
+              {selectedTournamentForModal?.description && (
+                <p style={{ margin: 0 }}>
+                  <b>Mô tả:</b> {selectedTournamentForModal.description}
+                </p>
+              )}
+            </div>
+            <div
+              style={{
+                marginTop: 18,
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                className="hpv-btn"
+                onClick={handleOpenApprovedPlayersModal}
+                style={{
+                  border: "none",
+                  background: "#ff4655",
+                  color: "#fff",
+                  fontWeight: 700,
+                  padding: "10px 16px",
+                }}
+              >
+                Xem danh sách người chơi
+              </button>
+              <button
+                className="hpv-btn"
+                onClick={() => {
+                  setShowTournamentModal(false);
+                  setSelectedTournamentForModal(null);
+                }}
+                style={{
+                  border: "1px solid #d1d5db",
+                  background: "#ffffff",
+                  color: "#111827",
+                  fontWeight: 700,
+                  padding: "10px 16px",
+                }}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showApprovedPlayersModal && (
+        <div
+          onClick={() => setShowApprovedPlayersModal(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.6)",
+            zIndex: 10000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(96vw, 980px)",
+              maxHeight: "85vh",
+              overflowY: "auto",
+              borderRadius: 14,
+              background: "#fff",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+              padding: 20,
+            }}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: 12 }}>
+              Danh sách người chơi đã duyệt
+            </h3>
+            <table
+              width="100%"
+              cellPadding="10"
+              style={{ borderCollapse: "collapse" }}
+            >
+              <thead>
+                <tr>
+                  <th align="left">Họ và tên</th>
+                  <th align="left">Tên in-game</th>
+                  <th align="left">Email</th>
+                  <th align="left">SĐT</th>
+                  <th align="left">Rank</th>
+                  <th align="left">Thời điểm đăng ký</th>
+                  <th align="left">Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingApprovedPlayers ? (
+                  <tr>
+                    <td colSpan={7}>Đang tải danh sách người chơi...</td>
+                  </tr>
+                ) : approvedPlayers.length === 0 ? (
+                  <tr>
+                    <td colSpan={7}>Chưa có người chơi nào được duyệt.</td>
+                  </tr>
+                ) : (
+                  approvedPlayers.map((p) => (
+                    <tr key={p.waitingId}>
+                      <td>{p.registrationFullName || "-"}</td>
+                      <td>{p.registrationUsername || "-"}</td>
+                      <td>{p.registrationEmail || "-"}</td>
+                      <td>{p.registrationPhone || "-"}</td>
+                      <td>{p.rankAtRegistration ?? "-"}</td>
+                      <td>
+                        {p.registrationDate
+                          ? new Date(p.registrationDate).toLocaleString("vi-VN")
+                          : "-"}
+                      </td>
+                      <td>{p.note || "-"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+            <div
+              style={{
+                marginTop: 16,
+                display: "flex",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                className="hpv-btn hpv-btn-outline"
+                onClick={() => setShowApprovedPlayersModal(false)}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRegisterModal && (
+        <div
+          onClick={() => setShowRegisterModal(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.6)",
+            zIndex: 10001,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(92vw, 560px)",
+              maxHeight: "85vh",
+              overflowY: "auto",
+              background: "#ffffff",
+              borderRadius: 14,
+              padding: 22,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            }}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: 12 }}>
+              Đăng ký giải: {registerTournament?.tournamentName || "—"}
+            </h3>
+            <div style={{ display: "grid", gap: 12 }}>
+              {registerErrors.general && (
+                <div
+                  style={{ color: "#b91c1c", fontSize: 13, fontWeight: 600 }}
+                >
+                  {registerErrors.general}
+                </div>
+              )}
+              <input
+                placeholder="Họ và tên"
+                value={registerForm.fullName}
+                onChange={(e) =>
+                  handleRegisterFormChange("fullName", e.target.value)
+                }
+                style={{
+                  border: "1px solid #d1d5db",
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  outline: "none",
+                }}
+              />
+              {registerErrors.fullName && (
+                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
+                  {registerErrors.fullName}
+                </div>
+              )}
+              <input
+                placeholder="Tên in-game"
+                value={registerForm.username}
+                onChange={(e) =>
+                  handleRegisterFormChange("username", e.target.value)
+                }
+                style={{
+                  border: "1px solid #d1d5db",
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  outline: "none",
+                }}
+              />
+              {registerErrors.username && (
+                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
+                  {registerErrors.username}
+                </div>
+              )}
+              <input
+                placeholder="Email"
+                value={registerForm.email}
+                onChange={(e) =>
+                  handleRegisterFormChange("email", e.target.value)
+                }
+                style={{
+                  border: "1px solid #d1d5db",
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  outline: "none",
+                }}
+              />
+              {registerErrors.email && (
+                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
+                  {registerErrors.email}
+                </div>
+              )}
+              <input
+                placeholder="SĐT"
+                value={registerForm.phone}
+                onChange={(e) =>
+                  handleRegisterFormChange("phone", e.target.value)
+                }
+                style={{
+                  border: "1px solid #d1d5db",
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  outline: "none",
+                }}
+              />
+              {registerErrors.phone && (
+                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
+                  {registerErrors.phone}
+                </div>
+              )}
+              <input
+                type="number"
+                min="0"
+                placeholder="Bậc rank"
+                value={registerForm.rankAtRegistration}
+                onChange={(e) =>
+                  handleRegisterFormChange("rankAtRegistration", e.target.value)
+                }
+                style={{
+                  border: "1px solid #d1d5db",
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  outline: "none",
+                }}
+              />
+              {registerErrors.rankAtRegistration && (
+                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
+                  {registerErrors.rankAtRegistration}
+                </div>
+              )}
+              <textarea
+                placeholder="Ghi chú"
+                value={registerForm.note}
+                onChange={(e) =>
+                  setRegisterForm({ ...registerForm, note: e.target.value })
+                }
+                rows={4}
+                style={{
+                  border: "1px solid #d1d5db",
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  outline: "none",
+                  resize: "vertical",
+                }}
+              />
+            </div>
+            <div
+              style={{
+                marginTop: 16,
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+              }}
+            >
+              <button
+                onClick={() => setShowRegisterModal(false)}
+                style={{
+                  border: "1px solid #d1d5db",
+                  background: "#ffffff",
+                  color: "#111827",
+                  borderRadius: 8,
+                  padding: "9px 16px",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={submitRegister}
+                disabled={registerSubmitting}
+                style={{
+                  border: "none",
+                  background: "#2563eb",
+                  color: "#ffffff",
+                  borderRadius: 8,
+                  padding: "9px 16px",
+                  cursor: registerSubmitting ? "not-allowed" : "pointer",
+                  fontWeight: 600,
+                  opacity: registerSubmitting ? 0.7 : 1,
+                }}
+              >
+                {registerSubmitting ? "Đang đăng ký..." : "Đăng ký"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

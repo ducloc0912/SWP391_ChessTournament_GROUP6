@@ -1,8 +1,24 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import Cropper from "react-easy-crop";
-import { Mail, Calendar, MapPin, Trophy, User, Filter, Search, Star, Lock } from "lucide-react";
+import {
+  Mail,
+  Calendar,
+  MapPin,
+  Trophy,
+  User,
+  Filter,
+  Search,
+  Star,
+  Lock,
+} from "lucide-react";
 import MainHeader from "../../component/common/MainHeader";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
@@ -159,7 +175,7 @@ async function getCroppedBlob(imageSrc, cropPixels) {
     0,
     0,
     cropPixels.width,
-    cropPixels.height
+    cropPixels.height,
   );
 
   return new Promise((resolve, reject) => {
@@ -169,13 +185,20 @@ async function getCroppedBlob(imageSrc, cropPixels) {
         resolve(blob);
       },
       "image/jpeg",
-      0.92
+      0.92,
     );
   });
 }
 
 /** ===== Modal: Edit Profile (remove Avatar URL, add Username) ===== */
-function EditProfileModal({ open, onClose, initialValues, onSubmit, saving, error }) {
+function EditProfileModal({
+  open,
+  onClose,
+  initialValues,
+  onSubmit,
+  saving,
+  error,
+}) {
   const [form, setForm] = useState({
     username: "",
     firstName: "",
@@ -206,50 +229,102 @@ function EditProfileModal({ open, onClose, initialValues, onSubmit, saving, erro
 
   return (
     <div className="up-modalOverlay" onMouseDown={onClose}>
-      <div className="up-modal up-modal--edit" onMouseDown={(e) => e.stopPropagation()}>
+      <div
+        className="up-modal up-modal--edit"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="up-modal__head up-modal__head--purple">
           <div className="up-modal__title">Edit profile</div>
-          <button className="up-iconBtn" type="button" onClick={onClose} aria-label="Close">
+          <button
+            className="up-iconBtn"
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+          >
             ✕
           </button>
         </div>
 
         <form className="up-modal__body" onSubmit={handleSubmit}>
-          {error ? <div className="up-alert up-alert--danger">{error}</div> : null}
+          {error ? (
+            <div className="up-alert up-alert--danger">{error}</div>
+          ) : null}
 
           <div className="up-formGrid">
             <div className="up-field up-field--full">
               <div className="up-field__label">Username</div>
-              <input className="up-input" value={form.username} onChange={set("username")} placeholder="Chữ cái, số, gạch dưới; 3–50 ký tự" maxLength={50} />
-              <div className="up-field__hint">Username phải là duy nhất, không dấu và ký tự đặc biệt.</div>
+              <input
+                className="up-input"
+                value={form.username}
+                onChange={set("username")}
+                placeholder="Chữ cái, số, gạch dưới; 3–50 ký tự"
+                maxLength={50}
+              />
+              <div className="up-field__hint">
+                Username phải là duy nhất, không dấu và ký tự đặc biệt.
+              </div>
             </div>
 
             <div className="up-field">
               <div className="up-field__label">First name</div>
-              <input className="up-input" value={form.firstName} onChange={set("firstName")} placeholder="Bắt buộc" maxLength={50} />
+              <input
+                className="up-input"
+                value={form.firstName}
+                onChange={set("firstName")}
+                placeholder="Bắt buộc"
+                maxLength={50}
+              />
             </div>
 
             <div className="up-field">
               <div className="up-field__label">Last name</div>
-              <input className="up-input" value={form.lastName} onChange={set("lastName")} placeholder="Bắt buộc" maxLength={50} />
+              <input
+                className="up-input"
+                value={form.lastName}
+                onChange={set("lastName")}
+                placeholder="Bắt buộc"
+                maxLength={50}
+              />
             </div>
 
             <div className="up-field">
               <div className="up-field__label">Phone</div>
-              <input className="up-input" type="tel" value={form.phoneNumber} onChange={set("phoneNumber")} placeholder="VD: 0901234567 (10 số)" maxLength={20} />
+              <input
+                className="up-input"
+                type="tel"
+                value={form.phoneNumber}
+                onChange={set("phoneNumber")}
+                placeholder="VD: 0901234567 (10 số)"
+                maxLength={20}
+              />
             </div>
 
             <div className="up-field up-field--full">
               <div className="up-field__label">Address</div>
-              <input className="up-input" value={form.address} onChange={set("address")} placeholder="Tối đa 255 ký tự" maxLength={255} />
+              <input
+                className="up-input"
+                value={form.address}
+                onChange={set("address")}
+                placeholder="Tối đa 255 ký tự"
+                maxLength={255}
+              />
             </div>
           </div>
 
           <div className="up-modal__foot">
-            <button className="up-btn up-btn--ghost" type="button" onClick={onClose} disabled={saving}>
+            <button
+              className="up-btn up-btn--ghost"
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+            >
               Cancel
             </button>
-            <button className="up-btn up-btn--primary" type="submit" disabled={saving}>
+            <button
+              className="up-btn up-btn--primary"
+              type="submit"
+              disabled={saving}
+            >
               {saving ? "Saving..." : "Save changes"}
             </button>
           </div>
@@ -260,7 +335,14 @@ function EditProfileModal({ open, onClose, initialValues, onSubmit, saving, erro
 }
 
 /** ===== Modal: Đổi mật khẩu (old, new, confirm) ===== */
-function ChangePasswordModal({ open, onClose, onSubmit, saving, error, success }) {
+function ChangePasswordModal({
+  open,
+  onClose,
+  onSubmit,
+  saving,
+  error,
+  success,
+}) {
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -280,22 +362,42 @@ function ChangePasswordModal({ open, onClose, onSubmit, saving, error, success }
     const err = [];
     if (!oldPassword.trim()) err.push("Vui lòng nhập mật khẩu hiện tại.");
     if (!newPassword.trim()) err.push("Vui lòng nhập mật khẩu mới.");
-    else if (newPassword.length < 6) err.push("Mật khẩu mới phải có ít nhất 6 ký tự.");
-    if (newPassword !== confirmPassword) err.push("Mật khẩu xác nhận không khớp.");
+    else if (newPassword.length < 6)
+      err.push("Mật khẩu mới phải có ít nhất 6 ký tự.");
+    if (newPassword !== confirmPassword)
+      err.push("Mật khẩu xác nhận không khớp.");
     if (err.length) return;
-    onSubmit({ oldPassword: oldPassword.trim(), newPassword: newPassword.trim(), confirmPassword: confirmPassword.trim() });
+    onSubmit({
+      oldPassword: oldPassword.trim(),
+      newPassword: newPassword.trim(),
+      confirmPassword: confirmPassword.trim(),
+    });
   };
 
   return (
     <div className="up-modalOverlay" onMouseDown={onClose}>
-      <div className="up-modal up-modal--edit" onMouseDown={(e) => e.stopPropagation()}>
+      <div
+        className="up-modal up-modal--edit"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="up-modal__head up-modal__head--purple">
           <div className="up-modal__title">Đổi mật khẩu</div>
-          <button className="up-iconBtn" type="button" onClick={onClose} aria-label="Đóng">✕</button>
+          <button
+            className="up-iconBtn"
+            type="button"
+            onClick={onClose}
+            aria-label="Đóng"
+          >
+            ✕
+          </button>
         </div>
         <form className="up-modal__body" onSubmit={handleSubmit}>
-          {error ? <div className="up-alert up-alert--danger">{error}</div> : null}
-          {success ? <div className="up-alert up-alert--success">{success}</div> : null}
+          {error ? (
+            <div className="up-alert up-alert--danger">{error}</div>
+          ) : null}
+          {success ? (
+            <div className="up-alert up-alert--success">{success}</div>
+          ) : null}
           <div className="up-formGrid">
             <div className="up-field up-field--full">
               <div className="up-field__label">Mật khẩu hiện tại</div>
@@ -333,8 +435,19 @@ function ChangePasswordModal({ open, onClose, onSubmit, saving, error, success }
             </div>
           </div>
           <div className="up-modal__foot">
-            <button className="up-btn up-btn--ghost" type="button" onClick={onClose} disabled={saving}>Hủy</button>
-            <button className="up-btn up-btn--primary" type="submit" disabled={saving}>
+            <button
+              className="up-btn up-btn--ghost"
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+            >
+              Hủy
+            </button>
+            <button
+              className="up-btn up-btn--primary"
+              type="submit"
+              disabled={saving}
+            >
               {saving ? "Đang xử lý..." : "Đổi mật khẩu"}
             </button>
           </div>
@@ -370,10 +483,18 @@ function AvatarCropModal({ open, src, onClose, onSave, saving, error }) {
 
   return (
     <div className="up-modalOverlay" onMouseDown={onClose}>
-      <div className="up-modal up-modal--crop" onMouseDown={(e) => e.stopPropagation()}>
+      <div
+        className="up-modal up-modal--crop"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="up-modal__head">
           <div className="up-modal__title">Update avatar</div>
-          <button className="up-iconBtn" type="button" onClick={onClose} aria-label="Close">
+          <button
+            className="up-iconBtn"
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+          >
             ✕
           </button>
         </div>
@@ -407,15 +528,27 @@ function AvatarCropModal({ open, src, onClose, onSave, saving, error }) {
                 value={zoom}
                 onChange={(e) => setZoom(Number(e.target.value))}
               />
-              <div className="up-cropHint">Kéo ảnh để canh vị trí. Dùng thanh kéo để phóng to/thu nhỏ.</div>
+              <div className="up-cropHint">
+                Kéo ảnh để canh vị trí. Dùng thanh kéo để phóng to/thu nhỏ.
+              </div>
             </div>
           </div>
 
           <div className="up-modal__foot">
-            <button className="up-btn up-btn--ghost" type="button" onClick={onClose} disabled={saving}>
+            <button
+              className="up-btn up-btn--ghost"
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+            >
               Cancel
             </button>
-            <button className="up-btn up-btn--primary" type="button" onClick={handleSave} disabled={saving}>
+            <button
+              className="up-btn up-btn--primary"
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+            >
               {saving ? "Uploading..." : "Save"}
             </button>
           </div>
@@ -451,7 +584,8 @@ export default function UserProfile() {
 
   // modals: Xem tất cả giải đấu (list) + chi tiết 1 giải
   const [showAllTournamentsModal, setShowAllTournamentsModal] = useState(false);
-  const [selectedTournamentForDetail, setSelectedTournamentForDetail] = useState(null);
+  const [selectedTournamentForDetail, setSelectedTournamentForDetail] =
+    useState(null);
 
   // change password modal
   const [changePwdOpen, setChangePwdOpen] = useState(false);
@@ -484,7 +618,11 @@ export default function UserProfile() {
           setUnauthorized(true);
           setErrMsg("Vui lòng đăng nhập để xem trang này.");
         } else {
-          setErrMsg(err?.response?.data?.message || err?.message || "Không thể kết nối server.");
+          setErrMsg(
+            err?.response?.data?.message ||
+              err?.message ||
+              "Không thể kết nối server.",
+          );
         }
       })
       .finally(() => setLoading(false));
@@ -518,7 +656,11 @@ export default function UserProfile() {
           setUnauthorized(true);
           setErrMsg("Vui lòng đăng nhập để xem trang này.");
         } else {
-          setErrMsg(err?.response?.data?.message || err?.message || "Không thể kết nối server.");
+          setErrMsg(
+            err?.response?.data?.message ||
+              err?.message ||
+              "Không thể kết nối server.",
+          );
         }
       })
       .finally(() => mounted && setLoading(false));
@@ -537,7 +679,9 @@ export default function UserProfile() {
     let list = tournaments;
     const q = (searchTournament || "").trim().toLowerCase();
     if (q) {
-      list = list.filter((t) => (t.tournamentName || "").toLowerCase().includes(q));
+      list = list.filter((t) =>
+        (t.tournamentName || "").toLowerCase().includes(q),
+      );
     }
     if (filterStatus !== "all") {
       list = list.filter((t) => (t.tournamentStatus || "") === filterStatus);
@@ -560,7 +704,12 @@ export default function UserProfile() {
     return "Profile";
   }, [isPlayer, isLeader, isReferee, isStaff, isAdmin]);
 
-  const fullName = [user?.firstName ?? user?.first_name, user?.lastName ?? user?.last_name].filter(Boolean).join(" ") || user?.username || "Unknown";
+  const fullName =
+    [user?.firstName ?? user?.first_name, user?.lastName ?? user?.last_name]
+      .filter(Boolean)
+      .join(" ") ||
+    user?.username ||
+    "Unknown";
   const name = user?.username || "Unknown";
   const apiOrigin = (API_BASE.match(/^https?:\/\/[^/]+/) || [API_BASE])[0];
   const avatar =
@@ -568,9 +717,12 @@ export default function UserProfile() {
       ? apiOrigin + user.avatar
       : user?.avatar) ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=EEF2FF&color=111827`;
-  const userDisplayId = user?.userId ? `US-${String(user.userId).padStart(5, "0")}-X` : "—";
+  const userDisplayId = user?.userId
+    ? `US-${String(user.userId).padStart(5, "0")}-X`
+    : "—";
   const championCount = stats?.championCount ?? 0;
-  const averageRating = stats?.averageRating != null ? Number(stats.averageRating) : null;
+  const averageRating =
+    stats?.averageRating != null ? Number(stats.averageRating) : null;
   const age = getAgeFromBirthday(user?.birthday);
   const rankingProgressData = useMemo(() => {
     if (!isPlayer || !tournaments.length) return [];
@@ -588,9 +740,29 @@ export default function UserProfile() {
     const half = r - full >= 0.5 ? 1 : 0;
     return (
       <span className="up-ref-stars">
-        {Array.from({ length: full }).map((_, i) => <Star key={`f-${i}`} size={16} fill="currentColor" className="up-ref-star up-ref-star--full" />)}
-        {half ? <Star key="h" size={16} fill="currentColor" className="up-ref-star up-ref-star--half" /> : null}
-        {Array.from({ length: 5 - full - half }).map((_, i) => <Star key={`e-${i}`} size={16} className="up-ref-star up-ref-star--empty" />)}
+        {Array.from({ length: full }).map((_, i) => (
+          <Star
+            key={`f-${i}`}
+            size={16}
+            fill="currentColor"
+            className="up-ref-star up-ref-star--full"
+          />
+        ))}
+        {half ? (
+          <Star
+            key="h"
+            size={16}
+            fill="currentColor"
+            className="up-ref-star up-ref-star--half"
+          />
+        ) : null}
+        {Array.from({ length: 5 - full - half }).map((_, i) => (
+          <Star
+            key={`e-${i}`}
+            size={16}
+            className="up-ref-star up-ref-star--empty"
+          />
+        ))}
         <span className="up-ref-star-num">({r.toFixed(1)})</span>
       </span>
     );
@@ -612,19 +784,30 @@ export default function UserProfile() {
     setChangePwdErr("");
     setChangePwdSuccess("");
     try {
-      const res = await axios.post(API_CHANGE_PASSWORD, {
-        oldPassword: form.oldPassword,
-        newPassword: form.newPassword,
-        confirmPassword: form.confirmPassword,
-      }, { withCredentials: true, headers: { "Content-Type": "application/json" } });
+      const res = await axios.post(
+        API_CHANGE_PASSWORD,
+        {
+          oldPassword: form.oldPassword,
+          newPassword: form.newPassword,
+          confirmPassword: form.confirmPassword,
+        },
+        {
+          withCredentials: true,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
       if (res.data?.success) {
         setChangePwdSuccess(res.data?.message || "Đổi mật khẩu thành công.");
-        setTimeout(() => { setChangePwdOpen(false); setChangePwdSuccess(""); }, 1500);
+        setTimeout(() => {
+          setChangePwdOpen(false);
+          setChangePwdSuccess("");
+        }, 1500);
       } else {
         setChangePwdErr(res.data?.message || "Đổi mật khẩu thất bại.");
       }
     } catch (e) {
-      const msg = e?.response?.data?.message || e?.message || "Không thể kết nối server.";
+      const msg =
+        e?.response?.data?.message || e?.message || "Không thể kết nối server.";
       setChangePwdErr(msg);
     } finally {
       setChangePwdSaving(false);
@@ -666,7 +849,9 @@ export default function UserProfile() {
 
       setEditOpen(false);
     } catch (e) {
-      setEditErr(e?.response?.data?.message || e?.message || "Không thể kết nối server.");
+      setEditErr(
+        e?.response?.data?.message || e?.message || "Không thể kết nối server.",
+      );
     } finally {
       setSaving(false);
     }
@@ -707,7 +892,7 @@ export default function UserProfile() {
 
       const res = await axios.post(API_PROFILE_AVATAR, formData, {
         withCredentials: true,
-        headers: { "Accept": "application/json" },
+        headers: { Accept: "application/json" },
       });
 
       if (!res.data?.success) {
@@ -725,7 +910,9 @@ export default function UserProfile() {
 
       setCropOpen(false);
     } catch (e) {
-      setAvatarErr(e?.response?.data?.message || e?.message || "Không thể kết nối server.");
+      setAvatarErr(
+        e?.response?.data?.message || e?.message || "Không thể kết nối server.",
+      );
     } finally {
       setAvatarSaving(false);
     }
@@ -753,7 +940,9 @@ export default function UserProfile() {
         <div className="up-wrap up-unauthorized">
           <div className="up-unauthorized__card">
             <p className="up-unauthorized__msg">{errMsg}</p>
-            <Link to="/login" className="up-btn up-btn--primary">Đăng nhập</Link>
+            <Link to="/login" className="up-btn up-btn--primary">
+              Đăng nhập
+            </Link>
           </div>
         </div>
       </div>
@@ -768,11 +957,17 @@ export default function UserProfile() {
     address: user.address ?? "",
   };
 
-  const headerUser = raw?.user ? {
-    firstName: user.firstName ?? user.first_name ?? "",
-    lastName: user.lastName ?? user.last_name ?? "",
-    avatar: (user?.avatar && user.avatar.startsWith("/") ? (API_BASE.match(/^https?:\/\/[^/]+/) || [API_BASE])[0] + user.avatar : user?.avatar) || null,
-  } : null;
+  const headerUser = raw?.user
+    ? {
+        firstName: user.firstName ?? user.first_name ?? "",
+        lastName: user.lastName ?? user.last_name ?? "",
+        avatar:
+          (user?.avatar && user.avatar.startsWith("/")
+            ? (API_BASE.match(/^https?:\/\/[^/]+/) || [API_BASE])[0] +
+              user.avatar
+            : user?.avatar) || null,
+      }
+    : null;
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -784,12 +979,18 @@ export default function UserProfile() {
 
   return (
     <div className="up-page up-page--ref up-page--with-header">
-      <MainHeader user={headerUser} onLogout={handleLogout} currentPath={location.pathname} />
+      <MainHeader
+        user={headerUser}
+        onLogout={handleLogout}
+        currentPath={location.pathname}
+      />
       <div className="up-bg-orb up-bg-orb-1" />
       <div className="up-bg-orb up-bg-orb-2" />
 
       <div className="up-wrap up-wrap--ref">
-        {errMsg && !unauthorized ? <div className="up-alert">{errMsg}</div> : null}
+        {errMsg && !unauthorized ? (
+          <div className="up-alert">{errMsg}</div>
+        ) : null}
 
         <div className="up-layout-ref">
           {/* Left: Profile card (purple header + details + stats + chart) */}
@@ -797,52 +998,91 @@ export default function UserProfile() {
             <div className="up-ref-profile-card">
               <div className="up-ref-profile-header">
                 <div className="up-ref-avatar-wrap">
-                  <button type="button" className="up-ref-avatar-btn" onClick={openFilePicker} aria-label="Đổi ảnh đại diện">
-                    <img className="up-ref-avatar" src={avatar} alt={fullName} />
+                  <button
+                    type="button"
+                    className="up-ref-avatar-btn"
+                    onClick={openFilePicker}
+                    aria-label="Đổi ảnh đại diện"
+                  >
+                    <img
+                      className="up-ref-avatar"
+                      src={avatar}
+                      alt={fullName}
+                    />
                     <span className="up-ref-avatar-overlay">
                       <span className="up-ref-avatar-overlay-icon">📷</span>
-                      <span className="up-ref-avatar-overlay-text">Đổi ảnh đại diện</span>
+                      <span className="up-ref-avatar-overlay-text">
+                        Đổi ảnh đại diện
+                      </span>
                     </span>
                   </button>
-                  <input ref={fileRef} className="up-file up-file--hidden" type="file" accept="image/*" onChange={onPickFile} />
-                  <span className="up-ref-badge up-ref-badge--pro">PRO MEMBER</span>
+                  <input
+                    ref={fileRef}
+                    className="up-file up-file--hidden"
+                    type="file"
+                    accept="image/*"
+                    onChange={onPickFile}
+                  />
+                  <span className="up-ref-badge up-ref-badge--pro">
+                    PRO MEMBER
+                  </span>
                 </div>
                 <h1 className="up-ref-name">{fullName}</h1>
                 <p className="up-ref-id">{userDisplayId}</p>
-                {avatarErr ? <div className="up-miniError">{avatarErr}</div> : null}
+                {avatarErr ? (
+                  <div className="up-miniError">{avatarErr}</div>
+                ) : null}
               </div>
               <div className="up-ref-details">
                 <div className="up-ref-detail-row">
                   <Mail size={18} className="up-ref-detail-icon" />
-                  <span className="up-ref-detail-text">{user.email || "—"}</span>
+                  <span className="up-ref-detail-text">
+                    {user.email || "—"}
+                  </span>
                 </div>
                 <div className="up-ref-detail-row">
                   <Calendar size={18} className="up-ref-detail-icon" />
-                  <span className="up-ref-detail-text">Sinh nhật: {formatDate(user.birthday)}</span>
+                  <span className="up-ref-detail-text">
+                    Sinh nhật: {formatDate(user.birthday)}
+                  </span>
                 </div>
                 <div className="up-ref-detail-row">
-                  <span className="up-ref-detail-icon up-ref-detail-icon--text">Tuổi</span>
-                  <span className="up-ref-detail-text">{age != null ? `${age} tuổi` : "—"}</span>
+                  <span className="up-ref-detail-icon up-ref-detail-icon--text">
+                    Tuổi
+                  </span>
+                  <span className="up-ref-detail-text">
+                    {age != null ? `${age} tuổi` : "—"}
+                  </span>
                 </div>
                 <div className="up-ref-detail-row">
                   <User size={18} className="up-ref-detail-icon" />
-                  <span className="up-ref-detail-text">{genderLabel(user?.gender)}</span>
+                  <span className="up-ref-detail-text">
+                    {genderLabel(user?.gender)}
+                  </span>
                 </div>
                 <div className="up-ref-detail-row">
                   <MapPin size={18} className="up-ref-detail-icon" />
-                  <span className="up-ref-detail-text">{user.address || "—"}</span>
+                  <span className="up-ref-detail-text">
+                    {user.address || "—"}
+                  </span>
                 </div>
               </div>
               <div className="up-ref-stats-row">
                 {isPlayer && (
                   <>
                     <div className="up-ref-stat-card up-ref-stat-card--blue">
-                      <div className="up-ref-stat-value">{formatNumber(stats.totalTournaments ?? 0)}</div>
+                      <div className="up-ref-stat-value">
+                        {formatNumber(stats.totalTournaments ?? 0)}
+                      </div>
                       <div className="up-ref-stat-label">THAM GIA</div>
                       <div className="up-ref-stat-hint">Sự kiện</div>
                     </div>
                     <div className="up-ref-stat-card up-ref-stat-card--orange">
-                      <div className="up-ref-stat-value">{stats.avgRanking == null ? "—" : `#${Number(stats.avgRanking).toFixed(1)}`}</div>
+                      <div className="up-ref-stat-value">
+                        {stats.avgRanking == null
+                          ? "—"
+                          : `#${Number(stats.avgRanking).toFixed(1)}`}
+                      </div>
                       <div className="up-ref-stat-label">XẾP HẠNG TB</div>
                       <div className="up-ref-stat-hint">Top player</div>
                     </div>
@@ -851,12 +1091,16 @@ export default function UserProfile() {
                 {isLeader && (
                   <>
                     <div className="up-ref-stat-card up-ref-stat-card--blue">
-                      <div className="up-ref-stat-value">{formatNumber(stats.totalTournaments ?? 0)}</div>
+                      <div className="up-ref-stat-value">
+                        {formatNumber(stats.totalTournaments ?? 0)}
+                      </div>
                       <div className="up-ref-stat-label">GIẢI ĐÃ TẠO</div>
                       <div className="up-ref-stat-hint">Điều hành</div>
                     </div>
                     <div className="up-ref-stat-card up-ref-stat-card--orange">
-                      <div className="up-ref-stat-value">{formatNumber(stats.totalParticipants ?? 0)}</div>
+                      <div className="up-ref-stat-value">
+                        {formatNumber(stats.totalParticipants ?? 0)}
+                      </div>
                       <div className="up-ref-stat-label">NGƯỜI THAM GIA</div>
                       <div className="up-ref-stat-hint">Tổng</div>
                     </div>
@@ -865,12 +1109,18 @@ export default function UserProfile() {
                 {isReferee && (
                   <>
                     <div className="up-ref-stat-card up-ref-stat-card--blue">
-                      <div className="up-ref-stat-value">{formatNumber(stats.assignedMatches ?? 0)}</div>
+                      <div className="up-ref-stat-value">
+                        {formatNumber(stats.assignedMatches ?? 0)}
+                      </div>
                       <div className="up-ref-stat-label">TRẬN ĐÃ TRỌNG TÀI</div>
                       <div className="up-ref-stat-hint">Tổng</div>
                     </div>
                     <div className="up-ref-stat-card up-ref-stat-card--orange">
-                      <div className="up-ref-stat-value up-ref-stat-value--stars">{averageRating != null ? renderStars(averageRating) : "—"}</div>
+                      <div className="up-ref-stat-value up-ref-stat-value--stars">
+                        {averageRating != null
+                          ? renderStars(averageRating)
+                          : "—"}
+                      </div>
                       <div className="up-ref-stat-label">RATING</div>
                       <div className="up-ref-stat-hint">Từ feedback</div>
                     </div>
@@ -878,8 +1128,12 @@ export default function UserProfile() {
                 )}
                 {(isStaff || isAdmin) && (
                   <div className="up-ref-stat-card up-ref-stat-card--blue">
-                    <div className="up-ref-stat-value">{formatNumber(stats.totalTournaments ?? stats.tasks ?? 0)}</div>
-                    <div className="up-ref-stat-label">{isStaff ? "CÔNG VIỆC" : "QUẢN TRỊ"}</div>
+                    <div className="up-ref-stat-value">
+                      {formatNumber(stats.totalTournaments ?? stats.tasks ?? 0)}
+                    </div>
+                    <div className="up-ref-stat-label">
+                      {isStaff ? "CÔNG VIỆC" : "QUẢN TRỊ"}
+                    </div>
                   </div>
                 )}
               </div>
@@ -892,27 +1146,62 @@ export default function UserProfile() {
                     {rankingProgressData.length > 0 ? (
                       rankingProgressData.map((t, i) => {
                         const rank = t.ranking ?? 0;
-                        const maxRank = Math.max(...rankingProgressData.map((x) => x.ranking ?? 1), 1);
-                        const heightPct = rank > 0 ? Math.max(15, 100 - ((rank - 1) / Math.max(maxRank - 1, 1)) * 70) : 15;
+                        const maxRank = Math.max(
+                          ...rankingProgressData.map((x) => x.ranking ?? 1),
+                          1,
+                        );
+                        const heightPct =
+                          rank > 0
+                            ? Math.max(
+                                15,
+                                100 -
+                                  ((rank - 1) / Math.max(maxRank - 1, 1)) * 70,
+                              )
+                            : 15;
                         return (
-                          <div key={`${t.tournamentId}-${i}`} className="up-ref-chart-bar-wrap" title={`${t.tournamentName}: Hạng ${rank}`}>
-                            <div className="up-ref-chart-bar" style={{ height: `${heightPct}%` }} />
-                            <span className="up-ref-chart-bar-label">{rank}</span>
+                          <div
+                            key={`${t.tournamentId}-${i}`}
+                            className="up-ref-chart-bar-wrap"
+                            title={`${t.tournamentName}: Hạng ${rank}`}
+                          >
+                            <div
+                              className="up-ref-chart-bar"
+                              style={{ height: `${heightPct}%` }}
+                            />
+                            <span className="up-ref-chart-bar-label">
+                              {rank}
+                            </span>
                           </div>
                         );
                       })
                     ) : (
-                      <div className="up-ref-chart-empty">Chưa có dữ liệu thứ hạng</div>
+                      <div className="up-ref-chart-empty">
+                        Chưa có dữ liệu thứ hạng
+                      </div>
                     )}
                   </div>
-                  <p className="up-ref-chart-hint">DỮ LIỆU TỪ {rankingProgressData.length || 6} GIẢI GẦN NHẤT</p>
+                  <p className="up-ref-chart-hint">
+                    DỮ LIỆU TỪ {rankingProgressData.length || 6} GIẢI GẦN NHẤT
+                  </p>
                 </div>
               )}
               {(isLeader || isReferee) && (
                 <div className="up-ref-rating-card">
                   <div className="up-ref-rating-label">Rating (sao)</div>
-                  <div className="up-ref-rating-stars">{averageRating != null ? renderStars(averageRating) : <span className="up-ref-rating-none">Chưa có đánh giá</span>}</div>
-                  <div className="up-ref-rating-hint">{isLeader ? "Từ feedback về giải bạn tạo" : "Từ feedback trận bạn trọng tài"}</div>
+                  <div className="up-ref-rating-stars">
+                    {averageRating != null ? (
+                      renderStars(averageRating)
+                    ) : (
+                      <span className="up-ref-rating-none">
+                        Chưa có đánh giá
+                      </span>
+                    )}
+                  </div>
+                  <div className="up-ref-rating-hint">
+                    {isLeader
+                      ? "Từ feedback về giải bạn tạo"
+                      : "Từ feedback trận bạn trọng tài"}
+                  </div>
                 </div>
               )}
             </div>
@@ -931,7 +1220,8 @@ export default function UserProfile() {
                   </h2>
                   <p className="up-ref-history-subtitle">
                     {isPlayer && "Danh sách các giải đấu đã tham gia"}
-                    {isLeader && "Danh sách các giải đấu bạn đã tạo hoặc điều hành"}
+                    {isLeader &&
+                      "Danh sách các giải đấu bạn đã tạo hoặc điều hành"}
                     {isReferee && "Danh sách các giải đấu bạn đã làm trọng tài"}
                     {(isStaff || isAdmin) && "Danh sách liên quan"}
                   </p>
@@ -977,7 +1267,9 @@ export default function UserProfile() {
                       )}
                       {!isLeader && <th>TRẠNG THÁI</th>}
                       {isPlayer && <th>THỨ HẠNG</th>}
-                      {!isLeader && <th>{isReferee ? "NGÀY GẮN" : "NGÀY THI ĐẤU"}</th>}
+                      {!isLeader && (
+                        <th>{isReferee ? "NGÀY GẮN" : "NGÀY THI ĐẤU"}</th>
+                      )}
                       {isLeader && <th>TRẠNG THÁI</th>}
                     </tr>
                   </thead>
@@ -986,8 +1278,17 @@ export default function UserProfile() {
                       filteredTournaments.map((t) => (
                         <tr
                           key={`${t.tournamentId}-${t.joinedDate || t.createdAt || t.assignedAt || ""}`}
-                          className={isLeader ? "up-ref-table-row--clickable" : ""}
-                          onClick={isLeader ? () => { setSelectedTournamentForDetail(t); setShowAllTournamentsModal(true); } : undefined}
+                          className={
+                            isLeader ? "up-ref-table-row--clickable" : ""
+                          }
+                          onClick={
+                            isLeader
+                              ? () => {
+                                  setSelectedTournamentForDetail(t);
+                                  setShowAllTournamentsModal(true);
+                                }
+                              : undefined
+                          }
                           role={isLeader ? "button" : undefined}
                         >
                           <td>
@@ -1005,30 +1306,55 @@ export default function UserProfile() {
                           )}
                           {!isLeader && (
                             <td>
-                              <Pill variant={getStatusVariant(t.tournamentStatus)}>{statusLabelVi(t.tournamentStatus)}</Pill>
+                              <Pill
+                                variant={getStatusVariant(t.tournamentStatus)}
+                              >
+                                {statusLabelVi(t.tournamentStatus)}
+                              </Pill>
                             </td>
                           )}
                           {isPlayer && (
                             <td>
                               {t.ranking != null ? (
-                                <span className="up-ref-rank-pill">Hạng {t.ranking}</span>
+                                <span className="up-ref-rank-pill">
+                                  Hạng {t.ranking}
+                                </span>
                               ) : (
                                 "—"
                               )}
                             </td>
                           )}
-                          {!isLeader && <td>{formatDate(t.startDate || t.createdAt || t.assignedAt)}</td>}
+                          {!isLeader && (
+                            <td>
+                              {formatDate(
+                                t.startDate || t.createdAt || t.assignedAt,
+                              )}
+                            </td>
+                          )}
                           {isLeader && (
                             <td>
-                              <Pill variant={getStatusVariant(t.tournamentStatus)}>{statusLabelVi(t.tournamentStatus)}</Pill>
+                              <Pill
+                                variant={getStatusVariant(t.tournamentStatus)}
+                              >
+                                {statusLabelVi(t.tournamentStatus)}
+                              </Pill>
                             </td>
                           )}
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={isLeader ? 5 : isPlayer ? 4 : 3} className="up-ref-table-empty">
-                          {tournaments.length ? "Không có giải đấu nào khớp bộ lọc." : (isLeader ? "Bạn chưa tạo giải đấu nào." : isReferee ? "Bạn chưa được gán trọng tài giải nào." : "Bạn chưa tham gia giải đấu nào.")}
+                        <td
+                          colSpan={isLeader ? 5 : isPlayer ? 4 : 3}
+                          className="up-ref-table-empty"
+                        >
+                          {tournaments.length
+                            ? "Không có giải đấu nào khớp bộ lọc."
+                            : isLeader
+                              ? "Bạn chưa tạo giải đấu nào."
+                              : isReferee
+                                ? "Bạn chưa được gán trọng tài giải nào."
+                                : "Bạn chưa tham gia giải đấu nào."}
                         </td>
                       </tr>
                     )}
@@ -1036,12 +1362,29 @@ export default function UserProfile() {
                 </table>
               </div>
               <div className="up-ref-viewall">
-                <button type="button" className="up-ref-viewall-btn" onClick={() => { setSelectedTournamentForDetail(null); setShowAllTournamentsModal(true); }}>
-                  {isPlayer && "Xem tất cả lịch sử giải đấu →"}
+                <button
+                  type="button"
+                  className="up-ref-viewall-btn"
+                  onClick={() => {
+                    setSelectedTournamentForDetail(null);
+                    setShowAllTournamentsModal(true);
+                  }}
+                >
+                  {isPlayer && "Xem tất cả lịch sử giải đấu "}
                   {isLeader && "Xem tất cả giải đã tạo →"}
                   {isReferee && "Xem tất cả giải đã trọng tài →"}
                   {(isStaff || isAdmin) && "Xem tất cả →"}
                 </button>
+                {isPlayer && (
+                  <button
+                    type="button"
+                    className="up-ref-viewall-btn"
+                    onClick={() => navigate("/player/pending-registrations")}
+                    style={{ marginLeft: 12 }}
+                  >
+                    Xem danh sách chờ duyệt
+                  </button>
+                )}
               </div>
               {isPlayer && (
                 <div className="up-ref-achievements">
@@ -1049,7 +1392,9 @@ export default function UserProfile() {
                     <Trophy size={24} className="up-ref-ach-icon" />
                     <div className="up-ref-ach-value">{championCount}</div>
                     <div className="up-ref-ach-label">GIẢI QUÂN QUÂN</div>
-                    <div className="up-ref-ach-hint">+{championCount} trong tháng này</div>
+                    <div className="up-ref-ach-hint">
+                      +{championCount} trong tháng này
+                    </div>
                   </div>
                   <div className="up-ref-ach-card up-ref-ach-card--purple">
                     <User size={24} className="up-ref-ach-icon" />
@@ -1062,10 +1407,22 @@ export default function UserProfile() {
               {(isLeader || isReferee) && (
                 <div className="up-ref-achievements">
                   <div className="up-ref-ach-card up-ref-ach-card--purple">
-                    <Star size={24} className="up-ref-ach-icon" fill="currentColor" />
-                    <div className="up-ref-ach-value up-ref-ach-value--stars">{averageRating != null ? renderStars(averageRating) : "Chưa có"}</div>
+                    <Star
+                      size={24}
+                      className="up-ref-ach-icon"
+                      fill="currentColor"
+                    />
+                    <div className="up-ref-ach-value up-ref-ach-value--stars">
+                      {averageRating != null
+                        ? renderStars(averageRating)
+                        : "Chưa có"}
+                    </div>
                     <div className="up-ref-ach-label">RATING (SAO)</div>
-                    <div className="up-ref-ach-hint">{isLeader ? "Từ feedback về giải bạn tạo" : "Từ feedback trận bạn trọng tài"}</div>
+                    <div className="up-ref-ach-hint">
+                      {isLeader
+                        ? "Từ feedback về giải bạn tạo"
+                        : "Từ feedback trận bạn trọng tài"}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1075,11 +1432,20 @@ export default function UserProfile() {
 
         <div className="up-ref-actions">
           <Pill variant="neutral">{roleLabel(role)}</Pill>
-          <button className="up-btn up-btn--black" type="button" onClick={openChangePassword} title="Đổi mật khẩu">
+          <button
+            className="up-btn up-btn--black"
+            type="button"
+            onClick={openChangePassword}
+            title="Đổi mật khẩu"
+          >
             <Lock size={18} style={{ marginRight: "6px" }} />
             Đổi mật khẩu
           </button>
-          <button className="up-btn up-btn--primary" type="button" onClick={openEdit}>
+          <button
+            className="up-btn up-btn--primary"
+            type="button"
+            onClick={openEdit}
+          >
             Edit profile
           </button>
         </div>
@@ -1097,7 +1463,11 @@ export default function UserProfile() {
 
       <ChangePasswordModal
         open={changePwdOpen}
-        onClose={() => { setChangePwdOpen(false); setChangePwdErr(""); setChangePwdSuccess(""); }}
+        onClose={() => {
+          setChangePwdOpen(false);
+          setChangePwdErr("");
+          setChangePwdSuccess("");
+        }}
         onSubmit={handleChangePassword}
         saving={changePwdSaving}
         error={changePwdErr}
@@ -1115,13 +1485,42 @@ export default function UserProfile() {
 
       {/* Modal: Xem tất cả giải đấu (list) + chi tiết 1 giải */}
       {showAllTournamentsModal && (
-        <div className="up-modalOverlay" onClick={() => { setShowAllTournamentsModal(false); setSelectedTournamentForDetail(null); }}>
-          <div className="up-modal up-modal--tournaments" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="up-modalOverlay"
+          onClick={() => {
+            setShowAllTournamentsModal(false);
+            setSelectedTournamentForDetail(null);
+          }}
+        >
+          <div
+            className="up-modal up-modal--tournaments"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="up-modal__head">
               <div className="up-modal__title">
-                {selectedTournamentForDetail ? "Chi tiết giải đấu" : (isPlayer ? "Lịch sử giải đã tham gia" : isLeader ? "Lịch sử giải đã tạo (điều hành)" : isReferee ? "Giải đã tham gia (trọng tài)" : "Danh sách giải đấu")}
+                {selectedTournamentForDetail
+                  ? "Chi tiết giải đấu"
+                  : isPlayer
+                    ? "Lịch sử giải đã tham gia"
+                    : isLeader
+                      ? "Lịch sử giải đã tạo (điều hành)"
+                      : isReferee
+                        ? "Giải đã tham gia (trọng tài)"
+                        : "Danh sách giải đấu"}
               </div>
-              <button type="button" className="up-iconBtn" onClick={() => { if (selectedTournamentForDetail) setSelectedTournamentForDetail(null); else { setShowAllTournamentsModal(false); setSelectedTournamentForDetail(null); } }} aria-label={selectedTournamentForDetail ? "Quay lại" : "Đóng"}>
+              <button
+                type="button"
+                className="up-iconBtn"
+                onClick={() => {
+                  if (selectedTournamentForDetail)
+                    setSelectedTournamentForDetail(null);
+                  else {
+                    setShowAllTournamentsModal(false);
+                    setSelectedTournamentForDetail(null);
+                  }
+                }}
+                aria-label={selectedTournamentForDetail ? "Quay lại" : "Đóng"}
+              >
                 {selectedTournamentForDetail ? "← Quay lại" : "✕"}
               </button>
             </div>
@@ -1129,60 +1528,129 @@ export default function UserProfile() {
               {selectedTournamentForDetail ? (
                 <div className="up-tournament-detail">
                   <div className="up-tournament-detail__name">
-                    <Trophy size={20} /> {selectedTournamentForDetail.tournamentName}
+                    <Trophy size={20} />{" "}
+                    {selectedTournamentForDetail.tournamentName}
                   </div>
                   <div className="up-tournament-detail__row">
-                    <span className="up-tournament-detail__label">Trạng thái:</span>
-                    <Pill variant={getStatusVariant(selectedTournamentForDetail.tournamentStatus)}>{statusLabelVi(selectedTournamentForDetail.tournamentStatus)}</Pill>
+                    <span className="up-tournament-detail__label">
+                      Trạng thái:
+                    </span>
+                    <Pill
+                      variant={getStatusVariant(
+                        selectedTournamentForDetail.tournamentStatus,
+                      )}
+                    >
+                      {statusLabelVi(
+                        selectedTournamentForDetail.tournamentStatus,
+                      )}
+                    </Pill>
                   </div>
                   {isLeader && (
                     <>
                       <div className="up-tournament-detail__row">
-                        <span className="up-tournament-detail__label">Ngày tạo:</span>
-                        <span>{formatDate(selectedTournamentForDetail.createdAt)}</span>
+                        <span className="up-tournament-detail__label">
+                          Ngày tạo:
+                        </span>
+                        <span>
+                          {formatDate(selectedTournamentForDetail.createdAt)}
+                        </span>
                       </div>
                       <div className="up-tournament-detail__row">
-                        <span className="up-tournament-detail__label">Hạn đăng ký:</span>
-                        <span>{formatDate(selectedTournamentForDetail.registrationDeadline)}</span>
+                        <span className="up-tournament-detail__label">
+                          Hạn đăng ký:
+                        </span>
+                        <span>
+                          {formatDate(
+                            selectedTournamentForDetail.registrationDeadline,
+                          )}
+                        </span>
                       </div>
                       <div className="up-tournament-detail__row">
-                        <span className="up-tournament-detail__label">Ngày bắt đầu:</span>
-                        <span>{formatDate(selectedTournamentForDetail.startDate)}</span>
+                        <span className="up-tournament-detail__label">
+                          Ngày bắt đầu:
+                        </span>
+                        <span>
+                          {formatDate(selectedTournamentForDetail.startDate)}
+                        </span>
                       </div>
                       <div className="up-tournament-detail__row">
-                        <span className="up-tournament-detail__label">Ngày kết thúc:</span>
-                        <span>{formatDate(selectedTournamentForDetail.endDate)}</span>
+                        <span className="up-tournament-detail__label">
+                          Ngày kết thúc:
+                        </span>
+                        <span>
+                          {formatDate(selectedTournamentForDetail.endDate)}
+                        </span>
                       </div>
-                      {(selectedTournamentForDetail.description || selectedTournamentForDetail.location) && (
+                      {(selectedTournamentForDetail.description ||
+                        selectedTournamentForDetail.location) && (
                         <>
                           {selectedTournamentForDetail.description && (
                             <div className="up-tournament-detail__row">
-                              <span className="up-tournament-detail__label">Mô tả:</span>
-                              <span>{selectedTournamentForDetail.description}</span>
+                              <span className="up-tournament-detail__label">
+                                Mô tả:
+                              </span>
+                              <span>
+                                {selectedTournamentForDetail.description}
+                              </span>
                             </div>
                           )}
                           {selectedTournamentForDetail.location && (
                             <div className="up-tournament-detail__row">
-                              <span className="up-tournament-detail__label">Địa điểm:</span>
-                              <span>{selectedTournamentForDetail.location}</span>
+                              <span className="up-tournament-detail__label">
+                                Địa điểm:
+                              </span>
+                              <span>
+                                {selectedTournamentForDetail.location}
+                              </span>
                             </div>
                           )}
-                          {(selectedTournamentForDetail.format || selectedTournamentForDetail.categories) && (
+                          {(selectedTournamentForDetail.format ||
+                            selectedTournamentForDetail.categories) && (
                             <div className="up-tournament-detail__row">
-                              <span className="up-tournament-detail__label">Format / Thể loại:</span>
-                              <span>{[selectedTournamentForDetail.format, selectedTournamentForDetail.categories].filter(Boolean).join(" · ")}</span>
+                              <span className="up-tournament-detail__label">
+                                Format / Thể loại:
+                              </span>
+                              <span>
+                                {[
+                                  selectedTournamentForDetail.format,
+                                  selectedTournamentForDetail.categories,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </span>
                             </div>
                           )}
-                          {(selectedTournamentForDetail.maxPlayer != null || selectedTournamentForDetail.minPlayer != null) && (
+                          {(selectedTournamentForDetail.maxPlayer != null ||
+                            selectedTournamentForDetail.minPlayer != null) && (
                             <div className="up-tournament-detail__row">
-                              <span className="up-tournament-detail__label">Số người:</span>
-                              <span>{[selectedTournamentForDetail.minPlayer, selectedTournamentForDetail.maxPlayer].filter(v => v != null).join("–")}</span>
+                              <span className="up-tournament-detail__label">
+                                Số người:
+                              </span>
+                              <span>
+                                {[
+                                  selectedTournamentForDetail.minPlayer,
+                                  selectedTournamentForDetail.maxPlayer,
+                                ]
+                                  .filter((v) => v != null)
+                                  .join("–")}
+                              </span>
                             </div>
                           )}
-                          {(selectedTournamentForDetail.entryFee != null || selectedTournamentForDetail.prizePool != null) && (
+                          {(selectedTournamentForDetail.entryFee != null ||
+                            selectedTournamentForDetail.prizePool != null) && (
                             <div className="up-tournament-detail__row">
-                              <span className="up-tournament-detail__label">Lệ phí / Giải thưởng:</span>
-                              <span>{formatNumber(selectedTournamentForDetail.entryFee)} / {formatNumber(selectedTournamentForDetail.prizePool)}</span>
+                              <span className="up-tournament-detail__label">
+                                Lệ phí / Giải thưởng:
+                              </span>
+                              <span>
+                                {formatNumber(
+                                  selectedTournamentForDetail.entryFee,
+                                )}{" "}
+                                /{" "}
+                                {formatNumber(
+                                  selectedTournamentForDetail.prizePool,
+                                )}
+                              </span>
                             </div>
                           )}
                         </>
@@ -1191,33 +1659,63 @@ export default function UserProfile() {
                   )}
                   {isPlayer && (
                     <div className="up-tournament-detail__row">
-                      <span className="up-tournament-detail__label">Thứ hạng của bạn:</span>
-                      <span>{selectedTournamentForDetail.ranking != null ? `Hạng ${selectedTournamentForDetail.ranking}` : "—"}</span>
+                      <span className="up-tournament-detail__label">
+                        Thứ hạng của bạn:
+                      </span>
+                      <span>
+                        {selectedTournamentForDetail.ranking != null
+                          ? `Hạng ${selectedTournamentForDetail.ranking}`
+                          : "—"}
+                      </span>
                     </div>
                   )}
                   {!isLeader && (
                     <div className="up-tournament-detail__row">
-                      <span className="up-tournament-detail__label">{isReferee ? "Ngày gắn:" : "Ngày thi đấu:"}</span>
-                      <span>{formatDate(selectedTournamentForDetail.startDate || selectedTournamentForDetail.createdAt || selectedTournamentForDetail.assignedAt)}</span>
+                      <span className="up-tournament-detail__label">
+                        {isReferee ? "Ngày gắn:" : "Ngày thi đấu:"}
+                      </span>
+                      <span>
+                        {formatDate(
+                          selectedTournamentForDetail.startDate ||
+                            selectedTournamentForDetail.createdAt ||
+                            selectedTournamentForDetail.assignedAt,
+                        )}
+                      </span>
                     </div>
                   )}
                 </div>
               ) : tournaments.length > 0 ? (
                 <ul className="up-tournament-list-modal">
                   {tournaments.map((t) => (
-                    <li key={`${t.tournamentId}-${t.joinedDate || t.createdAt || ""}`}>
-                      <button type="button" className="up-tournament-list-modal__item" onClick={() => setSelectedTournamentForDetail(t)}>
+                    <li
+                      key={`${t.tournamentId}-${t.joinedDate || t.createdAt || ""}`}
+                    >
+                      <button
+                        type="button"
+                        className="up-tournament-list-modal__item"
+                        onClick={() => setSelectedTournamentForDetail(t)}
+                      >
                         <Trophy size={18} className="up-ref-t-icon" />
-                        <span className="up-tournament-list-modal__name">{t.tournamentName}</span>
-                        <Pill variant={getStatusVariant(t.tournamentStatus)}>{statusLabelVi(t.tournamentStatus)}</Pill>
-                        <span className="up-tournament-list-modal__date">{formatDate(t.startDate)}</span>
+                        <span className="up-tournament-list-modal__name">
+                          {t.tournamentName}
+                        </span>
+                        <Pill variant={getStatusVariant(t.tournamentStatus)}>
+                          {statusLabelVi(t.tournamentStatus)}
+                        </Pill>
+                        <span className="up-tournament-list-modal__date">
+                          {formatDate(t.startDate)}
+                        </span>
                       </button>
                     </li>
                   ))}
                 </ul>
               ) : (
                 <p className="up-ref-table-empty">
-                  {isLeader ? "Bạn chưa tạo giải đấu nào." : isReferee ? "Bạn chưa được gán trọng tài giải nào." : "Bạn chưa tham gia giải đấu nào."}
+                  {isLeader
+                    ? "Bạn chưa tạo giải đấu nào."
+                    : isReferee
+                      ? "Bạn chưa được gán trọng tài giải nào."
+                      : "Bạn chưa tham gia giải đấu nào."}
                 </p>
               )}
             </div>
