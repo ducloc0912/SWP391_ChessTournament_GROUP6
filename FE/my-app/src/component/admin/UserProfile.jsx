@@ -220,10 +220,10 @@ const UserProfile = ({ userId, onBack }) => {
           margin: 0 auto;
         }
 
-        .up-text{ color:#0b0f1a; font-weight: 650; padding: 10px 2px; }
+        .up-text{ color:#0b0f1a; font-weight: 400; padding: 10px 2px; }
         .up-error{
           color:#b91c1c;
-          font-weight: 650;
+          font-weight: 400;
           background: #fff1f2;
           border: 1px solid #fecdd3;
           padding: 10px 12px;
@@ -260,7 +260,7 @@ const UserProfile = ({ userId, onBack }) => {
           position:absolute;
           top: 16px;
           left: 16px;
-          font-weight: 950;
+          font-weight: 500;
           letter-spacing: .08em;
           font-size: 11px;
           padding: 8px 10px;
@@ -297,6 +297,9 @@ const UserProfile = ({ userId, onBack }) => {
         .up-avatarWrap{
           width: 104px;
           height: 104px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
           border-radius: 999px;
           overflow:hidden;
           background: #fff;
@@ -307,13 +310,14 @@ const UserProfile = ({ userId, onBack }) => {
           width:100%;
           height:100%;
           object-fit:cover;
+          object-position: center center;
           display:block;
         }
 
         .up-name{
           margin-top: 12px;
           font-size: 22px;
-          font-weight: 950;
+          font-weight: 500;
           color:#0b0f1a;
           line-height: 1.2;
         }
@@ -321,7 +325,7 @@ const UserProfile = ({ userId, onBack }) => {
           color:#0b0f1a;
           opacity: 0.72;
           margin: 6px 0 0;
-          font-weight: 650;
+          font-weight: 400;
         }
 
         .up-right{
@@ -331,7 +335,7 @@ const UserProfile = ({ userId, onBack }) => {
         }
 
         .up-sectionTitle{
-          font-weight: 950;
+          font-weight: 500;
           font-size: 14px;
           letter-spacing: .02em;
           color:#0b0f1a;
@@ -369,13 +373,13 @@ const UserProfile = ({ userId, onBack }) => {
         }
 
         .up-label{
-          font-weight: 950;
+          font-weight: 500;
           color:#0b0f1a;
           margin-right: 6px;
         }
         .up-value{
           color:#0b0f1a;
-          font-weight: 650;
+          font-weight: 400;
         }
 
         .up-multiline{
@@ -408,14 +412,14 @@ const UserProfile = ({ userId, onBack }) => {
 
         .up-statLabel{
           font-size: 12px;
-          font-weight: 950;
+          font-weight: 500;
           opacity: .78;
           text-transform: uppercase;
           letter-spacing: .05em;
         }
         .up-statValue{
           font-size: 26px;
-          font-weight: 980;
+          font-weight: 500;
           margin-top: 8px;
         }
         /* ✅ đổi màu số tại đây */
@@ -426,7 +430,7 @@ const UserProfile = ({ userId, onBack }) => {
           font-size: 12px;
           opacity: .72;
           margin-top: 4px;
-          font-weight: 650;
+          font-weight: 400;
         }
 
         /* ===== Tournament History ===== */
@@ -450,7 +454,7 @@ const UserProfile = ({ userId, onBack }) => {
         }
 
         .up-historyTitle{
-          font-weight: 950;
+          font-weight: 500;
           font-size: 14px;
           color:#0b0f1a;
         }
@@ -466,7 +470,7 @@ const UserProfile = ({ userId, onBack }) => {
           background: #fff;
           border-radius: 12px;
           padding: 8px 10px;
-          font-weight: 650;
+          font-weight: 400;
           color:#0b0f1a;
           outline: none;
         }
@@ -483,19 +487,19 @@ const UserProfile = ({ userId, onBack }) => {
           text-align: left;
           border-bottom: 1px solid rgba(15,23,42,0.07);
           color:#0b0f1a;
-          font-weight: 650;
+          font-weight: 400;
           vertical-align: middle;
         }
 
         .up-table th{
           font-size: 12px;
-          font-weight: 950;
+          font-weight: 500;
           text-transform: uppercase;
           letter-spacing: .05em;
           background: rgba(15,23,42,0.02);
         }
 
-        .up-muted{ opacity: .72; font-weight: 650; }
+        .up-muted{ opacity: .72; font-weight: 400; }
 
         .up-statusBadge{
           display:inline-flex;
@@ -503,7 +507,7 @@ const UserProfile = ({ userId, onBack }) => {
           padding: 6px 10px;
           border-radius: 999px;
           font-size: 12px;
-          font-weight: 900;
+          font-weight: 500;
           border: 1px solid rgba(15,23,42,0.10);
           background: rgba(15,23,42,0.03);
         }
@@ -513,7 +517,7 @@ const UserProfile = ({ userId, onBack }) => {
         .up-statusBadge.bad{ background: rgba(239,68,68,0.14); }
 
         .up-rank{
-          font-weight: 950;
+          font-weight: 500;
         }
 
         @media (max-width: 860px){
@@ -540,11 +544,11 @@ const UserProfile = ({ userId, onBack }) => {
           <div className="up-content">
             {/* Left */}
             <div className="up-left">
-              <div className="avatar-wrapper up-avatarWrap">
+              <div className="up-avatarWrap">
                 <img
                   src={avatarSrc}
                   alt={displayName}
-                  className="avatar-img up-avatar"
+                  className="up-avatar"
                 />
               </div>
 
@@ -649,7 +653,7 @@ const UserProfile = ({ userId, onBack }) => {
                   <tr>
                     <th>Tên giải đấu</th>
                     <th>Trạng thái</th>
-                    <th>Thứ hạng</th>
+                    {isPlayer && <th>Thứ hạng</th>}
                     <th>Ngày bắt đầu</th>
                     <th>Ngày kết thúc</th>
                   </tr>
@@ -658,20 +662,20 @@ const UserProfile = ({ userId, onBack }) => {
                 <tbody>
                   {hisLoading ? (
                     <tr>
-                      <td colSpan={5} className="up-muted">
+                      <td colSpan={isPlayer ? 5 : 4} className="up-muted">
                         Đang tải lịch sử...
                       </td>
                     </tr>
                   ) : history.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="up-muted">
+                      <td colSpan={isPlayer ? 5 : 4} className="up-muted">
                         Chưa có lịch sử tham gia giải đấu.
                       </td>
                     </tr>
                   ) : (
                     history.map((it, idx) => {
                       const st = String(it?.status || "").trim();
-                      const showRank = st === "Completed";
+                      const showRank = isPlayer && st === "Completed";
                       const rankVal =
                         it?.ranking === null || it?.ranking === undefined
                           ? "-"
@@ -679,7 +683,7 @@ const UserProfile = ({ userId, onBack }) => {
 
                       return (
                         <tr key={it?.tournamentId ?? idx}>
-                          <td style={{ fontWeight: 900 }}>
+                          <td>
                             {it?.tournamentName || "-"}
                           </td>
 
@@ -689,7 +693,7 @@ const UserProfile = ({ userId, onBack }) => {
                             </span>
                           </td>
 
-                          <td className="up-rank">{showRank ? rankVal : "-"}</td>
+                          {isPlayer && <td className="up-rank">{showRank ? rankVal : "-"}</td>}
 
                           <td>{formatDateOnly(it?.startDate)}</td>
                           <td>{formatDateOnly(it?.endDate)}</td>

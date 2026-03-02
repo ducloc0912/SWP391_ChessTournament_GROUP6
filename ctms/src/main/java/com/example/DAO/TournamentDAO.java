@@ -11,7 +11,6 @@ import java.util.Map;
 
 import com.example.model.dto.PlayerTournamentDTO;
 import com.example.model.dto.TournamentDTO;
-import com.example.model.entity.*;
 import com.example.util.DBContext;
 import com.example.util.EncodingUtil;
 
@@ -136,7 +135,8 @@ public class TournamentDAO extends DBContext {
     // =========================
     public List<TournamentDTO> getAllTournaments() {
         List<TournamentDTO> list = new ArrayList<>();
-        String sql = "SELECT * FROM Tournaments ORDER BY create_at DESC";
+        // Use tournament_id for broad schema compatibility (some DBs miss create_at).
+        String sql = "SELECT * FROM Tournaments ORDER BY tournament_id DESC";
 
         try (Connection conn = DBContext.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql);
@@ -250,28 +250,67 @@ public class TournamentDAO extends DBContext {
     private TournamentDTO mapResultSetToTournament(ResultSet rs) throws SQLException {
         TournamentDTO t = new TournamentDTO();
 
-        t.setTournamentId(rs.getInt("tournament_id"));
-        t.setTournamentName(rs.getString("tournament_name"));
-        t.setDescription(rs.getString("description"));
-        t.setTournamentImage(rs.getString("tournament_image"));
-        t.setRules(rs.getString("rules"));
-        t.setLocation(rs.getString("location"));
-        t.setFormat(rs.getString("format"));
-        t.setCategories(rs.getString("categories"));
-        t.setMaxPlayer(rs.getInt("max_player"));
-        t.setMinPlayer(rs.getInt("min_player"));
-        t.setEntryFee(rs.getBigDecimal("entry_fee"));
-        t.setPrizePool(rs.getBigDecimal("prize_pool"));
-        t.setStatus(rs.getString("status"));
+        // Tolerate old DB schemas where some columns are not available yet.
+        t.setTournamentId(getIntOrDefault(rs, "tournament_id", 0));
+        t.setTournamentName(getStringOrNull(rs, "tournament_name"));
+        t.setDescription(getStringOrNull(rs, "description"));
+        t.setTournamentImage(getStringOrNull(rs, "tournament_image"));
+        t.setRules(getStringOrNull(rs, "rules"));
+        t.setLocation(getStringOrNull(rs, "location"));
+        t.setFormat(getStringOrNull(rs, "format"));
+        t.setCategories(getStringOrNull(rs, "categories"));
+        t.setMaxPlayer(getIntOrDefault(rs, "max_player", 0));
+        t.setMinPlayer(getIntOrDefault(rs, "min_player", 0));
+        t.setEntryFee(getBigDecimalOrNull(rs, "entry_fee"));
+        t.setPrizePool(getBigDecimalOrNull(rs, "prize_pool"));
+        t.setStatus(getStringOrNull(rs, "status"));
 
-        t.setRegistrationDeadline(rs.getTimestamp("registration_deadline"));
-        t.setStartDate(rs.getTimestamp("start_date"));
-        t.setEndDate(rs.getTimestamp("end_date"));
-        t.setCreateBy(rs.getInt("create_by"));
-        t.setCreateAt(rs.getTimestamp("create_at"));
-        t.setNotes(rs.getString("notes"));
+        t.setRegistrationDeadline(getTimestampOrNull(rs, "registration_deadline"));
+        t.setStartDate(getTimestampOrNull(rs, "start_date"));
+        t.setEndDate(getTimestampOrNull(rs, "end_date"));
+        t.setCreateBy(getIntegerOrNull(rs, "create_by"));
+        t.setCreateAt(getTimestampOrNull(rs, "create_at"));
+        t.setNotes(getStringOrNull(rs, "notes"));
 
         return t;
+    }
+
+    private boolean hasColumn(ResultSet rs, String column) {
+        try {
+            rs.findColumn(column);
+            return true;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    private String getStringOrNull(ResultSet rs, String column) throws SQLException {
+        if (!hasColumn(rs, column)) return null;
+        return rs.getString(column);
+    }
+
+    private java.math.BigDecimal getBigDecimalOrNull(ResultSet rs, String column) throws SQLException {
+        if (!hasColumn(rs, column)) return null;
+        return rs.getBigDecimal(column);
+    }
+
+    private java.sql.Timestamp getTimestampOrNull(ResultSet rs, String column) throws SQLException {
+        if (!hasColumn(rs, column)) return null;
+        return rs.getTimestamp(column);
+    }
+
+    private Integer getIntegerOrNull(ResultSet rs, String column) throws SQLException {
+        if (!hasColumn(rs, column)) return null;
+        Object value = rs.getObject(column);
+        if (value == null) return null;
+        if (value instanceof Number n) return n.intValue();
+        return null;
+    }
+
+    private int getIntOrDefault(ResultSet rs, String column, int defaultValue) throws SQLException {
+        if (!hasColumn(rs, column)) return defaultValue;
+        int value = rs.getInt(column);
+        return rs.wasNull() ? defaultValue : value;
     }
 
     // Hien them
@@ -399,6 +438,45 @@ public class TournamentDAO extends DBContext {
             e.printStackTrace();
         }
         return images;
+    }
+
+    public Map<String, Object> getTournamentPodium(int tournamentId) {
+        Map<String, Object> podium = new HashMap<>();
+        podium.put("championName", null);
+        podium.put("runnerUpName", null);
+
+        String sql = """
+                SELECT s.current_rank, u.first_name, u.last_name
+                FROM Standing s
+                INNER JOIN Users u ON u.user_id = s.user_id
+                WHERE s.tournament_id = ?
+                  AND s.current_rank IN (1, 2)
+                ORDER BY s.current_rank ASC
+                """;
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int rank = rs.getInt("current_rank");
+                    String fullName = EncodingUtil.fixUtf8Mojibake(
+                            (rs.getString("first_name") == null ? "" : rs.getString("first_name")) + " "
+                                    + (rs.getString("last_name") == null ? "" : rs.getString("last_name"))
+                    ).trim();
+                    if (fullName.isBlank()) fullName = "N/A";
+
+                    if (rank == 1) {
+                        podium.put("championName", fullName);
+                    } else if (rank == 2) {
+                        podium.put("runnerUpName", fullName);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return podium;
     }
 
     public List<PlayerTournamentDTO> getPlayerTournamentCards(

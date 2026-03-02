@@ -4,6 +4,7 @@ import com.example.DAO.TournamentDAO;
 import com.example.DAO.TournamentRefereeDAO;
 import com.example.DAO.TournamentSetupDAO;
 import com.example.DAO.ReportDAO;
+import com.example.DAO.MatchDAO;
 import com.example.model.dto.TournamentManualSetupRequestDTO;
 import com.example.model.dto.TournamentDTO;
 import com.example.model.dto.TournamentPlayerDTO;
@@ -18,6 +19,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class TournamentService {
@@ -30,6 +32,7 @@ public class TournamentService {
     private final ParticipantDAO participantDAO;
     private final TournamentRefereeDAO refereeDAO;
     private final ReportDAO reportDAO;
+    private final MatchDAO matchDAO;
     private final TournamentSetupDAO setupDAO;
 
     public TournamentService() {
@@ -37,6 +40,7 @@ public class TournamentService {
         this.participantDAO = new ParticipantDAO();
         this.refereeDAO = new TournamentRefereeDAO();
         this.reportDAO = new ReportDAO();
+        this.matchDAO = new MatchDAO();
         this.setupDAO = new TournamentSetupDAO();
     }
 
@@ -154,6 +158,23 @@ public class TournamentService {
         return reportDAO.getReportsByTournament(tournamentId);
     }
 
+    public List<Map<String, Object>> getUpcomingMatchesByTournament(int tournamentId) {
+        if (tournamentId <= 0) return List.of();
+        return matchDAO.getUpcomingMatchesByTournament(tournamentId);
+    }
+
+    public List<Map<String, Object>> getCompletedMatchesByTournament(int tournamentId) {
+        if (tournamentId <= 0) return List.of();
+        return matchDAO.getCompletedMatchesByTournament(tournamentId);
+    }
+
+    public List<Map<String, Object>> getAllPublicMatches() {
+        return matchDAO.getAllPublicMatches();
+    }
+
+    public Map<String, Object> getTournamentPodium(int tournamentId) {
+        if (tournamentId <= 0) return Map.of("championName", null, "runnerUpName", null);
+        return tournamentDAO.getTournamentPodium(tournamentId);
     public List<TournamentSetupMatchDTO> getManualSetupMatches(int tournamentId) {
         if (tournamentId <= 0) return List.of();
         return setupDAO.getManualSetupMatches(tournamentId);

@@ -38,9 +38,29 @@ public class TournamentController extends HttpServlet {
                 .create();
     }
 
+    // =======================
+    // CORS helper
+    // =======================
+    private void addCors(HttpServletRequest req, HttpServletResponse resp) {
+        String origin = req.getHeader("Origin");
+
+        // DEV: cho phép tất cả origin. Nếu muốn chặt hơn: whitelist http://localhost:5173
+        if (origin == null || origin.isBlank()) {
+            resp.setHeader("Access-Control-Allow-Origin", "*");
+        } else {
+            resp.setHeader("Access-Control-Allow-Origin", origin);
+            resp.setHeader("Vary", "Origin");
+        }
+
+        resp.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        resp.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        resp.setHeader("Access-Control-Max-Age", "3600");
+    }
+
     @Override
     protected void doOptions(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
+        addCors(req, resp);
         resp.setStatus(HttpServletResponse.SC_OK);
     }
 
@@ -50,6 +70,8 @@ public class TournamentController extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
+        addCors(request, response);
 
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
@@ -207,6 +229,8 @@ public class TournamentController extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        addCors(request, response);
+
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
@@ -359,6 +383,8 @@ public class TournamentController extends HttpServlet {
     protected void doPut(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        addCors(request, response);
+
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
@@ -396,6 +422,8 @@ public class TournamentController extends HttpServlet {
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
+        addCors(request, response);
 
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");

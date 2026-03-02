@@ -51,7 +51,7 @@ const FORMAT_LABELS = {
 const getStatusLabel = (s) => STATUS_LABELS[s] || s;
 const getFormatLabel = (f) => FORMAT_LABELS[f] || f;
 
-const TournamentList = () => {
+const TournamentList = ({ hideHeader = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [tournaments, setTournaments] = useState([]);
@@ -164,20 +164,8 @@ const TournamentList = () => {
     return { total, upcoming, ongoing, finished };
   }, [tournaments]);
 
-  if (loading) {
-    return (
-      <div className="tl-page">
-        <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
-        <div className="tl-loading">Đang tải danh sách giải đấu...</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="tl-page">
-      <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
-
-      <div className="tl-body">
+  const pageContent = (
+    <div className="tl-body">
         {/* Header */}
         <div className="tl-header-section">
           <div>
@@ -391,8 +379,6 @@ const TournamentList = () => {
             )}
           </div>
         </div>
-      </div>
-
       {/* Cancel Modal */}
       {showConfirm && (
         <div className="tl-modal-overlay">
@@ -427,6 +413,32 @@ const TournamentList = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+
+  if (loading) {
+    return hideHeader ? (
+      <div className="tl-loading">Đang tải danh sách giải đấu...</div>
+    ) : (
+      <div className="tl-page">
+        <MainHeader
+          user={user}
+          onLogout={handleLogout}
+          currentPath={location.pathname}
+        />
+        <div className="tl-loading">Đang tải danh sách giải đấu...</div>
+      </div>
+    );
+  }
+
+  if (hideHeader) {
+    return pageContent;
+  }
+
+  return (
+    <div className="tl-page">
+      <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
+      {pageContent}
     </div>
   );
 };

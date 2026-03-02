@@ -369,26 +369,26 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
         .ep-card{ border-radius:16px; background:rgba(255,255,255,0.92); border:1px solid rgba(15,23,42,0.08);
           box-shadow:0 14px 34px rgba(15,23,42,0.06); padding:14px; }
         .ep-title{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
-        .ep-h1{ font-size:18px; font-weight:950; }
-        .ep-sub{ opacity:.75; font-weight:750; margin-top:4px; }
+        .ep-h1{ font-size:18px; font-weight:500; }
+        .ep-sub{ opacity:.75; font-weight:400; margin-top:4px; }
         .ep-alert{ border-radius:12px; padding:10px 12px; border:1px solid rgba(15,23,42,0.08);
-          background:rgba(255,255,255,0.9); box-shadow:0 10px 24px rgba(15,23,42,0.06); font-weight:800; }
+          background:rgba(255,255,255,0.9); box-shadow:0 10px 24px rgba(15,23,42,0.06); font-weight:400; }
         .ep-err{ color:#b91c1c; background:#fff1f2; border-color:#fecdd3; }
         .ep-ok{ color:#065f46; background:#ecfdf5; border-color:#a7f3d0; }
         .ep-warn{ color:#92400e; background:#fffbeb; border-color:#fcd34d; }
         .ep-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
         @media (max-width:820px){ .ep-grid{ grid-template-columns:1fr; } }
         .ep-field{ display:flex; flex-direction:column; gap:6px; }
-        .ep-label{ font-size:12px; font-weight:950; text-transform:uppercase; letter-spacing:.05em; opacity:.85; }
+        .ep-label{ font-size:12px; font-weight:500; text-transform:uppercase; letter-spacing:.05em; opacity:.85; }
         .ep-input,.ep-select{ border:1px solid rgba(15,23,42,0.12); background:#fff; border-radius:14px; padding:10px 12px;
-          font-weight:800; color:#0b0f1a; outline:none; }
+          font-weight:400; color:#0b0f1a; outline:none; }
         .ep-actions{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
         .ep-btn{ border-radius:14px; padding:10px 12px; border:1px solid rgba(15,23,42,0.12); background:rgba(255,255,255,0.95);
-          box-shadow:0 10px 24px rgba(15,23,42,0.06); color:#0b0f1a; font-weight:950; cursor:pointer; }
+          box-shadow:0 10px 24px rgba(15,23,42,0.06); color:#0b0f1a; font-weight:500; cursor:pointer; }
         .ep-btnPrimary{ background: rgba(59,130,246,0.12); }
         .ep-btnDanger{ background: rgba(239,68,68,0.10); }
         .ep-btn:disabled{ opacity:.65; cursor:not-allowed; }
-        .ep-sectionTitle{ font-weight:950; margin:2px 0 10px; }
+        .ep-sectionTitle{ font-weight:500; margin:2px 0 10px; }
         .ep-divider{ height:1px; background:rgba(15,23,42,0.08); margin:10px 0; }
 
 
@@ -400,8 +400,8 @@ export default function EditProfile({ userId: userIdProp, onBack }) {
           display:flex; align-items:center; justify-content:center;
         }
         .ep-avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
-        .ep-avatarPlaceholder{ font-weight:950; opacity:.6; font-size:12px; padding:8px; text-align:center; }
-        .ep-hint{ font-size:12px; opacity:.75; font-weight:750; }
+        .ep-avatarPlaceholder{ font-weight:500; opacity:.6; font-size:12px; padding:8px; text-align:center; }
+        .ep-hint{ font-size:12px; opacity:.75; font-weight:400; }
       `}</style>
 
       <div className="ep-wrap">
