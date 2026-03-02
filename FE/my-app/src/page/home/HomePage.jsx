@@ -115,14 +115,6 @@ export default function HomePage() {
     return fromTournament.slice(0, 4);
   }, [navigate, upcomingTournaments]);
 
-  useEffect(() => {
-    if (seasonSlides.length <= 1) return undefined;
-    const timer = setInterval(() => {
-      setSlideIndex((prev) => (prev + 1) % seasonSlides.length);
-    }, 4500);
-    return () => clearInterval(timer);
-  }, [seasonSlides.length]);
-
   const activeSlide = seasonSlides[slideIndex] || seasonSlides[0];
 
   const handleRegisterFromBanner = () => {

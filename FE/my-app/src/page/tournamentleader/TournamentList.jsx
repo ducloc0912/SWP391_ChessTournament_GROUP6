@@ -20,6 +20,9 @@ import {
 } from "lucide-react";
 import MainHeader from "../../component/common/MainHeader";
 import FilterSection from "../../component/tournament/FilterSection";
+import "../../assets/css/tokens.css";
+import "../../assets/css/components/card.css";
+import "../../assets/css/components/button.css";
 import "../../assets/css/tournament-leader/TournamentList.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
@@ -192,7 +195,7 @@ const TournamentList = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button className="tl-create-btn" onClick={() => navigate("/tournaments/create")}>
+            <button className="tl-create-btn ui-btn ui-btn-primary" onClick={() => navigate("/tournaments/create")}>
               <Plus size={20} />
               Tạo giải đấu
             </button>
@@ -201,28 +204,28 @@ const TournamentList = () => {
 
         {/* Stats */}
         <div className="tl-stats-grid">
-          <div className="tl-stat-card">
+          <div className="tl-stat-card ui-card ui-card-flat">
             <div>
               <p className="tl-stat-label">Tổng giải đấu</p>
               <h3 className="tl-stat-value">{stats.total}</h3>
             </div>
             <div className="tl-stat-icon indigo"><LayoutDashboard size={24} /></div>
           </div>
-          <div className="tl-stat-card">
+          <div className="tl-stat-card ui-card ui-card-flat">
             <div>
               <p className="tl-stat-label">Chờ duyệt</p>
               <h3 className="tl-stat-value">{stats.upcoming}</h3>
             </div>
             <div className="tl-stat-icon blue"><Clock size={24} /></div>
           </div>
-          <div className="tl-stat-card">
+          <div className="tl-stat-card ui-card ui-card-flat">
             <div>
               <p className="tl-stat-label">Đang diễn ra</p>
               <h3 className="tl-stat-value">{stats.ongoing}</h3>
             </div>
             <div className="tl-stat-icon emerald"><PlayCircle size={24} /></div>
           </div>
-          <div className="tl-stat-card">
+          <div className="tl-stat-card ui-card ui-card-flat">
             <div>
               <p className="tl-stat-label">Đã kết thúc</p>
               <h3 className="tl-stat-value">{stats.finished}</h3>
@@ -253,7 +256,7 @@ const TournamentList = () => {
                       : 0;
 
                     return (
-                      <div className="tl-tournament-card" key={t.tournamentId}>
+                      <div className="tl-tournament-card ui-card ui-card-hover" key={t.tournamentId}>
                         <div className="tl-card-banner">
                           <div className="tl-card-banner-overlay" />
                           <Trophy size={48} className="tl-card-banner-icon" />
@@ -304,14 +307,14 @@ const TournamentList = () => {
 
                         <div className="tl-card-footer">
                           <button
-                            className="tl-card-manage-btn"
+                            className="tl-card-manage-btn ui-btn"
                             onClick={() => navigate(`/tournaments/${t.tournamentId}`)}
                           >
                             Quản lý
                           </button>
                           <div className="tl-card-actions">
                             <button
-                              className="tl-card-action-btn"
+                              className="tl-card-action-btn ui-btn ui-btn-icon"
                               title="Xem chi tiết"
                               onClick={() => navigate(`/tournaments/${t.tournamentId}`)}
                             >
@@ -319,7 +322,7 @@ const TournamentList = () => {
                             </button>
                             {EDITABLE_STATUSES.includes(t.status) && (
                               <button
-                                className="tl-card-action-btn"
+                                className="tl-card-action-btn ui-btn ui-btn-icon"
                                 title="Chỉnh sửa"
                                 onClick={() => navigate(`/tournaments/edit/${t.tournamentId}`)}
                               >
@@ -328,7 +331,7 @@ const TournamentList = () => {
                             )}
                             {CANCELLED_ABLE.includes(t.status) && (
                               <button
-                                className="tl-card-action-btn danger"
+                                className="tl-card-action-btn danger ui-btn ui-btn-icon"
                                 title="Hủy giải"
                                 onClick={() => handleOpenConfirm(t)}
                               >
@@ -372,14 +375,14 @@ const TournamentList = () => {
                 )}
               </>
             ) : (
-              <div className="tl-empty-state">
+              <div className="tl-empty-state ui-card">
                 <div className="tl-empty-icon-wrap">
                   <LayoutDashboard size={40} />
                 </div>
                 <h3>Không tìm thấy giải đấu</h3>
                 <p>Bạn chưa tạo giải đấu nào hoặc bộ lọc đang quá chặt.</p>
                 <button
-                  className="tl-empty-create-btn"
+                  className="tl-empty-create-btn ui-btn ui-btn-primary"
                   onClick={() => navigate("/tournaments/create")}
                 >
                   Tạo giải đấu
@@ -393,7 +396,7 @@ const TournamentList = () => {
       {/* Cancel Modal */}
       {showConfirm && (
         <div className="tl-modal-overlay">
-          <div className="tl-modal">
+          <div className="tl-modal ui-card">
             <h3>Hủy giải đấu</h3>
             <p>
               Bạn chắc chắn muốn hủy giải{" "}
@@ -409,7 +412,7 @@ const TournamentList = () => {
             />
             <div className="tl-modal-actions">
               <button
-                className="tl-btn-cancel"
+                className="tl-btn-cancel ui-btn ui-btn-secondary"
                 onClick={() => {
                   setShowConfirm(false);
                   setSelectedTournament(null);
@@ -417,7 +420,7 @@ const TournamentList = () => {
               >
                 Hủy
               </button>
-              <button className="tl-btn-confirm" onClick={handleConfirmCancel}>
+              <button className="tl-btn-confirm ui-btn ui-btn-primary" onClick={handleConfirmCancel}>
                 Đồng ý
               </button>
             </div>
