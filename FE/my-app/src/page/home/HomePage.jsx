@@ -181,25 +181,6 @@ export default function HomePage() {
       }
     }
 
-    try {
-      const waitingRes = await axios.get(`${API_BASE}/api/waiting-list`, {
-        params: { tournamentId: activeSlide.tournamentId },
-        withCredentials: true,
-      });
-      const list = Array.isArray(waitingRes?.data?.data)
-        ? waitingRes.data.data
-        : [];
-      const alreadyRegistered = list.some(
-        (row) => Number(row.userId) === Number(user?.userId),
-      );
-      if (alreadyRegistered) {
-        alert("Bạn đã đăng ký giải đấu rồi.");
-        return;
-      }
-    } catch (error) {
-      alert("Không thể kiểm tra trạng thái đăng ký. Vui lòng thử lại.");
-      return;
-    }
     if (currentTournament) {
       setRegisterTournament({ ...currentTournament });
     } else {
@@ -306,10 +287,17 @@ export default function HomePage() {
       alert(res?.data?.message || "Đăng ký thành công.");
       navigate("/player/pending-registrations");
     } catch (error) {
+      const status = Number(error?.response?.status);
+      const serverMessage = error?.response?.data?.message;
+      const detail =
+        error?.response?.data?.detail || error?.response?.data?.data?.detail;
       const msg =
-        error?.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
-      alert(msg);
-      setShowRegisterModal(false);
+        serverMessage ||
+        detail ||
+        (status === 401
+          ? "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn."
+          : "Đăng ký thất bại. Vui lòng thử lại.");
+      setRegisterErrors({ general: msg });
     } finally {
       setRegisterSubmitting(false);
     }
