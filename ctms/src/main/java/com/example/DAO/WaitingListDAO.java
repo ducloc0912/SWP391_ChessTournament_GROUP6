@@ -5,7 +5,9 @@ import com.example.util.DBContext;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class WaitingListDAO extends DBContext {
     public static final String APPROVE_OK = "OK";
@@ -46,6 +48,47 @@ public class WaitingListDAO extends DBContext {
             ps.setInt(1, tournamentId);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) list.add(mapRow(rs));
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<Map<String, Object>> getPendingByUserId(int userId) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        String sql = """
+            SELECT wl.waiting_id,
+                   wl.tournament_id,
+                   wl.rank_at_registration,
+                   wl.status,
+                   wl.note,
+                   wl.registration_date,
+                   t.tournament_name,
+                   t.format,
+                   t.location
+            FROM Waiting_List wl
+            INNER JOIN Tournaments t ON t.tournament_id = wl.tournament_id
+            WHERE wl.user_id = ?
+              AND LOWER(ISNULL(wl.status, '')) = 'pending'
+            ORDER BY wl.registration_date DESC
+        """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("waitingId", rs.getInt("waiting_id"));
+                row.put("tournamentId", rs.getInt("tournament_id"));
+                row.put("tournamentName", rs.getString("tournament_name"));
+                row.put("format", rs.getString("format"));
+                row.put("location", rs.getString("location"));
+                row.put("registrationDate", rs.getTimestamp("registration_date"));
+                row.put("rankAtRegistration", rs.getObject("rank_at_registration"));
+                row.put("status", rs.getString("status"));
+                row.put("note", rs.getString("note"));
+                list.add(row);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -263,4 +306,5 @@ public class WaitingListDAO extends DBContext {
             return APPROVE_FAILED;
         }
     }
+
 }
