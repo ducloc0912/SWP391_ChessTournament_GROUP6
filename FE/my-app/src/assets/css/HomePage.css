@@ -171,13 +171,13 @@
   margin-top: 24px;
   position: relative;
   border: 1px solid rgba(15, 23, 42, 0.14);
-  min-height: 460px;
+  min-height: 225px;
   overflow: hidden;
 }
 
 .hpv-season-image {
   width: 100%;
-  min-height: 460px;
+  height: 680px;
   object-fit: cover;
 }
 
@@ -513,7 +513,7 @@
 
   .hpv-season-slider,
   .hpv-season-image {
-    min-height: 340px;
+    min-height: 168px;
   }
 
   .hpv-season-content {

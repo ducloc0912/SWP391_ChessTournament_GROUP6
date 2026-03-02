@@ -1,0 +1,20 @@
+:root {
+  --ui-color-bg-card: #f3f4f6;
+  --ui-color-bg-card-strong: #ffffff;
+  --ui-color-border: #e5e7eb;
+  --ui-color-text: #101828;
+  --ui-color-text-muted: #475467;
+
+  --ui-color-primary: #ff4655;
+  --ui-color-primary-hover: #e62d3d;
+  --ui-color-danger: #b42318;
+  --ui-color-danger-bg: #fef3f2;
+  --ui-color-danger-border: #fecdca;
+  --ui-color-secondary-bg: #f2f4f7;
+  --ui-color-secondary-hover: #eaecf0;
+
+  --ui-radius-sm: 8px;
+  --ui-radius-md: 10px;
+  --ui-radius-lg: 12px;
+  --ui-radius-xl: 14px;
+}
