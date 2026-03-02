@@ -2,7 +2,6 @@ import React from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Bell, Crown, LogOut, Menu, X } from "lucide-react";
 import "./MainHeader.css";
-import { useAuth } from "./AuthContext";
 
 function ImageWithFallback({ src, alt = "", className = "", fallback = "https://ui-avatars.com/api/?name=User&background=random" }) {
   const [imgSrc, setImgSrc] = React.useState(src);
@@ -28,7 +27,6 @@ export default function MainHeader({
   menuItems = null,
 }) {
   const navigate = useNavigate();
-  const auth = useAuth();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const defaultMenuItems = [
@@ -49,13 +47,6 @@ export default function MainHeader({
 
   const avatarUrl = user?.avatar;
   const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=6366f1&color=fff&size=64`;
-  const rawRole = user?.role || auth?.role || localStorage.getItem("role") || "";
-  const normalizedRole = String(rawRole).toUpperCase().replace(/[_\s]/g, "");
-  const canAccessDashboard =
-    normalizedRole === "REFEREE" ||
-    normalizedRole === "TOURNAMENTLEADER" ||
-    normalizedRole === "LEADER";
-  const dashboardPath = normalizedRole === "REFEREE" ? "/staff/dashboard" : "/tournaments";
 
   const handleMenuAction = (item) => {
     if (item.to) {
@@ -112,15 +103,6 @@ export default function MainHeader({
           <div className="header-actions">
             {user ? (
               <>
-                {canAccessDashboard && (
-                  <button
-                    type="button"
-                    className="btn btn-dashboard"
-                    onClick={() => navigate(dashboardPath)}
-                  >
-                    Dashboard
-                  </button>
-                )}
                 <button type="button" className="icon-btn" aria-label="Thông báo">
                   <Bell size={18} />
                   <span className="notification-dot" />
@@ -204,18 +186,6 @@ export default function MainHeader({
                 </button>
               );
             })}
-            {user && canAccessDashboard && (
-              <button
-                type="button"
-                className="mobile-nav-link"
-                onClick={() => {
-                  navigate(dashboardPath);
-                  setMobileOpen(false);
-                }}
-              >
-                Dashboard
-              </button>
-            )}
           </div>
         )}
       </div>

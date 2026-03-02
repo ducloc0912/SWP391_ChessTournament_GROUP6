@@ -175,17 +175,6 @@
   border-color: #f23645;
 }
 
-.main-header .btn-dashboard {
-  border-color: rgba(255, 70, 85, 0.75);
-  color: #ffd4d8;
-}
-
-.main-header .btn-dashboard:hover {
-  border-color: #ff4655;
-  color: #ffffff;
-  background: rgba(255, 70, 85, 0.14);
-}
-
 .main-header .mobile-menu-btn {
   display: none;
   width: 36px;

@@ -1,0 +1,436 @@
+/* ====== GLOBAL BACKGROUND ====== */
+.payment-container {
+    background: #f5f5f5;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 20px;
+}
+
+/* ====== CARD STYLE (Giống box sản phẩm) ====== */
+.glass-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.glass-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ====== INPUT STYLE ====== */
+.input-premium {
+    border: 1px solid #d1d5db;
+    background: #fafafa;
+    transition: all 0.2s ease;
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-top: 6px;
+}
+
+.input-premium:focus {
+    outline: none;
+    border-color: #ee4d2d;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(238, 77, 45, 0.15);
+}
+
+/* ====== BADGE / PILL ====== */
+.glass-pill {
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: #4b5563;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+/* ====== RADIO PAYMENT OPTION ====== */
+.radio-option {
+    border: 1px solid #e5e7eb;
+    background: #fafafa;
+    transition: all 0.2s ease;
+    padding: 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+
+.radio-option:hover {
+    border-color: #ee4d2d;
+    background: #fff;
+}
+
+.radio-option.selected {
+    border: 2px solid #ee4d2d;
+    background: #fff7f5;
+}
+
+.radio-option.disabled {
+    background: #f3f4f6;
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ====== PRICE STYLE ====== */
+.price-original {
+    text-decoration: line-through;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.price-discount {
+    color: #ee4d2d;
+    font-weight: bold;
+    font-size: 12px;
+    background: #fef2f2;
+    padding: 2px 6px;
+    border: 1px solid #fee2e2;
+    border-radius: 4px;
+}
+
+.price-final {
+    color: #ee4d2d;
+    font-size: 28px;
+    font-weight: 800;
+}
+
+/* ====== PRIMARY BUTTON (Mua ngay style) ====== */
+.btn-primary {
+    background: #ee4d2d;
+    transition: all 0.2s ease;
+    color: white;
+    width: 100%;
+    padding: 14px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 16px;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+}
+
+.btn-primary:hover {
+    background: #d84325;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(238, 77, 45, 0.35);
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+}
+
+.btn-loading {
+    background: #f97316;
+    cursor: not-allowed;
+    color: white;
+    width: 100%;
+    padding: 14px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 16px;
+    border: none;
+    text-align: center;
+}
+
+.btn-secondary {
+    background: white;
+    border: 1px solid #d1d5db;
+    color: #374151;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+    background: #f3f4f6;
+}
+
+.btn-dark {
+    background: #111827;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-dark:hover {
+    background: #000000;
+}
+
+/* ====== HEADER TITLE STYLE ====== */
+h2 {
+    font-weight: 600;
+    color: #333;
+    margin-top: 0;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ====== SECTION DIVIDER ====== */
+.section-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 16px 0;
+}
+
+/* ====== ANIMATION (Subtle ecommerce fade) ====== */
+.slide-up {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: slideUp 0.4s ease forwards;
+}
+
+.delay-1 {
+    animation-delay: 0.1s;
+}
+
+.delay-2 {
+    animation-delay: 0.2s;
+}
+
+.delay-3 {
+    animation-delay: 0.3s;
+}
+
+@keyframes slideUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ====== LAYOUT HELPER (Thay cho Tailwind) ====== */
+.payment-layout {
+    display: flex;
+    max-width: 1100px;
+    margin: 0 auto;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.payment-left {
+    flex: 1;
+    min-width: 300px;
+}
+
+.payment-right {
+    width: 400px;
+}
+
+.flex-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.flex-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.text-gray {
+    color: #6b7280;
+}
+
+.text-xs {
+    font-size: 12px;
+}
+
+.text-sm {
+    font-size: 14px;
+}
+
+.text-lg {
+    font-size: 18px;
+}
+
+.font-bold {
+    font-weight: bold;
+}
+
+.font-semibold {
+    font-weight: 600;
+}
+
+.mb-2 {
+    margin-bottom: 8px;
+}
+
+.mb-4 {
+    margin-bottom: 16px;
+}
+
+.mt-4 {
+    margin-top: 16px;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Custom elements */
+.icon-svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.icon-lg {
+    width: 48px;
+    height: 48px;
+}
+
+.tournament-img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.method-icon-box {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+
+.method-blue {
+    background: linear-gradient(135deg, #2563eb, #1e3a8a);
+}
+
+.method-red {
+    background: linear-gradient(135deg, #ef4444, #991b1b);
+}
+
+.method-orange {
+    background: linear-gradient(135deg, #f97316, #c2410c);
+}
+
+.payment-result-box {
+    max-width: 500px;
+    margin: 40px auto;
+    text-align: center;
+}
+
+.status-icon-wrap {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px auto;
+}
+
+.status-green {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.status-red {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.status-blue {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.loading-spinner {
+    border: 4px solid #dbeafe;
+    border-top: 4px solid #2563eb;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px auto;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* ====== RESPONSIVE ====== */
+@media (max-width: 768px) {
+    .glass-card {
+        border-radius: 8px;
+        padding: 16px;
+    }
+
+    .btn-primary {
+        font-size: 16px;
+    }
+
+    .payment-right {
+        width: 100%;
+    }
+
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    .flex-row {
+        flex-direction: column;
+    }
+}

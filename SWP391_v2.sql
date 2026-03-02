@@ -263,32 +263,6 @@ CREATE TABLE Match_Referee (
     FOREIGN KEY (referee_id) REFERENCES Users(user_id)
 );
 
-/* Swim-lane setup state per tournament */
-CREATE TABLE Tournament_Setup_State (
-    tournament_id INT PRIMARY KEY,
-    current_step NVARCHAR(20) NOT NULL
-        CHECK (current_step IN ('STRUCTURE','PLAYERS','SCHEDULE','COMPLETED')),
-    updated_at DATETIME NOT NULL DEFAULT GETDATE(),
-    FOREIGN KEY (tournament_id) REFERENCES Tournaments(tournament_id) ON DELETE CASCADE
-);
-
-/* Luu seed ranking cho tung tournament (phuc vu bracket seeding) */
-CREATE TABLE Tournament_Seed (
-    seed_id INT IDENTITY(1,1) PRIMARY KEY,
-    tournament_id INT NOT NULL,
-    user_id INT NOT NULL,
-    seed_number INT NOT NULL,
-    source NVARCHAR(20) NOT NULL DEFAULT 'AUTO'
-        CHECK (source IN ('AUTO','MANUAL','IMPORTED')),
-    created_at DATETIME NOT NULL DEFAULT GETDATE(),
-    updated_at DATETIME NOT NULL DEFAULT GETDATE(),
-    FOREIGN KEY (tournament_id) REFERENCES Tournaments(tournament_id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES Users(user_id),
-    CONSTRAINT UQ_Tournament_Seed_User UNIQUE (tournament_id, user_id),
-    CONSTRAINT UQ_Tournament_Seed_Number UNIQUE (tournament_id, seed_number),
-    CONSTRAINT CK_Tournament_Seed_Number CHECK (seed_number > 0)
-);
-
 /* Luu lich su van co (PGN) */
 CREATE TABLE Match_PGN (
     match_id INT PRIMARY KEY,

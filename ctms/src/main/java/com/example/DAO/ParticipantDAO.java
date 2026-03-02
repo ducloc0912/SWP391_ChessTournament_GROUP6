@@ -202,19 +202,4 @@ try (Connection conn = getConnection();
         }
         return 0;
     }
-
-    public boolean existsByTournamentAndUser(int tournamentId, int userId) {
-        String sql = "SELECT 1 FROM Participants WHERE tournament_id = ? AND user_id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, tournamentId);
-            ps.setInt(2, userId);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
 }

@@ -1,14 +1,10 @@
 package com.example.controller.user;
 
 import com.example.DAO.WaitingListDAO;
-import com.example.DAO.ParticipantDAO;
 import com.example.DAO.TournamentDAO;
-import com.example.model.dto.TournamentPlayerDTO;
 import com.example.model.dto.TournamentDTO;
-import com.example.model.entity.Participant;
 import com.example.model.entity.User;
 import com.example.model.entity.WaitingList;
-import com.example.model.enums.ParticipantStatus;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import jakarta.servlet.annotation.WebServlet;
@@ -29,7 +25,6 @@ public class WaitingListServlet extends HttpServlet {
     private static final Pattern PHONE_PATTERN = Pattern.compile("^[0-9+\\s()\\-]{8,15}$");
 
     private final WaitingListDAO dao = new WaitingListDAO();
-    private final ParticipantDAO participantDAO = new ParticipantDAO();
     private final TournamentDAO tournamentDAO = new TournamentDAO();
     private final Gson gson = new Gson();
 
@@ -37,200 +32,153 @@ public class WaitingListServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setContentType("application/json; charset=UTF-8");
         resp.setCharacterEncoding("UTF-8");
-        try {
-            String idParam = req.getParameter("id");
-            String tournamentIdParam = req.getParameter("tournamentId");
-            String userIdParam = req.getParameter("userId");
 
-            if (idParam != null) {
-                Integer waitingId = parseIntOrNull(idParam);
-                if (waitingId == null) {
-                    write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "Invalid id", null);
-                    return;
-                }
-                WaitingList row = dao.getById(waitingId);
-                if (row == null) {
-                    write(resp, HttpServletResponse.SC_NOT_FOUND, false, "Not found", null);
-                    return;
-                }
-                write(resp, HttpServletResponse.SC_OK, true, null, row);
+        String idParam = req.getParameter("id");
+        String tournamentIdParam = req.getParameter("tournamentId");
+        String userIdParam = req.getParameter("userId");
+
+        if (idParam != null) {
+            Integer waitingId = parseIntOrNull(idParam);
+            if (waitingId == null) {
+                write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "Invalid id", null);
                 return;
             }
-
-            if (userIdParam != null) {
-                HttpSession session = req.getSession(false);
-                if (session == null || session.getAttribute("user") == null) {
-                    write(resp, HttpServletResponse.SC_UNAUTHORIZED, false, "Not logged in", null);
-                    return;
-                }
-                User currentUser = (User) session.getAttribute("user");
-                String role = String.valueOf(session.getAttribute("role"));
-                Integer requestedUserId = parseIntOrNull(userIdParam);
-                if (requestedUserId == null) {
-                    write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "Invalid userId", null);
-                    return;
-                }
-                boolean canManageAll = canApproveWaitingList(role);
-                if (!canManageAll && currentUser.getUserId() != requestedUserId.intValue()) {
-                    write(resp, HttpServletResponse.SC_FORBIDDEN, false, "Bạn không có quyền xem dữ liệu này", null);
-                    return;
-                }
-                List<Map<String, Object>> list = dao.getPendingByUserId(requestedUserId);
-                write(resp, HttpServletResponse.SC_OK, true, null, list);
+            WaitingList row = dao.getById(waitingId);
+            if (row == null) {
+                write(resp, HttpServletResponse.SC_NOT_FOUND, false, "Not found", null);
                 return;
             }
-
-            if (tournamentIdParam == null) {
-                write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "Missing tournamentId", null);
-                return;
-            }
-
-            Integer tournamentId = parseIntOrNull(tournamentIdParam);
-            if (tournamentId == null) {
-                write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "Invalid tournamentId", null);
-                return;
-            }
-
-            if (dao.hasWaitingListTable()) {
-                List<WaitingList> list = dao.getByTournamentId(tournamentId);
-                write(resp, HttpServletResponse.SC_OK, true, null, list);
-            } else {
-                List<TournamentPlayerDTO> players = participantDAO.getPlayersWithUserInfo(tournamentId);
-                List<Map<String, Object>> list = players.stream().map(p -> {
-                    Map<String, Object> row = new HashMap<>();
-                    row.put("waitingId", null);
-                    row.put("tournamentId", tournamentId);
-                    row.put("userId", p.getUserId());
-                    row.put("status", p.getStatus() == null ? "Approved" : p.getStatus());
-                    row.put("registrationDate", p.getRegistrationDate());
-                    row.put("registrationFullName", ((p.getFirstName() == null ? "" : p.getFirstName()) + " "
-                            + (p.getLastName() == null ? "" : p.getLastName())).trim());
-                    row.put("registrationUsername", null);
-                    row.put("registrationEmail", p.getEmail());
-                    row.put("registrationPhone", null);
-                    return row;
-                }).toList();
-                write(resp, HttpServletResponse.SC_OK, true, null, list);
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            write(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, false,
-                    "Không thể tải danh sách đăng ký",
-                    Map.of("detail", safeErrorMessage(ex)));
+            write(resp, HttpServletResponse.SC_OK, true, null, row);
+            return;
         }
+
+        if (userIdParam != null) {
+            HttpSession session = req.getSession(false);
+            if (session == null || session.getAttribute("user") == null) {
+                write(resp, HttpServletResponse.SC_UNAUTHORIZED, false, "Not logged in", null);
+                return;
+            }
+            User currentUser = (User) session.getAttribute("user");
+            String role = String.valueOf(session.getAttribute("role"));
+            Integer requestedUserId = parseIntOrNull(userIdParam);
+            if (requestedUserId == null) {
+                write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "Invalid userId", null);
+                return;
+            }
+            boolean canManageAll = canApproveWaitingList(role);
+            if (!canManageAll && currentUser.getUserId() != requestedUserId.intValue()) {
+                write(resp, HttpServletResponse.SC_FORBIDDEN, false, "Bạn không có quyền xem dữ liệu này", null);
+                return;
+            }
+            List<Map<String, Object>> list = dao.getPendingByUserId(requestedUserId);
+            write(resp, HttpServletResponse.SC_OK, true, null, list);
+            return;
+        }
+
+        if (tournamentIdParam == null) {
+            write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "Missing tournamentId", null);
+            return;
+        }
+
+        Integer tournamentId = parseIntOrNull(tournamentIdParam);
+        if (tournamentId == null) {
+            write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "Invalid tournamentId", null);
+            return;
+        }
+
+        List<WaitingList> list = dao.getByTournamentId(tournamentId);
+        write(resp, HttpServletResponse.SC_OK, true, null, list);
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setContentType("application/json; charset=UTF-8");
         resp.setCharacterEncoding("UTF-8");
-        try {
-            HttpSession session = req.getSession(false);
-            if (session == null || session.getAttribute("user") == null) {
-                write(resp, HttpServletResponse.SC_UNAUTHORIZED, false, "Not logged in", null);
-                return;
-            }
 
-            User currentUser = (User) session.getAttribute("user");
-            JsonObject body = gson.fromJson(req.getReader(), JsonObject.class);
-
-            if (body == null || !body.has("tournamentId") || body.get("tournamentId").isJsonNull()) {
-                write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "Thiếu tournamentId", null);
-                return;
-            }
-
-            Integer tournamentIdObj = firstInteger(body, "tournamentId");
-            if (tournamentIdObj == null) {
-                write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "tournamentId không hợp lệ", null);
-                return;
-            }
-            int tournamentId = tournamentIdObj;
-
-            TournamentDTO tournament = tournamentDAO.getTournamentById(tournamentId);
-            if (tournament == null) {
-                write(resp, HttpServletResponse.SC_NOT_FOUND, false, "Không tìm thấy giải đấu", null);
-                return;
-            }
-
-            Timestamp registrationDeadline = tournament.getRegistrationDeadline();
-            if (registrationDeadline != null && registrationDeadline.before(new Timestamp(System.currentTimeMillis()))) {
-                write(resp, HttpServletResponse.SC_CONFLICT, false, "Đã quá hạn đăng ký", null);
-                return;
-            }
-
-            if (participantDAO.existsByTournamentAndUser(tournamentId, currentUser.getUserId())
-                    || (dao.hasWaitingListTable() && dao.exists(tournamentId, currentUser.getUserId()))) {
-                write(resp, HttpServletResponse.SC_CONFLICT, false, "Bạn đã đăng ký giải này rồi", null);
-                return;
-            }
-
-            String fullName = getString(body, "fullName");
-            String username = getString(body, "username");
-            String email = getString(body, "email");
-            String phone = getString(body, "phone");
-            Integer rankAtRegistration = firstInteger(body, "rankAtRegistration", "rank");
-            String note = getString(body, "note");
-
-            String fallbackFullName = ((currentUser.getFirstName() == null ? "" : currentUser.getFirstName()) + " "
-                    + (currentUser.getLastName() == null ? "" : currentUser.getLastName())).trim();
-
-            String resolvedFullName = isBlank(fullName) ? fallbackFullName : fullName.trim();
-            String resolvedUsername = isBlank(username) ? currentUser.getUsername() : username.trim();
-            String resolvedEmail = isBlank(email) ? currentUser.getEmail() : email.trim();
-            String resolvedPhone = isBlank(phone) ? currentUser.getPhoneNumber() : phone.trim();
-            Integer resolvedRank = rankAtRegistration != null ? rankAtRegistration : currentUser.getRank();
-
-            String validationError = validateRegistrationInput(
-                    resolvedFullName,
-                    resolvedUsername,
-                    resolvedEmail,
-                    resolvedPhone,
-                    resolvedRank
-            );
-            if (validationError != null) {
-                write(resp, HttpServletResponse.SC_BAD_REQUEST, false, validationError, null);
-                return;
-            }
-
-            boolean ok;
-            if (dao.hasWaitingListTable()) {
-                WaitingList e = new WaitingList();
-                e.setTournamentId(tournamentId);
-                e.setUserId(currentUser.getUserId());
-                e.setRankAtRegistration(resolvedRank);
-                e.setStatus("Pending");
-                e.setNote(note);
-                e.setRegistrationFullName(resolvedFullName);
-                e.setRegistrationUsername(resolvedUsername);
-                e.setRegistrationEmail(resolvedEmail);
-                e.setRegistrationPhone(resolvedPhone);
-                ok = dao.create(e);
-            } else {
-                Participant p = new Participant();
-                p.setTournamentId(tournamentId);
-                p.setUserId(currentUser.getUserId());
-                p.setTitleAtRegistration("Player");
-                p.setSeed(null);
-                p.setStatus(ParticipantStatus.getActive());
-                p.setIsPaid(Boolean.FALSE);
-                p.setPaymentDate(null);
-                p.setNotes(note);
-                ok = participantDAO.createParticipant(p);
-            }
-            if (!ok) {
-                write(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, false,
-                        "Đăng ký thất bại: hệ thống không thể ghi dữ liệu",
-                        null);
-                return;
-            }
-
-            write(resp, HttpServletResponse.SC_OK, true, "Đăng ký thành công", null);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            write(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, false,
-                    "Đăng ký thất bại",
-                    Map.of("detail", safeErrorMessage(ex)));
+         HttpSession session = req.getSession(false);
+        if (session == null || session.getAttribute("user") == null) {
+            write(resp, HttpServletResponse.SC_UNAUTHORIZED, false, "Not logged in", null);
+            return;
         }
+
+         User currentUser = (User) session.getAttribute("user");
+         JsonObject body = gson.fromJson(req.getReader(), JsonObject.class);
+
+        if (body == null || !body.has("tournamentId") || body.get("tournamentId").isJsonNull()) {
+            write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "Thiếu tournamentId", null);
+            return;
+        }
+
+        Integer tournamentIdObj = firstInteger(body, "tournamentId");
+        if (tournamentIdObj == null) {
+            write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "tournamentId không hợp lệ", null);
+            return;
+        }
+        int tournamentId = tournamentIdObj;
+
+        TournamentDTO tournament = tournamentDAO.getTournamentById(tournamentId);
+        if (tournament == null) {
+            write(resp, HttpServletResponse.SC_NOT_FOUND, false, "Không tìm thấy giải đấu", null);
+            return;
+        }
+
+        Timestamp registrationDeadline = tournament.getRegistrationDeadline();
+        if (registrationDeadline != null && registrationDeadline.before(new Timestamp(System.currentTimeMillis()))) {
+            write(resp, HttpServletResponse.SC_CONFLICT, false, "Đã quá hạn đăng ký", null);
+            return;
+        }
+
+        if (dao.exists(tournamentId, currentUser.getUserId())) {
+            write(resp, HttpServletResponse.SC_CONFLICT, false, "Bạn đã đăng ký giải này rồi", null);
+            return;
+        }
+
+        String fullName = getString(body, "fullName");
+        String username = getString(body, "username");
+        String email = getString(body, "email");
+        String phone = getString(body, "phone");
+        Integer rankAtRegistration = firstInteger(body, "rankAtRegistration", "rank");
+        String note = getString(body, "note");
+
+        String fallbackFullName = ((currentUser.getFirstName() == null ? "" : currentUser.getFirstName()) + " "
+                + (currentUser.getLastName() == null ? "" : currentUser.getLastName())).trim();
+
+        String resolvedFullName = isBlank(fullName) ? fallbackFullName : fullName.trim();
+        String resolvedUsername = isBlank(username) ? currentUser.getUsername() : username.trim();
+        String resolvedEmail = isBlank(email) ? currentUser.getEmail() : email.trim();
+        String resolvedPhone = isBlank(phone) ? currentUser.getPhoneNumber() : phone.trim();
+        Integer resolvedRank = rankAtRegistration != null ? rankAtRegistration : currentUser.getRank();
+
+        String validationError = validateRegistrationInput(
+                resolvedFullName,
+                resolvedUsername,
+                resolvedEmail,
+                resolvedPhone,
+                resolvedRank
+        );
+        if (validationError != null) {
+            write(resp, HttpServletResponse.SC_BAD_REQUEST, false, validationError, null);
+            return;
+        }
+
+        WaitingList e = new WaitingList();
+        e.setTournamentId(tournamentId);
+        e.setUserId(currentUser.getUserId());
+        e.setRankAtRegistration(resolvedRank);
+        e.setStatus("Pending");
+        e.setNote(note);
+        e.setRegistrationFullName(resolvedFullName);
+        e.setRegistrationUsername(resolvedUsername);
+        e.setRegistrationEmail(resolvedEmail);
+        e.setRegistrationPhone(resolvedPhone);
+
+        boolean ok = dao.create(e);
+        if (!ok) {
+            write(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, false, "Đăng ký thất bại", null);
+            return;
+        }
+
+        write(resp, HttpServletResponse.SC_OK, true, "Đăng ký thành công", null);
     }
 
     @Override
@@ -425,13 +373,6 @@ public class WaitingListServlet extends HttpServlet {
         return "admin".equals(normalized)
                 || "staff".equals(normalized)
                 || "tournamentleader".equals(normalized);
-    }
-
-    private String safeErrorMessage(Exception ex) {
-        if (ex == null) return "Unknown error";
-        String msg = ex.getMessage();
-        if (msg == null || msg.isBlank()) return ex.getClass().getSimpleName();
-        return msg;
     }
 
 }

@@ -69,6 +69,11 @@ export const Slidebar = ({ activeTab, onNavigate }) => {
       </nav>
 
       <div className="sidebarBottom">
+        <button type="button" className="sidebarAction">
+          <span className="navItemIcon">{ICONS.Settings}</span>
+          <span>Cài đặt</span>
+        </button>
+
         <button
           type="button"
           className="sidebarAction sidebarLogout"

@@ -20,9 +20,6 @@ import {
 } from "lucide-react";
 import MainHeader from "../../component/common/MainHeader";
 import FilterSection from "../../component/tournament/FilterSection";
-import "../../assets/css/tokens.css";
-import "../../assets/css/components/card.css";
-import "../../assets/css/components/button.css";
 import "../../assets/css/tournament-leader/TournamentList.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
@@ -50,22 +47,8 @@ const FORMAT_LABELS = {
 
 const getStatusLabel = (s) => STATUS_LABELS[s] || s;
 const getFormatLabel = (f) => FORMAT_LABELS[f] || f;
-const BACKEND_ORIGIN = "http://localhost:8080";
 
-const resolveTournamentImageUrl = (rawUrl) => {
-  if (!rawUrl || typeof rawUrl !== "string") return null;
-  const url = rawUrl.trim();
-  if (!url) return null;
-  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
-    return url;
-  }
-  if (url.startsWith("/")) {
-    return `${BACKEND_ORIGIN}${url}`;
-  }
-  return `${BACKEND_ORIGIN}/ctms/${url}`;
-};
-
-const TournamentList = ({ hideHeader = false }) => {
+const TournamentList = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [tournaments, setTournaments] = useState([]);
@@ -178,8 +161,20 @@ const TournamentList = ({ hideHeader = false }) => {
     return { total, upcoming, ongoing, finished };
   }, [tournaments]);
 
-  const pageContent = (
-    <div className="tl-body">
+  if (loading) {
+    return (
+      <div className="tl-page">
+        <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
+        <div className="tl-loading">Đang tải danh sách giải đấu...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="tl-page">
+      <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
+
+      <div className="tl-body">
         {/* Header */}
         <div className="tl-header-section">
           <div>
@@ -197,7 +192,7 @@ const TournamentList = ({ hideHeader = false }) => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button className="tl-create-btn ui-btn ui-btn-primary" onClick={() => navigate("/tournaments/create")}>
+            <button className="tl-create-btn" onClick={() => navigate("/tournaments/create")}>
               <Plus size={20} />
               Tạo giải đấu
             </button>
@@ -206,28 +201,28 @@ const TournamentList = ({ hideHeader = false }) => {
 
         {/* Stats */}
         <div className="tl-stats-grid">
-          <div className="tl-stat-card ui-card ui-card-flat">
+          <div className="tl-stat-card">
             <div>
               <p className="tl-stat-label">Tổng giải đấu</p>
               <h3 className="tl-stat-value">{stats.total}</h3>
             </div>
             <div className="tl-stat-icon indigo"><LayoutDashboard size={24} /></div>
           </div>
-          <div className="tl-stat-card ui-card ui-card-flat">
+          <div className="tl-stat-card">
             <div>
               <p className="tl-stat-label">Chờ duyệt</p>
               <h3 className="tl-stat-value">{stats.upcoming}</h3>
             </div>
             <div className="tl-stat-icon blue"><Clock size={24} /></div>
           </div>
-          <div className="tl-stat-card ui-card ui-card-flat">
+          <div className="tl-stat-card">
             <div>
               <p className="tl-stat-label">Đang diễn ra</p>
               <h3 className="tl-stat-value">{stats.ongoing}</h3>
             </div>
             <div className="tl-stat-icon emerald"><PlayCircle size={24} /></div>
           </div>
-          <div className="tl-stat-card ui-card ui-card-flat">
+          <div className="tl-stat-card">
             <div>
               <p className="tl-stat-label">Đã kết thúc</p>
               <h3 className="tl-stat-value">{stats.finished}</h3>
@@ -256,21 +251,12 @@ const TournamentList = ({ hideHeader = false }) => {
                     const progress = t.maxPlayer > 0
                       ? Math.round((t.currentPlayers / t.maxPlayer) * 100)
                       : 0;
-                    const coverUrl = resolveTournamentImageUrl(t.tournamentImage);
 
                     return (
-                      <div className="tl-tournament-card ui-card ui-card-hover" key={t.tournamentId}>
+                      <div className="tl-tournament-card" key={t.tournamentId}>
                         <div className="tl-card-banner">
-                          {coverUrl && (
-                            <img
-                              src={coverUrl}
-                              alt={t.tournamentName}
-                              className="tl-card-banner-image"
-                              loading="lazy"
-                            />
-                          )}
                           <div className="tl-card-banner-overlay" />
-                          {!coverUrl && <Trophy size={48} className="tl-card-banner-icon" />}
+                          <Trophy size={48} className="tl-card-banner-icon" />
                           <span className={`tl-card-status-badge ${t.status}`}>
                             {getStatusLabel(t.status)}
                           </span>
@@ -318,14 +304,14 @@ const TournamentList = ({ hideHeader = false }) => {
 
                         <div className="tl-card-footer">
                           <button
-                            className="tl-card-manage-btn ui-btn"
+                            className="tl-card-manage-btn"
                             onClick={() => navigate(`/tournaments/${t.tournamentId}`)}
                           >
                             Quản lý
                           </button>
                           <div className="tl-card-actions">
                             <button
-                              className="tl-card-action-btn ui-btn ui-btn-icon"
+                              className="tl-card-action-btn"
                               title="Xem chi tiết"
                               onClick={() => navigate(`/tournaments/${t.tournamentId}`)}
                             >
@@ -333,7 +319,7 @@ const TournamentList = ({ hideHeader = false }) => {
                             </button>
                             {EDITABLE_STATUSES.includes(t.status) && (
                               <button
-                                className="tl-card-action-btn ui-btn ui-btn-icon"
+                                className="tl-card-action-btn"
                                 title="Chỉnh sửa"
                                 onClick={() => navigate(`/tournaments/edit/${t.tournamentId}`)}
                               >
@@ -342,7 +328,7 @@ const TournamentList = ({ hideHeader = false }) => {
                             )}
                             {CANCELLED_ABLE.includes(t.status) && (
                               <button
-                                className="tl-card-action-btn danger ui-btn ui-btn-icon"
+                                className="tl-card-action-btn danger"
                                 title="Hủy giải"
                                 onClick={() => handleOpenConfirm(t)}
                               >
@@ -386,14 +372,14 @@ const TournamentList = ({ hideHeader = false }) => {
                 )}
               </>
             ) : (
-              <div className="tl-empty-state ui-card">
+              <div className="tl-empty-state">
                 <div className="tl-empty-icon-wrap">
                   <LayoutDashboard size={40} />
                 </div>
                 <h3>Không tìm thấy giải đấu</h3>
                 <p>Bạn chưa tạo giải đấu nào hoặc bộ lọc đang quá chặt.</p>
                 <button
-                  className="tl-empty-create-btn ui-btn ui-btn-primary"
+                  className="tl-empty-create-btn"
                   onClick={() => navigate("/tournaments/create")}
                 >
                   Tạo giải đấu
@@ -402,10 +388,12 @@ const TournamentList = ({ hideHeader = false }) => {
             )}
           </div>
         </div>
+      </div>
+
       {/* Cancel Modal */}
       {showConfirm && (
         <div className="tl-modal-overlay">
-          <div className="tl-modal ui-card">
+          <div className="tl-modal">
             <h3>Hủy giải đấu</h3>
             <p>
               Bạn chắc chắn muốn hủy giải{" "}
@@ -421,7 +409,7 @@ const TournamentList = ({ hideHeader = false }) => {
             />
             <div className="tl-modal-actions">
               <button
-                className="tl-btn-cancel ui-btn ui-btn-secondary"
+                className="tl-btn-cancel"
                 onClick={() => {
                   setShowConfirm(false);
                   setSelectedTournament(null);
@@ -429,39 +417,13 @@ const TournamentList = ({ hideHeader = false }) => {
               >
                 Hủy
               </button>
-              <button className="tl-btn-confirm ui-btn ui-btn-primary" onClick={handleConfirmCancel}>
+              <button className="tl-btn-confirm" onClick={handleConfirmCancel}>
                 Đồng ý
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
-  );
-
-  if (loading) {
-    return hideHeader ? (
-      <div className="tl-loading">Đang tải danh sách giải đấu...</div>
-    ) : (
-      <div className="tl-page">
-        <MainHeader
-          user={user}
-          onLogout={handleLogout}
-          currentPath={location.pathname}
-        />
-        <div className="tl-loading">Đang tải danh sách giải đấu...</div>
-      </div>
-    );
-  }
-
-  if (hideHeader) {
-    return pageContent;
-  }
-
-  return (
-    <div className="tl-page">
-      <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
-      {pageContent}
     </div>
   );
 };

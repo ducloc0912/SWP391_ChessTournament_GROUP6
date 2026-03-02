@@ -130,7 +130,7 @@ export default function HomePage() {
       prizePool: t.prizePool,
       registrationDeadline: t.registrationDeadline,
       tournamentId: t.tournamentId,
-      cta: () => navigate("/tournaments/public"),
+      cta: () => navigate("/tournaments"),
     }));
 
     while (fromTournament.length < 4) {
@@ -146,11 +146,19 @@ export default function HomePage() {
         prizePool: null,
         registrationDeadline: null,
         tournamentId: null,
-        cta: () => navigate("/tournaments/public"),
+        cta: () => navigate("/tournaments"),
       });
     }
     return fromTournament.slice(0, 4);
   }, [navigate, upcomingTournaments]);
+
+  useEffect(() => {
+    if (seasonSlides.length <= 1) return undefined;
+    const timer = setInterval(() => {
+      setSlideIndex((prev) => (prev + 1) % seasonSlides.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [seasonSlides.length]);
 
   const activeSlide = seasonSlides[slideIndex] || seasonSlides[0];
 
@@ -181,6 +189,25 @@ export default function HomePage() {
       }
     }
 
+    try {
+      const waitingRes = await axios.get(`${API_BASE}/api/waiting-list`, {
+        params: { tournamentId: activeSlide.tournamentId },
+        withCredentials: true,
+      });
+      const list = Array.isArray(waitingRes?.data?.data)
+        ? waitingRes.data.data
+        : [];
+      const alreadyRegistered = list.some(
+        (row) => Number(row.userId) === Number(user?.userId),
+      );
+      if (alreadyRegistered) {
+        alert("Bạn đã đăng ký giải đấu rồi.");
+        return;
+      }
+    } catch (error) {
+      alert("Không thể kiểm tra trạng thái đăng ký. Vui lòng thử lại.");
+      return;
+    }
     if (currentTournament) {
       setRegisterTournament({ ...currentTournament });
     } else {
@@ -287,17 +314,10 @@ export default function HomePage() {
       alert(res?.data?.message || "Đăng ký thành công.");
       navigate("/player/pending-registrations");
     } catch (error) {
-      const status = Number(error?.response?.status);
-      const serverMessage = error?.response?.data?.message;
-      const detail =
-        error?.response?.data?.detail || error?.response?.data?.data?.detail;
       const msg =
-        serverMessage ||
-        detail ||
-        (status === 401
-          ? "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn."
-          : "Đăng ký thất bại. Vui lòng thử lại.");
-      setRegisterErrors({ general: msg });
+        error?.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
+      alert(msg);
+      setShowRegisterModal(false);
     } finally {
       setRegisterSubmitting(false);
     }
@@ -316,7 +336,7 @@ export default function HomePage() {
     { sectionId: "hpv-latest", label: "Latest" },
     { sectionId: "hpv-players", label: "Top Players" },
     { sectionId: "hpv-feedback", label: "Feedback" },
-    { to: "/tournaments/public", label: "Tournaments" },
+    { to: "/tournaments", label: "Tournaments" },
     { to: "/player/tournaments", label: "Join" },
   ];
 
@@ -344,7 +364,6 @@ export default function HomePage() {
             thưởng lớn.
           </p>
           <div className="hpv-hero-actions">
-            <button className="hpv-btn hpv-btn-primary" onClick={() => navigate("/tournaments/public")}>
             <button
               className="hpv-btn hpv-btn-primary"
               onClick={() => navigate("/tournaments")}
@@ -605,7 +624,7 @@ export default function HomePage() {
             <p>Tournament management platform</p>
           </div>
           <div className="hpv-footer-nav">
-            <button onClick={() => navigate("/tournaments/public")}>
+            <button onClick={() => navigate("/tournaments")}>
               <Trophy size={14} /> Tournaments
             </button>
             <button onClick={() => navigate("/player/tournaments")}>

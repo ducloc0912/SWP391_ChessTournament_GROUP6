@@ -25,13 +25,7 @@ public class AuthFilter implements Filter {
 
     private static void addCorsHeaders(HttpServletRequest request, HttpServletResponse response) {
         String origin = request.getHeader("Origin");
-        boolean isAllowed = origin != null && (
-                ALLOWED_ORIGINS.contains(origin)
-                        || origin.matches("^http://localhost:\\d+$")
-                        || origin.matches("^http://127\\.0\\.0\\.1:\\d+$")
-        );
-
-        if (isAllowed) {
+        if (origin != null && ALLOWED_ORIGINS.contains(origin)) {
             response.setHeader("Access-Control-Allow-Origin", origin);
             response.setHeader("Vary", "Origin");
             response.setHeader("Access-Control-Allow-Credentials", "true");
@@ -47,8 +41,7 @@ public class AuthFilter implements Filter {
             "/api/forgot-password",
             "/api/reset-password",
             "/api/verify-otp",
-            "/api/home",
-            "/api/public/tournaments"
+            "/api/home"
     );
 
     private static boolean isPublicPath(String uri) {
@@ -65,9 +58,9 @@ public class AuthFilter implements Filter {
 
         HttpServletRequest request = (HttpServletRequest) req;
         HttpServletResponse response = (HttpServletResponse) res;
-        addCorsHeaders(request, response);
 
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            addCorsHeaders(request, response);
             response.setStatus(HttpServletResponse.SC_OK);
             return;
         }
@@ -77,13 +70,6 @@ public class AuthFilter implements Filter {
         String apiPath = ctx >= 0 ? path.substring(ctx) : path;
 
         if (isPublicPath(apiPath)) {
-            chain.doFilter(req, res);
-            return;
-        }
-
-        if ("GET".equalsIgnoreCase(request.getMethod())
-                && apiPath != null
-                && apiPath.startsWith("/api/tournaments")) {
             chain.doFilter(req, res);
             return;
         }
