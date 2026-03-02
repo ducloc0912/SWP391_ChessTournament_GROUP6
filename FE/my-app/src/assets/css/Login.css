@@ -1,0 +1,195 @@
+.login-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* =========================
+   LEFT IMAGE
+========================= */
+.login-left {
+  flex: 1;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* =========================
+   RIGHT SIDE
+========================= */
+.login-right {
+  flex: 1;
+  background: #f5f7fb;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* =========================
+   LOGIN PANEL
+========================= */
+.login-panel {
+  width: 380px;
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 18px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.1);
+}
+
+/* =========================
+   TITLE
+========================= */
+.login-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 28px;
+  color: #111827;
+}
+
+/* =========================
+   FORM GROUP
+========================= */
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #374151;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* =========================
+   PASSWORD
+========================= */
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding: 12px 44px 12px 14px; /* chừa chỗ icon */
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 18px;
+  z-index: 2;
+  color: #6b7280; /* 🔥 CỰC KỲ QUAN TRỌNG */
+}
+
+.toggle-password:hover {
+  color: #2563eb;
+}
+
+/* =========================
+   FORGOT PASSWORD
+========================= */
+.login-options {
+  display: flex;
+  justify-content: flex-end; /* 🔥 ép sang phải */
+  margin-top: -6px; /* 🔥 kéo sát ô password */
+  margin-bottom: 18px;
+}
+.forgot-link {
+  font-size: 14px;
+  font-weight: 700; /* in đậm */
+  color: #2563eb; /* xanh */
+  text-decoration: none;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+  color: #1d4ed8;
+}
+
+/* =========================
+   BUTTON
+========================= */
+.login-panel .btn-primary {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+  transition: all 0.25s ease;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 🔥 QUAN TRỌNG: hover cũng phải override */
+.login-panel .btn-primary:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.login-panel .btn-primary:focus,
+.login-panel .btn-primary:focus-visible,
+.login-panel .btn-primary:active {
+  outline: none;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+/* =========================
+   REGISTER LINK
+========================= */
+.register-link {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 14px;
+  color: #374151;
+}
+
+.register-link a {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+}
+
+/* =========================
+   ERROR
+========================= */
+.error-text {
+  margin-bottom: 14px;
+  color: #dc2626;
+  font-size: 14px;
+  text-align: center;
+}

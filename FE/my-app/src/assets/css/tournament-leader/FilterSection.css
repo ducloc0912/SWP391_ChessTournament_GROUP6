@@ -1,0 +1,104 @@
+/* TL tournament filter scope */
+.tlf-sidebar {
+  background: #ffffff;
+  border: 1px solid #ece8e1;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.tlf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.tlf-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #101828;
+}
+
+.tlf-title svg {
+  color: #ff4655;
+}
+
+.tlf-reset-link {
+  border: none;
+  background: transparent;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tlf-reset-link:hover {
+  color: #ff4655;
+}
+
+.tlf-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tlf-divider {
+  height: 1px;
+  background: #ece8e1;
+}
+
+.tlf-section-label {
+  display: block;
+  margin-bottom: 10px;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tlf-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tlf-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.tlf-checkbox-item input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #ff4655;
+}
+
+.tlf-checkbox-item span {
+  color: #344054;
+  font-size: 14px;
+}
+
+.tlf-select {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  background: #fff;
+  color: #101828;
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.tlf-select:focus {
+  border-color: #ff4655;
+  box-shadow: 0 0 0 3px rgba(255, 70, 85, 0.16);
+}

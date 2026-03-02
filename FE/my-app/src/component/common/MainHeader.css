@@ -1,0 +1,233 @@
+/* MainHeader - Valorant-inspired style */
+.main-header.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: #111111;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.main-header .container {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 22px;
+}
+
+.main-header .header-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 64px;
+}
+
+.main-header .logo-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.main-header .logo-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ff5661, #ff3342);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.main-header .logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.main-header .logo-title {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.main-header .logo-subtitle {
+  color: #a1a1aa;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.main-header .nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 18px;
+}
+
+.main-header .nav-link {
+  color: #d4d4d8;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  padding: 22px 12px 20px;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.main-header .nav-link-button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.main-header .nav-link:hover {
+  color: #fff;
+}
+
+.main-header .nav-link-active {
+  color: #fff;
+  border-bottom-color: #ff4655;
+}
+
+.main-header .header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.main-header .icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #1a1a1a;
+  color: #d4d4d8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.main-header .icon-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.main-header .notification-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4655;
+}
+
+.main-header .user-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.main-header .user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.main-header .btn {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  background: transparent;
+  border-radius: 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.main-header .btn:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.main-header .btn-primary {
+  background: #ff4655;
+  border-color: #ff4655;
+}
+
+.main-header .btn-primary:hover {
+  background: #f23645;
+  border-color: #f23645;
+}
+
+.main-header .mobile-menu-btn {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: #fff;
+  margin-left: 8px;
+}
+
+.main-header .mobile-nav {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .main-header .nav,
+  .main-header .header-actions {
+    display: none;
+  }
+
+  .main-header .mobile-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    cursor: pointer;
+  }
+
+  .main-header .mobile-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 0 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .main-header .mobile-nav-link {
+    border: none;
+    background: #181818;
+    color: #fff;
+    text-align: left;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+  }
+
+  .main-header .mobile-nav-link.active {
+    background: rgba(255, 70, 85, 0.15);
+    color: #ff7782;
+  }
+}
