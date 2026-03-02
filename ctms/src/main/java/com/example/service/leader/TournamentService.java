@@ -3,6 +3,7 @@ package com.example.service.leader;
 import com.example.DAO.TournamentDAO;
 import com.example.DAO.TournamentRefereeDAO;
 import com.example.DAO.ReportDAO;
+import com.example.DAO.MatchDAO;
 import com.example.model.dto.TournamentDTO;
 import com.example.model.dto.TournamentPlayerDTO;
 import com.example.model.dto.TournamentRefereeDTO;
@@ -12,6 +13,7 @@ import com.example.util.PasswordUtil;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 public class TournamentService {
 
@@ -19,12 +21,14 @@ public class TournamentService {
     private final ParticipantDAO participantDAO;
     private final TournamentRefereeDAO refereeDAO;
     private final ReportDAO reportDAO;
+    private final MatchDAO matchDAO;
 
     public TournamentService() {
         this.tournamentDAO = new TournamentDAO();
         this.participantDAO = new ParticipantDAO();
         this.refereeDAO = new TournamentRefereeDAO();
         this.reportDAO = new ReportDAO();
+        this.matchDAO = new MatchDAO();
     }
 
     public List<TournamentDTO> getAllTournamentsWithCurrentPlayers() {
@@ -139,6 +143,25 @@ public class TournamentService {
     public List<TournamentReportDTO> getReportsByTournament(int tournamentId) {
         if (tournamentId <= 0) return List.of();
         return reportDAO.getReportsByTournament(tournamentId);
+    }
+
+    public List<Map<String, Object>> getUpcomingMatchesByTournament(int tournamentId) {
+        if (tournamentId <= 0) return List.of();
+        return matchDAO.getUpcomingMatchesByTournament(tournamentId);
+    }
+
+    public List<Map<String, Object>> getCompletedMatchesByTournament(int tournamentId) {
+        if (tournamentId <= 0) return List.of();
+        return matchDAO.getCompletedMatchesByTournament(tournamentId);
+    }
+
+    public List<Map<String, Object>> getAllPublicMatches() {
+        return matchDAO.getAllPublicMatches();
+    }
+
+    public Map<String, Object> getTournamentPodium(int tournamentId) {
+        if (tournamentId <= 0) return Map.of("championName", null, "runnerUpName", null);
+        return tournamentDAO.getTournamentPodium(tournamentId);
     }
 
     // =========================

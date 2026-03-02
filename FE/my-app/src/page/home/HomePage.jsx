@@ -93,7 +93,7 @@ export default function HomePage() {
       prizePool: t.prizePool,
       registrationDeadline: t.registrationDeadline,
       tournamentId: t.tournamentId,
-      cta: () => navigate("/tournaments"),
+      cta: () => navigate("/tournaments/public"),
     }));
 
     while (fromTournament.length < 4) {
@@ -109,7 +109,7 @@ export default function HomePage() {
         prizePool: null,
         registrationDeadline: null,
         tournamentId: null,
-        cta: () => navigate("/tournaments"),
+        cta: () => navigate("/tournaments/public"),
       });
     }
     return fromTournament.slice(0, 4);
@@ -152,7 +152,7 @@ export default function HomePage() {
     { sectionId: "hpv-latest", label: "Latest" },
     { sectionId: "hpv-players", label: "Top Players" },
     { sectionId: "hpv-feedback", label: "Feedback" },
-    { to: "/tournaments", label: "Tournaments" },
+    { to: "/tournaments/public", label: "Tournaments" },
     { to: "/player/tournaments", label: "Join" },
   ];
 
@@ -177,7 +177,7 @@ export default function HomePage() {
           </h1>
           <p>Thi đấu chiến thuật, theo dõi lịch đấu thông minh và chinh phục giải thưởng lớn.</p>
           <div className="hpv-hero-actions">
-            <button className="hpv-btn hpv-btn-primary" onClick={() => navigate("/tournaments")}>
+            <button className="hpv-btn hpv-btn-primary" onClick={() => navigate("/tournaments/public")}>
               Explore Tournaments
             </button>
             <button
@@ -379,7 +379,7 @@ export default function HomePage() {
             <p>Tournament management platform</p>
           </div>
           <div className="hpv-footer-nav">
-            <button onClick={() => navigate("/tournaments")}>
+            <button onClick={() => navigate("/tournaments/public")}>
               <Trophy size={14} /> Tournaments
             </button>
             <button onClick={() => navigate("/player/tournaments")}>
