@@ -81,6 +81,13 @@ public class AuthFilter implements Filter {
             return;
         }
 
+        if ("GET".equalsIgnoreCase(request.getMethod())
+                && apiPath != null
+                && apiPath.startsWith("/api/tournaments")) {
+            chain.doFilter(req, res);
+            return;
+        }
+
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("user") == null) {
             addCorsHeaders(request, response);

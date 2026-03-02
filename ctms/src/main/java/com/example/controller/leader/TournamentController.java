@@ -1,9 +1,11 @@
 package com.example.controller.leader;
 
 import com.example.model.dto.TournamentDTO;
+import com.example.model.dto.TournamentManualSetupRequestDTO;
 import com.example.model.dto.TournamentPlayerDTO;
 import com.example.model.dto.TournamentRefereeDTO;
 import com.example.model.dto.TournamentReportDTO;
+import com.example.model.dto.TournamentSetupMatchDTO;
 import com.example.model.entity.User;
 import com.example.model.enums.TournamentFormat;
 import com.example.model.enums.TournamentStatus;
@@ -143,6 +145,60 @@ public class TournamentController extends HttpServlet {
             return;
         }
 
+        if ("setupParticipants".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Missing tournament id\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(tid);
+                response.getWriter().write(gson.toJson(tournamentService.getSetupParticipants(tournamentId)));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Invalid tournament id\"}");
+            }
+            return;
+        }
+
+        if ("schedule".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Missing tournament id\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(tid);
+                List<TournamentSetupMatchDTO> matches = tournamentService.getManualSetupMatches(tournamentId);
+                response.getWriter().write(gson.toJson(matches));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Invalid tournament id\"}");
+            }
+            return;
+        }
+
+        if ("setupState".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Missing tournament id\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(tid);
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("step", tournamentService.getCurrentSetupStep(tournamentId));
+                response.getWriter().write(gson.toJson(payload));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Invalid tournament id\"}");
+            }
+            return;
+        }
+
         String idParam = request.getParameter("id");
 
         if (idParam == null) {
@@ -252,6 +308,63 @@ public class TournamentController extends HttpServlet {
                     tournamentId, refereeId, refereeRole, assignedBy, note
             );
             response.getWriter().write("{\"success\": " + success + "}");
+            return;
+        }
+
+        if ("manualSetup".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+                return;
+            }
+
+            int tournamentId;
+            try {
+                tournamentId = Integer.parseInt(tid);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+                return;
+            }
+
+            TournamentManualSetupRequestDTO body = gson.fromJson(request.getReader(), TournamentManualSetupRequestDTO.class);
+            TournamentService.SetupValidationResult result = tournamentService.saveManualSetup(tournamentId, body);
+            if (!result.isValid()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("success", result.isValid());
+            payload.put("message", result.getMessage());
+            response.getWriter().write(gson.toJson(payload));
+            return;
+        }
+
+        if ("setupStep".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+                return;
+            }
+            int tournamentId;
+            try {
+                tournamentId = Integer.parseInt(tid);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+                return;
+            }
+
+            TournamentManualSetupRequestDTO body = gson.fromJson(request.getReader(), TournamentManualSetupRequestDTO.class);
+            TournamentService.SetupValidationResult result = tournamentService.advanceSetupStep(tournamentId, body);
+            if (!result.isValid()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("success", result.isValid());
+            payload.put("message", result.getMessage());
+            response.getWriter().write(gson.toJson(payload));
             return;
         }
 

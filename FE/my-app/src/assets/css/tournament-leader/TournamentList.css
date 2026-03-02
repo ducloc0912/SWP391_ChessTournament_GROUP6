@@ -93,7 +93,7 @@
   gap: 8px;
   border: none;
   border-radius: 12px;
-  background: #ff4655;
+  background: var(--ui-color-primary);
   color: #fff;
   font-size: 14px;
   font-weight: 800;
@@ -104,7 +104,7 @@
 }
 
 .tl-create-btn:hover {
-  background: #e62d3d;
+  background: var(--ui-color-primary-hover);
 }
 
 .tl-stats-grid {
@@ -127,8 +127,8 @@
 }
 
 .tl-stat-card {
-  background: #ffffff;
-  border: 1px solid #ece8e1;
+  background: var(--ui-color-bg-card-strong);
+  border: 1px solid var(--ui-color-border);
   border-radius: 14px;
   padding: 14px 16px;
   display: flex;
@@ -221,8 +221,8 @@
 }
 
 .tl-tournament-card {
-  background: #ffffff;
-  border: 1px solid #ece8e1;
+  background: var(--ui-color-bg-card-strong);
+  border: 1px solid var(--ui-color-border);
   border-radius: 14px;
   overflow: hidden;
   display: flex;
@@ -447,7 +447,7 @@
 }
 
 .tl-empty-state {
-  background: #ffffff;
+  background: var(--ui-color-bg-card-strong);
   border: 1px dashed #d0d5dd;
   border-radius: 14px;
   padding: 44px 16px;

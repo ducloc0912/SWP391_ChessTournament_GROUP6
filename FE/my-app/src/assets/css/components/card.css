@@ -1,0 +1,20 @@
+.ui-card {
+  background: var(--ui-color-bg-card-strong);
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-xl);
+}
+
+.ui-card-flat {
+  background: var(--ui-color-bg-card);
+  border-color: var(--ui-color-border);
+  border-radius: var(--ui-radius-sm);
+  box-shadow: none;
+}
+
+.ui-card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ui-card-hover:hover {
+  transform: translateY(-2px);
+}

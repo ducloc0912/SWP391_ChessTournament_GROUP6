@@ -1,75 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Eye, Edit2, Trash2 } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Eye, Trash2, CheckCircle2 } from "lucide-react";
 
 const API_BASE = "http://localhost:8080/ctms";
-const REQUIRED_FORM_FIELDS = [
-  "fullName",
-  "username",
-  "email",
-  "phone",
-  "rankAtRegistration",
-];
-
-function buildDefaultFormFromUser(user) {
-  return {
-    fullName: `${user?.firstName || ""} ${user?.lastName || ""}`.trim(),
-    username: user?.username || "",
-    email: user?.email || "",
-    phone: user?.phoneNumber || "",
-    rankAtRegistration:
-      user?.rank === null || user?.rank === undefined ? "" : String(user.rank),
-    note: "",
-  };
-}
-
-function validateWaitingListForm(values, rows, excludeWaitingId = null) {
-  const fullName = (values.fullName || "").trim();
-  const username = (values.username || "").trim();
-  const email = (values.email || "").trim().toLowerCase();
-  const phone = (values.phone || "").trim();
-  const rawRank = String(values.rankAtRegistration ?? "").trim();
-  const nextErrors = {};
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const phonePattern = /^0\d{9}$/;
-
-  if (!fullName) nextErrors.fullName = "Họ và tên không được để trống.";
-  if (!username) nextErrors.username = "Tên in-game không được để trống.";
-  if (!email) nextErrors.email = "Email không được để trống.";
-  if (!phone) nextErrors.phone = "SĐT không được để trống.";
-  if (!rawRank) nextErrors.rankAtRegistration = "Bậc rank không được để trống.";
-  if (email && !emailPattern.test(email)) {
-    nextErrors.email = "Email không đúng định dạng.";
-  }
-  if (phone && !phonePattern.test(phone)) {
-    nextErrors.phone = "SĐT không hợp lệ (10 số, bắt đầu bằng 0).";
-  }
-  if (rawRank) {
-    const rankNumber = Number(rawRank);
-    if (!Number.isInteger(rankNumber) || rankNumber < 0) {
-      nextErrors.rankAtRegistration = "Bậc rank phải là số nguyên >= 0.";
-    }
-  }
-
-  rows.forEach((r) => {
-    if (excludeWaitingId != null && r.waitingId === excludeWaitingId) return;
-    const rowUsername = (r.registrationUsername || "").trim().toLowerCase();
-    const rowEmail = (r.registrationEmail || "").trim().toLowerCase();
-    const rowPhone = (r.registrationPhone || "").trim();
-    if (username && rowUsername === username.toLowerCase()) {
-      nextErrors.username = "Tên in-game đã tồn tại.";
-    }
-    if (email && rowEmail === email) {
-      nextErrors.email = "Email đã tồn tại.";
-    }
-    if (phone && rowPhone === phone) {
-      nextErrors.phone = "SĐT đã tồn tại.";
-    }
-  });
-
-  return nextErrors;
-}
 
 function Modal({ open, title, onClose, children }) {
   if (!open) return null;
@@ -131,33 +65,15 @@ function Modal({ open, title, onClose, children }) {
 
 export default function WaitingList() {
   const { id } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
-
-  const currentUser = useMemo(() => {
-    const raw = localStorage.getItem("user");
-    return raw ? JSON.parse(raw) : null;
-  }, []);
 
   const [rows, setRows] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [editing, setEditing] = useState(null);
-  const [registering, setRegistering] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [banner, setBanner] = useState(null);
   const [tournamentName, setTournamentName] = useState("");
   const [searchEmail, setSearchEmail] = useState("");
   const [rankFilter, setRankFilter] = useState("");
-  const [formErrors, setFormErrors] = useState({});
-  const [formTouched, setFormTouched] = useState({});
-  const [form, setForm] = useState({
-    fullName: "",
-    username: "",
-    email: "",
-    phone: "",
-    rankAtRegistration: "",
-    note: "",
-  });
 
   const fetchList = async () => {
     try {
@@ -165,12 +81,9 @@ export default function WaitingList() {
         params: { tournamentId: id },
         withCredentials: true,
       });
-      const list = res.data?.data || [];
-      setRows(list);
-      return list;
+      setRows(res.data?.data || []);
     } catch (err) {
       setRows([]);
-      return [];
     }
   };
 
@@ -186,208 +99,29 @@ export default function WaitingList() {
     }
   };
 
-  const getVisibleErrors = (nextForm, nextTouched, excludeWaitingId = null) => {
-    const allErrors = validateWaitingListForm(nextForm, rows, excludeWaitingId);
-    const visibleErrors = {};
-
-    REQUIRED_FORM_FIELDS.forEach((key) => {
-      if (nextTouched[key] && allErrors[key]) {
-        visibleErrors[key] = allErrors[key];
-      }
-    });
-
-    return visibleErrors;
-  };
-
-  const closeFormModal = () => {
-    setEditing(null);
-    setRegistering(false);
-    setFormErrors({});
-    setFormTouched({});
-  };
-
-  const openRegister = () => {
-    if (!currentUser) {
-      navigate("/login");
-      return false;
-    }
-    const alreadyRegistered = rows.some(
-      (row) => Number(row.userId) === Number(currentUser.userId),
-    );
-    if (alreadyRegistered) {
-      setBanner({
-        type: "error",
-        text: "Người chơi đã đăng ký giải đấu",
-      });
-      return false;
-    }
-    setEditing(null);
-    setRegistering(true);
-    setFormErrors({});
-    setFormTouched({});
-    setForm(buildDefaultFormFromUser(currentUser));
-    return true;
-  };
-
-  const handleFormChange = (field, value) => {
-    const nextForm = { ...form, [field]: value };
-    const nextTouched = { ...formTouched, [field]: true };
-    const excludeWaitingId = editing?.waitingId ?? null;
-    setForm(nextForm);
-    setFormTouched(nextTouched);
-    setFormErrors(getVisibleErrors(nextForm, nextTouched, excludeWaitingId));
-  };
-
-  const submitRegister = async () => {
-    const normalizedForm = {
-      ...form,
-      fullName: form.fullName.trim(),
-      username: form.username.trim(),
-      email: form.email.trim().toLowerCase(),
-      phone: form.phone.trim(),
-      rankAtRegistration: String(form.rankAtRegistration ?? "").trim(),
-      note: form.note?.trim() || "",
-    };
-    const allTouched = REQUIRED_FORM_FIELDS.reduce((acc, key) => {
-      acc[key] = true;
-      return acc;
-    }, {});
-    const allErrors = validateWaitingListForm(normalizedForm, rows);
-
-    if (Object.keys(allErrors).length > 0) {
-      setFormTouched(allTouched);
-      setFormErrors(allErrors);
-      return;
-    }
-
-    const payload = {
-      tournamentId: Number(id),
-      fullName: normalizedForm.fullName,
-      username: normalizedForm.username,
-      email: normalizedForm.email,
-      phone: normalizedForm.phone,
-      rankAtRegistration: Number(normalizedForm.rankAtRegistration),
-      rank: Number(normalizedForm.rankAtRegistration),
-      note: normalizedForm.note,
-    };
-
-    try {
-      const res = await axios.post(`${API_BASE}/api/waiting-list`, payload, {
-        withCredentials: true,
-      });
-      await fetchList();
-      const successMessage = res?.data?.message;
-      setBanner({ type: "success", text: successMessage });
-      closeFormModal();
-      return { success: true };
-    } catch (err) {
-      const serverMessage = err?.response?.data?.message;
-      setFormErrors({ general: serverMessage });
-      return { success: false };
-    }
-  };
-
   useEffect(() => {
-    const initPage = async () => {
-      fetchTournamentName();
-      const list = await fetchList();
-
-      if (location.state?.autoRegister) {
-        const alreadyRegistered = list.some(
-          (row) => Number(row.userId) === Number(currentUser?.userId),
-        );
-
-        if (alreadyRegistered) {
-          setBanner({
-            type: "error",
-            text: "Người chơi đã đăng ký giải đấu",
-          });
-        } else {
-          openRegister();
-        }
-
-        navigate(`/tournaments/${id}/waiting-list`, { replace: true });
-      }
-    };
-
-    initPage();
+    fetchTournamentName();
+    fetchList();
   }, [id]);
 
-  const openEdit = (row) => {
-    const isOwner = Number(row.userId) === Number(currentUser?.userId);
-    if (!isOwner) {
-      setBanner({
-        type: "error",
-        text: "Bạn không có quyền sửa bản ghi này",
-      });
-      return;
-    }
-    setRegistering(false);
-    setEditing(row);
-    setFormErrors({});
-    setFormTouched({});
-    setForm({
-      fullName: row.registrationFullName || "",
-      username: row.registrationUsername || "",
-      email: row.registrationEmail || "",
-      phone: row.registrationPhone || "",
-      rankAtRegistration:
-        row.rankAtRegistration === null || row.rankAtRegistration === undefined
-          ? ""
-          : String(row.rankAtRegistration),
-      note: row.note || "",
-    });
-  };
-
-  const submitEdit = async () => {
-    const normalizedForm = {
-      ...form,
-      fullName: form.fullName.trim(),
-      username: form.username.trim(),
-      email: form.email.trim().toLowerCase(),
-      phone: form.phone.trim(),
-      rankAtRegistration: String(form.rankAtRegistration ?? "").trim(),
-      note: form.note?.trim() || "",
-    };
-    const allTouched = REQUIRED_FORM_FIELDS.reduce((acc, key) => {
-      acc[key] = true;
-      return acc;
-    }, {});
-    const nextErrors = validateWaitingListForm(
-      normalizedForm,
-      rows,
-      editing?.waitingId,
-    );
-
-    if (Object.keys(nextErrors).length > 0) {
-      setFormTouched(allTouched);
-      setFormErrors(nextErrors);
-      return;
-    }
-
-    setFormErrors({});
-
+  const handleApprove = async (row) => {
     try {
       const res = await axios.put(
-        `${API_BASE}/api/waiting-list?id=${editing.waitingId}`,
-        {
-          ...normalizedForm,
-          rankAtRegistration: Number(normalizedForm.rankAtRegistration),
-          rank: Number(normalizedForm.rankAtRegistration),
-        },
+        `${API_BASE}/api/waiting-list?id=${row.waitingId}&action=approve`,
+        {},
         {
           withCredentials: true,
         },
       );
-      closeFormModal();
       await fetchList();
       setBanner({
         type: "success",
-        text: res?.data?.message || "Cập nhật thông tin đăng ký thành công.",
+        text: res?.data?.message || "Duyệt thành công",
       });
     } catch (err) {
-      setFormErrors({
-        general: err?.response?.data?.message,
+      setBanner({
+        type: "error",
+        text: err?.response?.data?.message || "Duyệt thất bại",
       });
     }
   };
@@ -403,26 +137,14 @@ export default function WaitingList() {
       await fetchList();
       setBanner({
         type: "success",
-        text: res?.data?.message,
+        text: res?.data?.message || "Xóa thành công",
       });
     } catch (err) {
       setBanner({
         type: "error",
-        text: err?.response?.data?.message,
+        text: err?.response?.data?.message || "Xóa thất bại",
       });
     }
-  };
-
-  const openDelete = (row) => {
-    const isOwner = Number(row.userId) === Number(currentUser?.userId);
-    if (!isOwner) {
-      setBanner({
-        type: "error",
-        text: "Bạn không có quyền xóa bản ghi này",
-      });
-      return;
-    }
-    setDeleteTarget(row);
   };
 
   const confirmDelete = async () => {
@@ -450,228 +172,341 @@ export default function WaitingList() {
     });
   }, [rows, searchEmail, rankFilter]);
 
-  const clearFilters = () => {
-    setSearchEmail("");
-    setRankFilter("");
+  const thStyle = {
+    textAlign: "left",
+    padding: "12px 10px",
+    fontSize: 13,
+    color: "#334155",
+    fontWeight: 700,
+    borderBottom: "1px solid #e2e8f0",
+    background: "#f8fafc",
+    whiteSpace: "nowrap",
+  };
+
+  const tdStyle = {
+    padding: "12px 10px",
+    borderBottom: "1px solid #f1f5f9",
+    color: "#0f172a",
+    fontSize: 14,
+    verticalAlign: "middle",
+  };
+
+  const actionBtnBase = {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    border: "1px solid #dbeafe",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  };
+
+  const getStatusStyle = (rawStatus) => {
+    const status = String(rawStatus || "").toLowerCase();
+    if (status === "pending") {
+      return {
+        color: "#92400e",
+        background: "#fef3c7",
+        border: "1px solid #fcd34d",
+      };
+    }
+    if (status === "approved") {
+      return {
+        color: "#065f46",
+        background: "#d1fae5",
+        border: "1px solid #6ee7b7",
+      };
+    }
+    return {
+      color: "#1f2937",
+      background: "#f3f4f6",
+      border: "1px solid #d1d5db",
+    };
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <h2>Danh sách chờ - {tournamentName}</h2>
+    <div
+      style={{
+        padding: "24px",
+        background: "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)",
+        minHeight: "100vh",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 1240,
+          margin: "0 auto",
+          background: "#ffffff",
+          border: "1px solid #e2e8f0",
+          borderRadius: 16,
+          padding: 20,
+          boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
+        }}
+      >
+        <h2 style={{ marginTop: 0, marginBottom: 6 }}>Danh sách chờ - {tournamentName}</h2>
+        <p style={{ marginTop: 0, marginBottom: 16, color: "#64748b", fontSize: 14 }}>
+          Theo dõi và xử lý các đăng ký đang chờ duyệt của giải đấu.
+        </p>
 
-      {banner && (
+        {banner && (
+          <div
+            style={{
+              marginBottom: 12,
+              padding: "10px 12px",
+              borderRadius: 10,
+              color: banner.type === "success" ? "#065f46" : "#991b1b",
+              backgroundColor: banner.type === "success" ? "#d1fae5" : "#fee2e2",
+              border: `1px solid ${banner.type === "success" ? "#6ee7b7" : "#fca5a5"}`,
+            }}
+          >
+            {banner.text}
+          </div>
+        )}
+
         <div
           style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
             marginBottom: 12,
-            padding: "10px 12px",
-            borderRadius: 8,
-            color: banner.type === "success" ? "#065f46" : "#991b1b",
-            backgroundColor: banner.type === "success" ? "#d1fae5" : "#fee2e2",
-            border: `1px solid ${banner.type === "success" ? "#6ee7b7" : "#fca5a5"}`,
+            flexWrap: "wrap",
           }}
         >
-          {banner.text}
+          <input
+            type="text"
+            placeholder="Tìm theo email..."
+            value={searchEmail}
+            onChange={(e) => setSearchEmail(e.target.value)}
+            style={{
+              width: 320,
+              border: "1px solid #d1d5db",
+              borderRadius: 10,
+              padding: "9px 12px",
+              outline: "none",
+              background: "#fff",
+            }}
+          />
+          <select
+            value={rankFilter}
+            onChange={(e) => setRankFilter(e.target.value)}
+            style={{
+              border: "1px solid #d1d5db",
+              borderRadius: 10,
+              padding: "9px 12px",
+              outline: "none",
+              background: "#fff",
+            }}
+          >
+            <option value="">Tất cả mốc rank</option>
+            <option value="lt1000">Dưới 1000</option>
+            <option value="1000-1199">1000 - 1199</option>
+            <option value="1200-1399">1200 - 1399</option>
+            <option value="1400-1599">1400 - 1599</option>
+            <option value="ge1600">Từ 1600 trở lên</option>
+          </select>
+          <button
+            onClick={() => {
+              setSearchEmail("");
+              setRankFilter("");
+            }}
+            style={{
+              border: "1px solid #d1d5db",
+              background: "#ffffff",
+              color: "#0f172a",
+              borderRadius: 10,
+              padding: "9px 14px",
+              cursor: "pointer",
+              fontWeight: 700,
+            }}
+          >
+            Xóa lọc
+          </button>
         </div>
-      )}
 
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-          marginBottom: 12,
-          flexWrap: "nowrap",
-        }}
-      >
-        <input
-          type="text"
-          placeholder="Tìm theo email..."
-          value={searchEmail}
-          onChange={(e) => setSearchEmail(e.target.value)}
+        <div
           style={{
-            width: 320,
-            border: "1px solid #d1d5db",
-            borderRadius: 8,
-            padding: "9px 12px",
-            outline: "none",
-          }}
-        />
-        <select
-          value={rankFilter}
-          onChange={(e) => setRankFilter(e.target.value)}
-          style={{
-            border: "1px solid #d1d5db",
-            borderRadius: 8,
-            padding: "9px 12px",
-            outline: "none",
-            background: "#fff",
+            overflowX: "auto",
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
           }}
         >
-          <option value="">Tất cả mốc rank</option>
-          <option value="lt1000">Dưới 1000</option>
-          <option value="1000-1199">1000 - 1199</option>
-          <option value="1200-1399">1200 - 1399</option>
-          <option value="1400-1599">1400 - 1599</option>
-          <option value="ge1600">Từ 1600 trở lên</option>
-        </select>
-        <button
-          onClick={clearFilters}
-          style={{
-            border: "1px solid #d1d5db",
-            background: "#ffffff",
-            color: "#0f172a",
-            borderRadius: 8,
-            padding: "9px 14px",
-            cursor: "pointer",
-            fontWeight: 700,
-            opacity: 1,
-          }}
-        >
-          Xóa lọc
-        </button>
-      </div>
-
-      <table
-        width="100%"
-        cellPadding="10"
-        style={{ borderCollapse: "collapse" }}
-      >
-        <thead>
-          <tr>
-            <th
-              align="left"
-              style={{ fontWeight: 700, color: "#0f172a", opacity: 1 }}
-            >
-              STT
-            </th>
-            <th
-              align="left"
-              style={{ fontWeight: 700, color: "#0f172a", opacity: 1 }}
-            >
-              Họ và tên
-            </th>
-            <th
-              align="left"
-              style={{ fontWeight: 700, color: "#0f172a", opacity: 1 }}
-            >
-              Tên in-game
-            </th>
-            <th
-              align="left"
-              style={{ fontWeight: 700, color: "#0f172a", opacity: 1 }}
-            >
-              Email
-            </th>
-            <th
-              align="left"
-              style={{ fontWeight: 700, color: "#0f172a", opacity: 1 }}
-            >
-              SĐT
-            </th>
-            <th
-              align="left"
-              style={{ fontWeight: 700, color: "#0f172a", opacity: 1 }}
-            >
-              Rank
-            </th>
-            <th
-              align="left"
-              style={{ fontWeight: 700, color: "#0f172a", opacity: 1 }}
-            >
-              Thời điểm đăng ký
-            </th>
-            <th
-              align="left"
-              style={{ fontWeight: 700, color: "#0f172a", opacity: 1 }}
-            >
-              Trạng thái
-            </th>
-            <th
-              align="left"
-              style={{ fontWeight: 700, color: "#0f172a", opacity: 1 }}
-            >
-              Hành động
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredRows.length === 0 ? (
-            <tr>
-              <td colSpan={9}>Chưa có người chơi nào.</td>
-            </tr>
-          ) : (
-            filteredRows.map((row, idx) => {
-              return (
-                <tr key={row.waitingId}>
-                  <td>{idx + 1}</td>
-                  <td>{row.registrationFullName || "-"}</td>
-                  <td>{row.registrationUsername || "-"}</td>
-                  <td>{row.registrationEmail || "-"}</td>
-                  <td>{row.registrationPhone || "-"}</td>
-                  <td>{row.rankAtRegistration ?? "-"}</td>
-                  <td>
-                    {row.registrationDate
-                      ? new Date(row.registrationDate).toLocaleString("vi-VN")
-                      : "-"}
-                  </td>
-                  <td>{row.status}</td>
-                  <td style={{ display: "flex", gap: 8 }}>
-                    <button title="Xem" onClick={() => setSelected(row)}>
-                      <Eye size={16} />
-                    </button>
-                    <button title="Sửa" onClick={() => openEdit(row)}>
-                      <Edit2 size={16} />
-                    </button>
-                    <button title="Xóa" onClick={() => openDelete(row)}>
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
+          <table width="100%" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>STT</th>
+                <th style={thStyle}>Họ và tên</th>
+                <th style={thStyle}>Tên in-game</th>
+                <th style={thStyle}>Email</th>
+                <th style={thStyle}>SĐT</th>
+                <th style={thStyle}>Rank</th>
+                <th style={thStyle}>Thời điểm đăng ký</th>
+                <th style={thStyle}>Trạng thái</th>
+                <th style={thStyle}>Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRows.length === 0 ? (
+                <tr>
+                  <td style={tdStyle} colSpan={9}>Chưa có người chơi nào.</td>
                 </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          marginTop: 16,
-          alignItems: "center",
-          justifyContent: "flex-end",
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          onClick={() => navigate(-1)}
+              ) : (
+                filteredRows.map((row, idx) => (
+                  <tr
+                    key={row.waitingId}
+                    style={{ background: idx % 2 === 0 ? "#ffffff" : "#fcfdff" }}
+                  >
+                    <td style={tdStyle}>{idx + 1}</td>
+                    <td style={{ ...tdStyle, fontWeight: 600 }}>{row.registrationFullName || "-"}</td>
+                    <td style={tdStyle}>{row.registrationUsername || "-"}</td>
+                    <td style={tdStyle}>{row.registrationEmail || "-"}</td>
+                    <td style={tdStyle}>{row.registrationPhone || "-"}</td>
+                    <td style={tdStyle}>{row.rankAtRegistration ?? "-"}</td>
+                    <td style={tdStyle}>
+                      {row.registrationDate
+                        ? new Date(row.registrationDate).toLocaleString("vi-VN")
+                        : "-"}
+                    </td>
+                    <td style={tdStyle}>
+                      <span
+                        style={{
+                          ...getStatusStyle(row.status),
+                          padding: "4px 10px",
+                          borderRadius: 999,
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {row.status || "-"}
+                      </span>
+                    </td>
+                    <td style={tdStyle}>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          title="Xem"
+                          onClick={() => setSelected(row)}
+                          style={{
+                            ...actionBtnBase,
+                            borderColor: "#93c5fd",
+                            background: "#eff6ff",
+                            color: "#1d4ed8",
+                          }}
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          title="Xóa"
+                          onClick={() => setDeleteTarget(row)}
+                          style={{
+                            ...actionBtnBase,
+                            borderColor: "#fca5a5",
+                            background: "#fef2f2",
+                            color: "#dc2626",
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                        <button
+                          title="Duyệt"
+                          onClick={() => handleApprove(row)}
+                          style={{
+                            ...actionBtnBase,
+                            borderColor: "#86efac",
+                            background: "#f0fdf4",
+                            color: "#16a34a",
+                          }}
+                        >
+                          <CheckCircle2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div
           style={{
-            border: "1px solid #d1d5db",
-            background: "#ffffff",
-            color: "#111827",
-            borderRadius: 8,
-            padding: "9px 14px",
-            cursor: "pointer",
-            fontWeight: 600,
+            display: "flex",
+            gap: 10,
+            marginTop: 16,
+            alignItems: "center",
+            justifyContent: "flex-start",
+            flexWrap: "wrap",
           }}
         >
-          Quay lại
-        </button>
-        <button
-          onClick={openRegister}
-          style={{
-            border: "none",
-            background: "#2563eb",
-            color: "#ffffff",
-            borderRadius: 8,
-            padding: "9px 14px",
-            cursor: "pointer",
-            fontWeight: 600,
-            boxShadow: "0 8px 20px rgba(37, 99, 235, 0.25)",
-          }}
-        >
-          Đăng ký giải đấu
-        </button>
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              border: "1px solid #d1d5db",
+              background: "#ffffff",
+              color: "#111827",
+              borderRadius: 10,
+              padding: "9px 14px",
+              cursor: "pointer",
+              fontWeight: 700,
+            }}
+          >
+            Quay lại
+          </button>
+        </div>
       </div>
+
+      <Modal
+        open={!!deleteTarget}
+        title="Xác nhận xóa đăng ký"
+        onClose={() => setDeleteTarget(null)}
+      >
+        {deleteTarget && (
+          <div>
+            <p style={{ margin: 0, lineHeight: 1.6 }}>
+              Bạn có chắc chắn muốn xóa đăng ký của{" "}
+              <b>{deleteTarget.registrationFullName}</b> khỏi danh sách chờ
+              không?
+            </p>
+            <div
+              style={{
+                marginTop: 16,
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+              }}
+            >
+              <button
+                onClick={() => setDeleteTarget(null)}
+                style={{
+                  border: "1px solid #d1d5db",
+                  background: "#ffffff",
+                  color: "#111827",
+                  borderRadius: 8,
+                  padding: "9px 16px",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmDelete}
+                style={{
+                  border: "none",
+                  background: "#dc2626",
+                  color: "#ffffff",
+                  borderRadius: 8,
+                  padding: "9px 16px",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         open={!!selected}
@@ -722,214 +557,7 @@ export default function WaitingList() {
                   fontWeight: 600,
                 }}
               >
-                Đóng
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        open={!!editing || registering}
-        title={editing ? "Sửa thông tin đăng ký" : "Sửa thông tin đăng ký"}
-        onClose={closeFormModal}
-      >
-        {(editing || registering) && (
-          <div>
-            <div style={{ display: "grid", gap: 12 }}>
-              {formErrors.general && (
-                <div
-                  style={{ color: "#b91c1c", fontSize: 13, fontWeight: 600 }}
-                >
-                  {formErrors.general}
-                </div>
-              )}
-              <input
-                placeholder="Họ và tên"
-                value={form.fullName}
-                onChange={(e) => handleFormChange("fullName", e.target.value)}
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  outline: "none",
-                }}
-              />
-              {formErrors.fullName && (
-                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
-                  {formErrors.fullName}
-                </div>
-              )}
-              <input
-                placeholder="Tên in-game"
-                value={form.username}
-                onChange={(e) => handleFormChange("username", e.target.value)}
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  outline: "none",
-                }}
-              />
-              {formErrors.username && (
-                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
-                  {formErrors.username}
-                </div>
-              )}
-              <input
-                placeholder="Email"
-                value={form.email}
-                onChange={(e) => handleFormChange("email", e.target.value)}
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  outline: "none",
-                }}
-              />
-              {formErrors.email && (
-                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
-                  {formErrors.email}
-                </div>
-              )}
-              <input
-                placeholder="SĐT"
-                value={form.phone}
-                onChange={(e) => handleFormChange("phone", e.target.value)}
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  outline: "none",
-                }}
-              />
-              {formErrors.phone && (
-                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
-                  {formErrors.phone}
-                </div>
-              )}
-              <input
-                type="number"
-                min="0"
-                placeholder="Bậc rank"
-                value={form.rankAtRegistration}
-                onChange={(e) =>
-                  handleFormChange("rankAtRegistration", e.target.value)
-                }
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  outline: "none",
-                }}
-              />
-              {formErrors.rankAtRegistration && (
-                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
-                  {formErrors.rankAtRegistration}
-                </div>
-              )}
-              <textarea
-                placeholder="Ghi chú"
-                value={form.note}
-                onChange={(e) => setForm({ ...form, note: e.target.value })}
-                rows={4}
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  outline: "none",
-                  resize: "vertical",
-                }}
-              />
-            </div>
-            <div
-              style={{
-                marginTop: 16,
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 10,
-              }}
-            >
-              <button
-                onClick={closeFormModal}
-                style={{
-                  border: "1px solid #d1d5db",
-                  background: "#ffffff",
-                  color: "#111827",
-                  borderRadius: 8,
-                  padding: "9px 16px",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                Hủy
-              </button>
-              <button
-                onClick={editing ? submitEdit : submitRegister}
-                style={{
-                  border: "none",
-                  background: "#2563eb",
-                  color: "#ffffff",
-                  borderRadius: 8,
-                  padding: "9px 16px",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                {editing ? "Lưu" : "Xác nhận đăng ký giải"}
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        open={!!deleteTarget}
-        title="Xác nhận xóa đăng ký"
-        onClose={() => setDeleteTarget(null)}
-      >
-        {deleteTarget && (
-          <div>
-            <p style={{ margin: 0, lineHeight: 1.6 }}>
-              Bạn có chắc chắn muốn xóa đăng ký của{" "}
-              <b>{deleteTarget.registrationFullName}</b> khỏi danh sách chờ
-              không?
-            </p>
-            <div
-              style={{
-                marginTop: 16,
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 10,
-              }}
-            >
-              <button
-                onClick={() => setDeleteTarget(null)}
-                style={{
-                  border: "1px solid #d1d5db",
-                  background: "#ffffff",
-                  color: "#111827",
-                  borderRadius: 8,
-                  padding: "9px 16px",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                Hủy
-              </button>
-              <button
-                onClick={confirmDelete}
-                style={{
-                  border: "none",
-                  background: "#dc2626",
-                  color: "#ffffff",
-                  borderRadius: 8,
-                  padding: "9px 16px",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                Xóa
+                Quay lại
               </button>
             </div>
           </div>
