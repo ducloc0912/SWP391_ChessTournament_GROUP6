@@ -11,6 +11,7 @@ import com.example.DAO.ParticipantDAO;
 import com.example.util.PasswordUtil;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 public class TournamentService {
@@ -93,6 +94,37 @@ public class TournamentService {
     public boolean removeRefereeFromTournament(int tournamentId, int refereeId) {
         if (tournamentId <= 0 || refereeId <= 0) return false;
         return refereeDAO.removeReferee(tournamentId, refereeId);
+    }
+
+    public boolean updateTournamentCoverImage(int tournamentId, String imageUrl) {
+        if (tournamentId <= 0) return false;
+        return tournamentDAO.updateTournamentCoverImage(tournamentId, imageUrl);
+    }
+
+    public boolean addTournamentDetailImage(int tournamentId, String imageUrl) {
+        if (tournamentId <= 0 || isBlank(imageUrl)) return false;
+        return tournamentDAO.addTournamentDetailImage(tournamentId, imageUrl.trim());
+    }
+
+    public boolean deleteTournamentDetailImage(int tournamentId, String imageUrl) {
+        if (tournamentId <= 0 || isBlank(imageUrl)) return false;
+        return tournamentDAO.deleteTournamentDetailImage(tournamentId, imageUrl.trim());
+    }
+
+    public boolean saveTournamentImages(int tournamentId, String coverImageUrl, List<String> detailImages) {
+        if (tournamentId <= 0) return false;
+        List<String> normalized = new ArrayList<>();
+        if (detailImages != null) {
+            for (String url : detailImages) {
+                if (url == null) continue;
+                String trimmed = url.trim();
+                if (!trimmed.isBlank()) normalized.add(trimmed);
+            }
+        }
+        String normalizedCover = coverImageUrl == null || coverImageUrl.isBlank()
+                ? null
+                : coverImageUrl.trim();
+        return tournamentDAO.saveTournamentImages(tournamentId, normalizedCover, normalized);
     }
 
     public TournamentRefereeDTO createRefereeUser(

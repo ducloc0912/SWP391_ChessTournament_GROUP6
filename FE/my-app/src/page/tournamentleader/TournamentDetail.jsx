@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
@@ -10,10 +10,11 @@ import {
   Clock,
   Edit,
   XCircle,
-  Copy,
   Download,
   ChevronLeft,
   ChevronRight,
+  X,
+  GripVertical,
   AlertCircle,
   CheckCircle,
   Search,
@@ -72,7 +73,8 @@ const TournamentDetail = () => {
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchTournamentDetail = () => {
+    setLoading(true);
     axios
       .get(`http://localhost:8080/ctms/api/tournaments?id=${id}`, {
         withCredentials: true,
@@ -80,6 +82,10 @@ const TournamentDetail = () => {
       .then((res) => setTournament(res.data))
       .catch(() => setTournament(null))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchTournamentDetail();
   }, [id]);
 
   const tabs = [
@@ -182,7 +188,7 @@ const TournamentDetail = () => {
         {/* ── Content ── */}
         <div className="td-tab-panel" key={activeTab}>
           {activeTab === "overview" && (
-            <OverviewTab tournament={tournament} />
+            <OverviewTab tournament={tournament} onTournamentUpdated={fetchTournamentDetail} />
           )}
           {activeTab === "participants" && (
             <ParticipantsTab tournamentId={tournament.tournamentId} />
@@ -201,8 +207,9 @@ const TournamentDetail = () => {
    Overview Tab
    ═══════════════════════════════════════════ */
 
-const OverviewTab = ({ tournament }) => {
+const OverviewTab = ({ tournament, onTournamentUpdated }) => {
   const [currentImage, setCurrentImage] = useState(0);
+  const [imageManagerOpen, setImageManagerOpen] = useState(false);
 
   const images =
     Array.isArray(tournament.tournamentImages) && tournament.tournamentImages.length > 0
@@ -216,6 +223,12 @@ const OverviewTab = ({ tournament }) => {
   const nextImage = () => setCurrentImage((p) => (p + 1) % images.length);
   const prevImage = () =>
     setCurrentImage((p) => (p - 1 + images.length) % images.length);
+
+  useEffect(() => {
+    if (currentImage >= images.length) {
+      setCurrentImage(0);
+    }
+  }, [currentImage, images.length]);
 
   const progressPct =
     tournament.maxPlayer > 0
@@ -299,15 +312,28 @@ const OverviewTab = ({ tournament }) => {
             )}
 
             <div className="td-gallery-edit-btns">
-              <button className="td-gallery-edit-btn">
+              <button
+                className="td-gallery-edit-btn"
+                onClick={() => setImageManagerOpen(true)}
+                title="Quản lý ảnh"
+              >
                 <Edit size={16} />
-              </button>
-              <button className="td-gallery-edit-btn danger">
-                <Trash2 size={16} />
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {imageManagerOpen && (
+        <ImageManagerModal
+          tournament={tournament}
+          onClose={() => setImageManagerOpen(false)}
+          onSaved={async () => {
+            setImageManagerOpen(false);
+            setCurrentImage(0);
+            await onTournamentUpdated();
+          }}
+        />
       )}
 
       {/* Info + Timeline */}
@@ -395,6 +421,352 @@ const OverviewTab = ({ tournament }) => {
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+const MAX_DETAIL_IMAGES = 10;
+
+const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
+  const initialCover = tournament.tournamentImage || "";
+  const initialDetails = Array.isArray(tournament.tournamentImages)
+    ? [...tournament.tournamentImages]
+    : [];
+
+  const [coverImage, setCoverImage] = useState(initialCover);
+  const [detailImages, setDetailImages] = useState(initialDetails);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [draggingIdx, setDraggingIdx] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [toast, setToast] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIdx, setPreviewIdx] = useState(0);
+  const [editingIdx, setEditingIdx] = useState(null);
+
+  const coverInputRef = useRef(null);
+  const addInputRef = useRef(null);
+  const replaceInputRef = useRef(null);
+  const touchStartX = useRef(null);
+
+  const hasChanges =
+    coverImage !== initialCover ||
+    JSON.stringify(detailImages) !== JSON.stringify(initialDetails);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(""), 2200);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const allPreviewImages = [
+    ...(coverImage ? [coverImage] : []),
+    ...detailImages,
+  ];
+
+  const uploadSingleImage = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await axios.post(
+      "http://localhost:8080/ctms/api/tournaments?action=uploadImageFile",
+      formData,
+      { withCredentials: true }
+    );
+    if (!res?.data?.success || !res?.data?.imageUrl) {
+      throw new Error(res?.data?.message || "Upload ảnh thất bại");
+    }
+    return res.data.imageUrl;
+  };
+
+  const handleSetCoverFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const imageUrl = await uploadSingleImage(file);
+      setCoverImage(imageUrl);
+      setToast("Đã cập nhật ảnh đại diện.");
+    } catch (err) {
+      alert(err?.response?.data?.message || err?.message || "Upload ảnh thất bại.");
+    } finally {
+      setUploading(false);
+      if (coverInputRef.current) coverInputRef.current.value = "";
+    }
+  };
+
+  const handleAddFiles = async (files) => {
+    if (!files?.length) return;
+    if (detailImages.length >= MAX_DETAIL_IMAGES) {
+      alert(`Đã đạt tối đa ${MAX_DETAIL_IMAGES} ảnh chi tiết.`);
+      return;
+    }
+    const available = MAX_DETAIL_IMAGES - detailImages.length;
+    const picked = Array.from(files).slice(0, available);
+
+    setUploading(true);
+    try {
+      const uploaded = [];
+      for (const file of picked) {
+        const imageUrl = await uploadSingleImage(file);
+        uploaded.push(imageUrl);
+      }
+      setDetailImages((prev) => [...prev, ...uploaded]);
+      setToast(`Đã thêm ${uploaded.length} ảnh.`);
+    } catch (err) {
+      alert(err?.response?.data?.message || err?.message || "Upload ảnh thất bại.");
+    } finally {
+      setUploading(false);
+      if (addInputRef.current) addInputRef.current.value = "";
+    }
+  };
+
+  const handleReplaceDetailImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || editingIdx === null) return;
+    setUploading(true);
+    try {
+      const imageUrl = await uploadSingleImage(file);
+      setDetailImages((prev) => prev.map((img, idx) => (idx === editingIdx ? imageUrl : img)));
+      setToast("Đã thay ảnh.");
+    } catch (err) {
+      alert(err?.response?.data?.message || err?.message || "Thay ảnh thất bại.");
+    } finally {
+      setUploading(false);
+      setEditingIdx(null);
+      if (replaceInputRef.current) replaceInputRef.current.value = "";
+    }
+  };
+
+  const openReplacePicker = (idx) => {
+    setEditingIdx(idx);
+    replaceInputRef.current?.click();
+  };
+
+  const setAsCover = (idx) => {
+    const selected = detailImages[idx];
+    if (!selected) return;
+    setDetailImages((prev) => prev.filter((_, i) => i !== idx));
+    if (coverImage && coverImage !== selected) {
+      setDetailImages((prev) => [coverImage, ...prev]);
+    }
+    setCoverImage(selected);
+  };
+
+  const moveImage = (from, to) => {
+    if (from === to || from === null || to === null) return;
+    setDetailImages((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.type === "cover") {
+      setCoverImage("");
+    } else {
+      setDetailImages((prev) => prev.filter((_, idx) => idx !== deleteTarget.idx));
+    }
+    setDeleteTarget(null);
+  };
+
+  const handleSave = async () => {
+    if (!hasChanges || saving) return;
+    setSaving(true);
+    try {
+      const res = await axios.put(
+        `http://localhost:8080/ctms/api/tournaments?action=updateImages&id=${tournament.tournamentId}`,
+        {
+          coverImage: coverImage || null,
+          detailImages,
+        },
+        { withCredentials: true }
+      );
+      if (!res?.data?.success) {
+        throw new Error(res?.data?.message || "Lưu ảnh thất bại");
+      }
+      setToast("Lưu ảnh thành công.");
+      await onSaved();
+    } catch (err) {
+      alert(err?.response?.data?.message || err?.message || "Lưu ảnh thất bại.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openPreview = (idx) => {
+    setPreviewIdx(idx);
+    setPreviewOpen(true);
+  };
+
+  const nextPreview = () =>
+    setPreviewIdx((p) => (p + 1) % Math.max(allPreviewImages.length, 1));
+  const prevPreview = () =>
+    setPreviewIdx((p) => (p - 1 + Math.max(allPreviewImages.length, 1)) % Math.max(allPreviewImages.length, 1));
+
+  return (
+    <div className="ti-modal-overlay" onClick={onClose}>
+      <div className="ti-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ti-modal-header">
+          <div>
+            <h2>Manage Tournament Images</h2>
+            <p>Upload and organize images for this tournament</p>
+          </div>
+          <button className="ti-close-btn" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="ti-modal-body">
+          <section className="ti-card">
+            <div className="ti-section-head">
+              <h3>Cover Image</h3>
+              <span className="ti-note">Recommended: 1920 x 1080</span>
+            </div>
+            <div
+              className="ti-cover-preview"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files?.[0]) {
+                  handleSetCoverFile({ target: { files: [e.dataTransfer.files[0]] } });
+                }
+              }}
+            >
+              {coverImage ? (
+                <img src={coverImage} alt="Cover" onClick={() => openPreview(0)} />
+              ) : (
+                <div className="ti-cover-placeholder">
+                  <p>No cover image</p>
+                  <button className="ti-primary-btn" onClick={() => coverInputRef.current?.click()}>
+                    Upload Cover
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="ti-btn-row">
+              <button className="ti-primary-btn" onClick={() => coverInputRef.current?.click()} disabled={uploading}>
+                Change Cover Image
+              </button>
+              <button
+                className="ti-danger-btn"
+                onClick={() => setDeleteTarget({ type: "cover" })}
+                disabled={!coverImage || uploading}
+              >
+                Remove
+              </button>
+            </div>
+          </section>
+
+          <section className="ti-card">
+            <div className="ti-section-head">
+              <h3>Detail Images</h3>
+              <span className="ti-note">{detailImages.length} / {MAX_DETAIL_IMAGES}</span>
+            </div>
+            <div className="ti-grid">
+              {detailImages.map((img, idx) => (
+                <div
+                  key={`${img}-${idx}`}
+                  className="ti-image-card"
+                  draggable
+                  onDragStart={() => setDraggingIdx(idx)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => moveImage(draggingIdx, idx)}
+                >
+                  <img src={img} alt={`Detail ${idx + 1}`} onClick={() => openPreview((coverImage ? 1 : 0) + idx)} />
+                  <span className="ti-order-badge">#{idx + 1}</span>
+                  <div className="ti-card-actions">
+                    <button onClick={() => openReplacePicker(idx)} title="Edit">
+                      <Edit size={14} />
+                    </button>
+                    <button onClick={() => setDeleteTarget({ type: "detail", idx })} title="Delete">
+                      <Trash2 size={14} />
+                    </button>
+                    <button onClick={() => setAsCover(idx)} title="Set as cover">
+                      <Trophy size={14} />
+                    </button>
+                    <button className="drag" title="Drag to reorder">
+                      <GripVertical size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div
+              className="ti-dropzone"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleAddFiles(e.dataTransfer.files);
+              }}
+            >
+              <p>Drag & drop images here or click to upload</p>
+              <small>JPG, PNG, WEBP</small>
+              <button className="ti-primary-btn" onClick={() => addInputRef.current?.click()} disabled={uploading}>
+                Add Images
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <div className="ti-modal-footer">
+          <div className="ti-counter">{(coverImage ? 1 : 0) + detailImages.length} images total</div>
+          <div className="ti-footer-actions">
+            <button className="ti-outline-btn" onClick={onClose}>Cancel</button>
+            <button className="ti-primary-btn" onClick={handleSave} disabled={!hasChanges || saving || uploading}>
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </div>
+
+        <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleSetCoverFile} />
+        <input ref={addInputRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={(e) => handleAddFiles(e.target.files)} />
+        <input ref={replaceInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleReplaceDetailImage} />
+      </div>
+
+      {deleteTarget && (
+        <div className="ti-confirm-overlay" onClick={() => setDeleteTarget(null)}>
+          <div className="ti-confirm" onClick={(e) => e.stopPropagation()}>
+            <h4>Delete image?</h4>
+            <p>Image will be removed from this tournament when you save.</p>
+            <div className="ti-confirm-actions">
+              <button className="ti-outline-btn" onClick={() => setDeleteTarget(null)}>Cancel</button>
+              <button className="ti-danger-btn" onClick={confirmDelete}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewOpen && allPreviewImages.length > 0 && (
+        <div
+          className="ti-preview-overlay"
+          onClick={() => setPreviewOpen(false)}
+          onTouchStart={(e) => {
+            touchStartX.current = e.touches[0]?.clientX ?? null;
+          }}
+          onTouchEnd={(e) => {
+            if (touchStartX.current === null) return;
+            const endX = e.changedTouches[0]?.clientX ?? touchStartX.current;
+            const delta = endX - touchStartX.current;
+            if (delta > 40) prevPreview();
+            if (delta < -40) nextPreview();
+            touchStartX.current = null;
+          }}
+        >
+          <button className="ti-preview-nav left" onClick={(e) => { e.stopPropagation(); prevPreview(); }}>
+            <ChevronLeft size={24} />
+          </button>
+          <img src={allPreviewImages[previewIdx]} alt="preview" className="ti-preview-image" />
+          <button className="ti-preview-nav right" onClick={(e) => { e.stopPropagation(); nextPreview(); }}>
+            <ChevronRight size={24} />
+          </button>
+        </div>
+      )}
+
+      {toast && <div className="ti-toast">{toast}</div>}
     </div>
   );
 };

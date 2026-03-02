@@ -91,7 +91,6 @@ const FilterSection = ({
         </div>
 
         <div className="filter-divider" />
-
       </div>
     </div>
   );
