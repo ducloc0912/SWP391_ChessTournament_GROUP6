@@ -479,6 +479,107 @@ public class TournamentDAO extends DBContext {
         return podium;
     }
 
+    public boolean updateTournamentCoverImage(int tournamentId, String imageUrl) {
+        String sql = "UPDATE Tournaments SET tournament_image = ? WHERE tournament_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, imageUrl);
+            ps.setInt(2, tournamentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean addTournamentDetailImage(int tournamentId, String imageUrl) {
+        String sql = """
+                INSERT INTO Tournament_Images (tournament_id, image_url, display_order)
+                VALUES (?, ?, (
+                    SELECT ISNULL(MAX(display_order), 0) + 1
+                    FROM Tournament_Images
+                    WHERE tournament_id = ?
+                ))
+                """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            ps.setString(2, imageUrl);
+            ps.setInt(3, tournamentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean deleteTournamentDetailImage(int tournamentId, String imageUrl) {
+        String sql = "DELETE FROM Tournament_Images WHERE tournament_id = ? AND image_url = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            ps.setString(2, imageUrl);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean saveTournamentImages(int tournamentId, String coverImageUrl, List<String> detailImages) {
+        String updateCoverSql = "UPDATE Tournaments SET tournament_image = ? WHERE tournament_id = ?";
+        String deleteDetailSql = "DELETE FROM Tournament_Images WHERE tournament_id = ?";
+        String insertDetailSql = """
+                INSERT INTO Tournament_Images (tournament_id, image_url, display_order)
+                VALUES (?, ?, ?)
+                """;
+
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                try (PreparedStatement ps = conn.prepareStatement(updateCoverSql)) {
+                    ps.setString(1, coverImageUrl);
+                    ps.setInt(2, tournamentId);
+                    if (ps.executeUpdate() == 0) {
+                        conn.rollback();
+                        return false;
+                    }
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement(deleteDetailSql)) {
+                    ps.setInt(1, tournamentId);
+                    ps.executeUpdate();
+                }
+
+                if (detailImages != null && !detailImages.isEmpty()) {
+                    try (PreparedStatement ps = conn.prepareStatement(insertDetailSql)) {
+                        int order = 1;
+                        for (String imageUrl : detailImages) {
+                            if (imageUrl == null || imageUrl.isBlank()) continue;
+                            ps.setInt(1, tournamentId);
+                            ps.setString(2, imageUrl.trim());
+                            ps.setInt(3, order++);
+                            ps.addBatch();
+                        }
+                        ps.executeBatch();
+                    }
+                }
+
+                conn.commit();
+                return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                e.printStackTrace();
+                return false;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     public List<PlayerTournamentDTO> getPlayerTournamentCards(
             Integer userId,
             String keyword,

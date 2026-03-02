@@ -50,6 +50,20 @@ const FORMAT_LABELS = {
 
 const getStatusLabel = (s) => STATUS_LABELS[s] || s;
 const getFormatLabel = (f) => FORMAT_LABELS[f] || f;
+const BACKEND_ORIGIN = "http://localhost:8080";
+
+const resolveTournamentImageUrl = (rawUrl) => {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+  const url = rawUrl.trim();
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
+    return url;
+  }
+  if (url.startsWith("/")) {
+    return `${BACKEND_ORIGIN}${url}`;
+  }
+  return `${BACKEND_ORIGIN}/ctms/${url}`;
+};
 
 const TournamentList = ({ hideHeader = false }) => {
   const navigate = useNavigate();
@@ -242,12 +256,21 @@ const TournamentList = ({ hideHeader = false }) => {
                     const progress = t.maxPlayer > 0
                       ? Math.round((t.currentPlayers / t.maxPlayer) * 100)
                       : 0;
+                    const coverUrl = resolveTournamentImageUrl(t.tournamentImage);
 
                     return (
                       <div className="tl-tournament-card ui-card ui-card-hover" key={t.tournamentId}>
                         <div className="tl-card-banner">
+                          {coverUrl && (
+                            <img
+                              src={coverUrl}
+                              alt={t.tournamentName}
+                              className="tl-card-banner-image"
+                              loading="lazy"
+                            />
+                          )}
                           <div className="tl-card-banner-overlay" />
-                          <Trophy size={48} className="tl-card-banner-icon" />
+                          {!coverUrl && <Trophy size={48} className="tl-card-banner-icon" />}
                           <span className={`tl-card-status-badge ${t.status}`}>
                             {getStatusLabel(t.status)}
                           </span>
