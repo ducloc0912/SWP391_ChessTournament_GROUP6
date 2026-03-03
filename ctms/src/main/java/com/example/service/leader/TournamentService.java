@@ -292,7 +292,7 @@ public class TournamentService {
             return SetupValidationResult.invalid("Thiếu setupStep hợp lệ.");
         }
 
-        List<TournamentSetupMatchDTO> matches = normalizeMatches(request.getMatches());
+        List<TournamentSetupMatchDTO> matches = normalizeMatches(request.getMatches(), format);
         String currentStep = getCurrentSetupStep(tournamentId);
 
         if (STEP_STRUCTURE.equals(targetStep)) {
@@ -337,7 +337,7 @@ public class TournamentService {
             return SetupValidationResult.invalid("Thể thức không hợp lệ.");
         }
 
-        List<TournamentSetupMatchDTO> matches = normalizeMatches(request.getMatches());
+        List<TournamentSetupMatchDTO> matches = normalizeMatches(request.getMatches(), format);
         SetupValidationResult validation = validateScheduleStep(tournamentId, format, matches);
         if (!validation.isValid()) {
             return validation;
@@ -535,6 +535,15 @@ if (isBlank(t.getTournamentName())) return false;
             Integer black = m.getBlackPlayerId();
             int roundIndex = m.getRoundIndex() == null ? 1 : m.getRoundIndex();
 
+            // Hybrid rule: at \"Add Players\" step, Knock Out bracket MUST NOT have players yet.
+            // KO sẽ nhận top N sau khi kết thúc Round Robin.
+            if ("Hybrid".equals(format) && "KnockOut".equals(stage)) {
+                if (white != null || black != null) {
+                    return SetupValidationResult.invalid("Hybrid: Ở bước Add Players, không được gán người chơi cho Knock Out bracket. KO sẽ nhận top N từ Round Robin sau khi kết thúc.");
+                }
+                continue;
+            }
+
             if (white != null && !participantIds.contains(white)) {
                 return SetupValidationResult.invalid("Có người chơi trắng không thuộc danh sách đã duyệt.");
             }
@@ -585,13 +594,13 @@ if (isBlank(t.getTournamentName())) return false;
         return SetupValidationResult.valid("Schedule hợp lệ.");
     }
 
-    private List<TournamentSetupMatchDTO> normalizeMatches(List<TournamentSetupMatchDTO> matches) {
+    private List<TournamentSetupMatchDTO> normalizeMatches(List<TournamentSetupMatchDTO> matches, String format) {
         if (matches == null) return List.of();
         List<TournamentSetupMatchDTO> normalized = new ArrayList<>();
         for (TournamentSetupMatchDTO m : matches) {
             if (m == null) continue;
             TournamentSetupMatchDTO copy = new TournamentSetupMatchDTO();
-            copy.setStage(normalizeStage(m.getStage(), null));
+            copy.setStage(normalizeStage(m.getStage(), format));
             copy.setRoundName(m.getRoundName());
             copy.setRoundIndex(m.getRoundIndex() == null || m.getRoundIndex() <= 0 ? 1 : m.getRoundIndex());
             copy.setBoardNumber(m.getBoardNumber() == null || m.getBoardNumber() <= 0 ? null : m.getBoardNumber());
@@ -634,6 +643,27 @@ if (isBlank(t.getTournamentName())) return false;
         }
         if ("RoundRobin".equalsIgnoreCase(fallbackFormat)) return "RoundRobin";
         return "KnockOut";
+    }
+
+    // --- Public for TournamentSetupService (wizard state machine) ---
+    public String getNormalizedFormat(String format) {
+        return normalizeFormat(format);
+    }
+
+    public SetupValidationResult validateStructureStepInternal(String format, List<TournamentSetupMatchDTO> matches) {
+        return validateStructureStep(format, matches == null ? List.of() : matches);
+    }
+
+    public SetupValidationResult validatePlayersStepInternal(int tournamentId, String format, List<TournamentSetupMatchDTO> matches) {
+        return validatePlayersStep(tournamentId, format, matches == null ? List.of() : matches);
+    }
+
+    public SetupValidationResult validateScheduleStepInternal(int tournamentId, String format, List<TournamentSetupMatchDTO> matches) {
+        return validateScheduleStep(tournamentId, format, matches == null ? List.of() : matches);
+    }
+
+    public List<TournamentSetupMatchDTO> normalizeMatchesInternal(List<TournamentSetupMatchDTO> matches, String format) {
+        return normalizeMatches(matches, format);
     }
 
     private boolean checkPlayerCountByFormat(String format, int count) {

@@ -215,8 +215,8 @@ export default function HomePage() {
           <div className="hpv-section-head">
             <h2>TOURNAMENT</h2>
             <p>
-              Banner giải đấu được tải trực tiếp từ tournament và hiển thị dạng
-              slide 4 banner.
+              Banner giải đấu được tải trực tiếp từ tournament; nếu chưa có dữ
+              liệu, hệ thống hiển thị banner demo để dễ trình bày.
             </p>
           </div>
 

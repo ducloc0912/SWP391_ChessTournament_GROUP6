@@ -4,8 +4,11 @@ import com.example.model.dto.TournamentDTO;
 import com.example.model.dto.TournamentManualSetupRequestDTO;
 import com.example.model.dto.TournamentPlayerDTO;
 import com.example.model.dto.TournamentSetupMatchDTO;
+import com.example.model.dto.TournamentSetupStateDTO;
 import com.example.model.dto.TournamentRefereeDTO;
 import com.example.model.dto.TournamentReportDTO;
+import com.example.model.enums.SetupStep;
+import com.example.service.leader.TournamentSetupService;
 import com.example.model.entity.User;
 import com.example.model.enums.TournamentFormat;
 import com.example.model.enums.TournamentStatus;
@@ -37,11 +40,13 @@ public class TournamentController extends HttpServlet {
     private static final List<String> ALLOWED_IMAGE_EXT = List.of("jpg", "jpeg", "png", "gif", "webp");
 
     private TournamentService tournamentService;
+    private TournamentSetupService setupService;
     private Gson gson;
 
     @Override
     public void init() throws ServletException {
         tournamentService = new TournamentService();
+        setupService = new TournamentSetupService();
 
         gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd HH:mm:ss")
@@ -147,6 +152,53 @@ public class TournamentController extends HttpServlet {
             } catch (NumberFormatException e) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 response.getWriter().write("{\"message\":\"Invalid tournament id\"}");
+            }
+            return;
+        }
+
+        if ("schedule".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("[]");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(tid);
+                List<TournamentSetupMatchDTO> list = tournamentService.getManualSetupMatches(tournamentId);
+                response.getWriter().write(gson.toJson(list));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("[]");
+            }
+            return;
+        }
+
+        if ("setupState".equals(action) || "setup-state".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"step\":\"STRUCTURE\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(tid);
+                TournamentSetupStateDTO state = setupService.getSetupState(tournamentId);
+                if (state == null) {
+                    response.getWriter().write("{\"step\":\"STRUCTURE\",\"stepStatuses\":{\"BRACKET\":\"DRAFT\",\"PLAYERS\":\"DRAFT\",\"SCHEDULE\":\"DRAFT\",\"REFEREES\":\"DRAFT\"}}");
+                    return;
+                }
+                Map<String, Object> data = new HashMap<>();
+                data.put("step", state.getCurrentStep() != null ? state.getCurrentStep() : "STRUCTURE");
+                data.put("currentStep", state.getCurrentStep());
+                data.put("tournamentId", state.getTournamentId());
+                data.put("stepStatuses", state.getStepStatuses());
+                data.put("updatedAt", state.getUpdatedAt());
+                data.put("updatedBy", state.getUpdatedBy());
+                response.getWriter().write(gson.toJson(data));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"step\":\"STRUCTURE\"}");
             }
             return;
         }
@@ -534,14 +586,101 @@ public class TournamentController extends HttpServlet {
                 return;
             }
 
-            TournamentManualSetupRequestDTO body = gson.fromJson(request.getReader(), TournamentManualSetupRequestDTO.class);
+            TournamentManualSetupRequestDTO body;
+            try {
+                body = gson.fromJson(request.getReader(), TournamentManualSetupRequestDTO.class);
+            } catch (Exception e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Dữ liệu gửi lên không hợp lệ. Kiểm tra format JSON.\"}");
+                return;
+            }
+            if (body == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Thiếu dữ liệu setup.\"}");
+                return;
+            }
             TournamentService.SetupValidationResult result = tournamentService.advanceSetupStep(tournamentId, body);
             if (!result.isValid()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
             Map<String, Object> payload = new HashMap<>();
             payload.put("success", result.isValid());
-            payload.put("message", result.getMessage());
+            payload.put("message", result.getMessage() != null ? result.getMessage() : (result.isValid() ? "OK" : "Validation failed"));
+            response.getWriter().write(gson.toJson(payload));
+            return;
+        }
+
+        if ("finalizeStep".equals(action)) {
+            String tid = request.getParameter("id");
+            String stepParam = request.getParameter("step");
+            if (tid == null || stepParam == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id or step\"}");
+                return;
+            }
+            int tournamentId;
+            try {
+                tournamentId = Integer.parseInt(tid);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+                return;
+            }
+            SetupStep step = SetupStep.fromString(stepParam);
+            if (step == null || step == SetupStep.COMPLETED) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid step\"}");
+                return;
+            }
+            Integer userId = getUserIdFromSession(request);
+            TournamentManualSetupRequestDTO body = null;
+            try {
+                String bodyStr = request.getReader().lines().reduce("", (a, b) -> a + b);
+                if (bodyStr != null && !bodyStr.isBlank()) {
+                    body = gson.fromJson(bodyStr, TournamentManualSetupRequestDTO.class);
+                }
+            } catch (Exception ignored) {}
+            TournamentSetupService.ValidationResult result = setupService.finalizeStep(tournamentId, step, body, userId);
+            if (!result.isValid()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("success", result.isValid());
+            payload.put("message", result.getMessage() != null ? result.getMessage() : (result.isValid() ? "OK" : "Validation failed"));
+            response.getWriter().write(gson.toJson(payload));
+            return;
+        }
+
+        if ("unlockStep".equals(action)) {
+            String tid = request.getParameter("id");
+            String stepParam = request.getParameter("step");
+            if (tid == null || stepParam == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id or step\"}");
+                return;
+            }
+            int tournamentId;
+            try {
+                tournamentId = Integer.parseInt(tid);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+                return;
+            }
+            SetupStep step = SetupStep.fromString(stepParam);
+            if (step == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid step\"}");
+                return;
+            }
+            Integer userId = getUserIdFromSession(request);
+            TournamentSetupService.ValidationResult result = setupService.unlockStep(tournamentId, step, userId);
+            if (!result.isValid()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("success", result.isValid());
+            payload.put("message", result.getMessage() != null ? result.getMessage() : (result.isValid() ? "OK" : "Unlock failed"));
             response.getWriter().write(gson.toJson(payload));
             return;
         }
@@ -764,6 +903,16 @@ throws ServletException, IOException {
             if (Files.exists(candidate)) {
                 return candidate;
             }
+        }
+        return null;
+    }
+
+    private Integer getUserIdFromSession(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) return null;
+        Object userObj = session.getAttribute("user");
+        if (userObj instanceof User u && u.getUserId() != null) {
+            return u.getUserId();
         }
         return null;
     }
