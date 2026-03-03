@@ -1,6 +1,18 @@
-create database SWP391
+/* =========================
+   0. RESET & CREATE DATABASE (DEV ONLY)
+   ========================= */
+IF DB_ID('SWP391') IS NOT NULL
+BEGIN
+    ALTER DATABASE SWP391 SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE SWP391;
+END;
+GO
 
-use SWP391
+CREATE DATABASE SWP391;
+GO
+
+USE SWP391;
+GO
 /* =====================================================================
    SWP391 - CHESS TOURNAMENT MANAGEMENT SYSTEM (CTMS)
    Database Schema v2.1
@@ -111,7 +123,7 @@ CREATE TABLE Tournaments (
     entry_fee DECIMAL(18,2) DEFAULT 0,
     prize_pool DECIMAL(18,2) DEFAULT 0,
     status NVARCHAR(20) NOT NULL DEFAULT 'Pending'
-        CHECK (status IN ('Pending','Rejected','Delayed','Ongoing','Completed','Cancelled')),
+        CHECK (status IN ('Pending','Rejected','Delayed','Ongoing','Completed','Cancelled','Upcoming')),
     registration_deadline DATETIME,
     start_date DATETIME,
     end_date DATETIME,
@@ -174,11 +186,34 @@ CREATE TABLE Tournament_Approval_Log (
         CHECK (action IN ('Approve','Reject','Delay','Start','Complete','Cancel')),
     from_status NVARCHAR(20),
     to_status NVARCHAR(20)
-        CHECK (to_status IN ('Pending','Rejected','Delayed','Ongoing','Completed','Cancelled')),
+        CHECK (to_status IN ('Pending','Rejected','Delayed','Ongoing','Completed','Cancelled','Upcoming')),
     note NVARCHAR(500),
     create_at DATETIME DEFAULT GETDATE(),
     FOREIGN KEY (tournament_id) REFERENCES Tournaments(tournament_id) ON DELETE CASCADE,
     FOREIGN KEY (staff_id) REFERENCES Users(user_id)
+);
+
+/* =========================
+   REFEREE INVITATION (Leader mời referee bằng email)
+   ========================= */
+CREATE TABLE Referee_Invitation (
+    invitation_id INT IDENTITY(1,1) PRIMARY KEY,
+    tournament_id INT NOT NULL,
+    invited_email NVARCHAR(100) NOT NULL,
+    referee_role NVARCHAR(30) NOT NULL DEFAULT 'Assistant'
+        CHECK (referee_role IN ('Chief','Assistant')),
+    invited_by INT NOT NULL,
+    status NVARCHAR(20) NOT NULL DEFAULT 'Pending'
+        CHECK (status IN ('Pending','Accepted','Expired','Rejected')),
+    invited_at DATETIME DEFAULT GETDATE(),
+    expires_at DATETIME NOT NULL,
+    token NVARCHAR(100),
+    accepted_at DATETIME,
+    referee_id INT NULL,
+    last_reminder_at DATETIME,
+    FOREIGN KEY (tournament_id) REFERENCES Tournaments(tournament_id) ON DELETE CASCADE,
+    FOREIGN KEY (invited_by) REFERENCES Users(user_id),
+    FOREIGN KEY (referee_id) REFERENCES Users(user_id)
 );
 GO
 
@@ -195,6 +230,8 @@ CREATE TABLE Participants (
         CHECK (status IN ('Active','Withdrawn','Disqualified')),
     is_paid BIT DEFAULT 0,
     payment_date DATETIME,
+    payment_expires_at DATETIME NULL,
+    removed_at DATETIME NULL,
     registration_date DATETIME DEFAULT GETDATE(),
     notes NVARCHAR(MAX),
     FOREIGN KEY (tournament_id) REFERENCES Tournaments(tournament_id) ON DELETE CASCADE,
@@ -202,6 +239,8 @@ CREATE TABLE Participants (
     CONSTRAINT UQ_Participant UNIQUE (tournament_id, user_id)
 );
 GO
+
+/* Waiting_List đã bỏ – đăng ký chỉ dùng Participants (payment_expires_at, removed_at). */
 
 /* =========================
    BRACKET / ROUND / MATCH (them IDENTITY + CHECK + CASCADE)
@@ -261,6 +300,32 @@ CREATE TABLE Match_Referee (
     PRIMARY KEY (match_id, referee_id),
     FOREIGN KEY (match_id) REFERENCES Matches(match_id) ON DELETE CASCADE,
     FOREIGN KEY (referee_id) REFERENCES Users(user_id)
+);
+
+/* Swim-lane setup state per tournament */
+CREATE TABLE Tournament_Setup_State (
+    tournament_id INT PRIMARY KEY,
+    current_step NVARCHAR(20) NOT NULL
+        CHECK (current_step IN ('STRUCTURE','PLAYERS','SCHEDULE','REFEREE','COMPLETED')),
+    updated_at DATETIME NOT NULL DEFAULT GETDATE(),
+    FOREIGN KEY (tournament_id) REFERENCES Tournaments(tournament_id) ON DELETE CASCADE
+);
+
+/* Luu seed ranking cho tung tournament (phuc vu bracket seeding) */
+CREATE TABLE Tournament_Seed (
+    seed_id INT IDENTITY(1,1) PRIMARY KEY,
+    tournament_id INT NOT NULL,
+    user_id INT NOT NULL,
+    seed_number INT NOT NULL,
+    source NVARCHAR(20) NOT NULL DEFAULT 'AUTO'
+        CHECK (source IN ('AUTO','MANUAL','IMPORTED')),
+    created_at DATETIME NOT NULL DEFAULT GETDATE(),
+    updated_at DATETIME NOT NULL DEFAULT GETDATE(),
+    FOREIGN KEY (tournament_id) REFERENCES Tournaments(tournament_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    CONSTRAINT UQ_Tournament_Seed_User UNIQUE (tournament_id, user_id),
+    CONSTRAINT UQ_Tournament_Seed_Number UNIQUE (tournament_id, seed_number),
+    CONSTRAINT CK_Tournament_Seed_Number CHECK (seed_number > 0)
 );
 
 /* Luu lich su van co (PGN) */
@@ -878,7 +943,44 @@ INSERT INTO Tournaments (tournament_id, tournament_name, description, tournament
    N'Trung tâm Hội nghị Quốc gia, Hà Nội',
    'Hybrid', 'Rapid', 16, 8, 500000, 30000000,
    'Cancelled', '2026-02-01 23:59:00', '2026-02-20 08:00:00', '2026-02-28 18:00:00',
-   4, '2026-01-05 11:00:00', N'Hủy do không đủ số lượng đăng ký');
+   4, '2026-01-05 11:00:00', N'Hủy do không đủ số lượng đăng ký'),
+
+-- 4 giải sắp diễn ra để đăng ký (status Pending, start_date > hiện tại)
+(5, N'Cần Thơ Open Chess 2026',
+   N'Giải cờ vua mở rộng Cần Thơ. Cơ hội cho kỳ thủ Đồng bằng sông Cửu Long tranh tài.',
+   '/tournaments/cantho-open.jpg',
+   N'Time control: 90 phút + 30 giây/nước. Swiss system 7 vòng. Luật FIDE áp dụng.',
+   N'Trung tâm Văn hóa Cần Thơ, TP. Cần Thơ',
+   'RoundRobin', 'Open', 16, 8, 150000, 12000000,
+   'Pending', '2026-04-15 23:59:00', '2026-04-20 08:00:00', '2026-04-25 18:00:00',
+   4, '2026-03-01 10:00:00', N'Đang nhận đăng ký'),
+
+(6, N'Hải Phòng Blitz Championship',
+   N'Giải cờ chớp Hải Phòng. Mỗi bên 5 phút + 3 giây/nước. Nhanh gọn, kịch tính.',
+   '/tournaments/haiphong-blitz.jpg',
+   N'Time control: 5 phút + 3 giây increment. Luật FIDE Blitz. Tie-break: Direct encounter.',
+   N'Nhà Thi đấu Hải Phòng, TP. Hải Phòng',
+   'KnockOut', 'Blitz', 32, 16, 100000, 8000000,
+   'Pending', '2026-05-10 23:59:00', '2026-05-15 09:00:00', '2026-05-17 18:00:00',
+   5, '2026-03-05 14:00:00', N'Đang nhận đăng ký'),
+
+(7, N'Bình Dương Hybrid Masters',
+   N'Giải cờ kết hợp vòng tròn + loại trực tiếp. Giai đoạn 1: Round Robin, Giai đoạn 2: Knock Out.',
+   '/tournaments/binhduong-hybrid.jpg',
+   N'Stage 1: Round Robin 5 vòng. Stage 2: Knock Out top 8. Time control: 60+15.',
+   N'Trung tâm Thể thao Bình Dương, TP. Thủ Dầu Một',
+   'Hybrid', 'Open', 24, 12, 200000, 15000000,
+   'Pending', '2026-06-20 23:59:00', '2026-06-25 08:00:00', '2026-07-01 18:00:00',
+   6, '2026-03-10 09:00:00', N'Đang nhận đăng ký'),
+
+(8, N'Nha Trang Summer Rapid 2026',
+   N'Giải cờ nhanh mùa hè Nha Trang. Kết hợp thi đấu và du lịch biển.',
+   '/tournaments/nhatrang-summer.jpg',
+   N'Time control: 15 phút + 10 giây/nước. Swiss 9 vòng. Tie-break: Buchholz, Sonneborn-Berger.',
+   N'Khách sạn Sài Gòn Nha Trang, Khánh Hòa',
+   'RoundRobin', 'Rapid', 20, 10, 250000, 20000000,
+   'Pending', '2026-07-15 23:59:00', '2026-07-20 08:00:00', '2026-07-25 18:00:00',
+   4, '2026-03-15 11:00:00', N'Đang nhận đăng ký');
 
 SET IDENTITY_INSERT Tournaments OFF;
 GO
@@ -895,7 +997,33 @@ INSERT INTO Tournament_Images (tournament_id, image_url, display_order) VALUES
 (3, '/tournaments/danang-summer.jpg', 1),
 (3, '/tournaments/danang-summer-2.jpg', 2),
 (4, '/tournaments/national-rapid.jpg', 1),
-(4, '/tournaments/national-rapid-2.jpg', 2);
+(4, '/tournaments/national-rapid-2.jpg', 2),
+(5, '/tournaments/cantho-open.jpg', 1),
+(6, '/tournaments/haiphong-blitz.jpg', 1),
+(7, '/tournaments/binhduong-hybrid.jpg', 1),
+(8, '/tournaments/nhatrang-summer.jpg', 1);
+GO
+
+/* =========================
+   10.2 TOURNAMENT SETUP STATE & SEED
+   ========================= */
+-- Struct: Tournament 3 đang ở bước PLAYERS, Tournament 2 đã COMPLETED setup
+INSERT INTO Tournament_Setup_State (tournament_id, current_step, updated_at) VALUES
+(2, 'COMPLETED', '2026-02-14 10:00:00'),
+(3, 'PLAYERS',  '2026-02-15 09:00:00');
+
+-- Seed ranking cho Hanoi Open (tournament_id = 1) và Saigon Blitz (tournament_id = 2)
+INSERT INTO Tournament_Seed (tournament_id, user_id, seed_number, source, created_at, updated_at) VALUES
+-- Hanoi Open 2026
+(1, 9,  1, 'IMPORTED', '2025-12-20 10:00:00', '2025-12-20 10:00:00'),
+(1, 11, 2, 'IMPORTED', '2025-12-20 10:00:00', '2025-12-20 10:00:00'),
+(1, 13, 3, 'IMPORTED', '2025-12-20 10:00:00', '2025-12-20 10:00:00'),
+(1, 15, 4, 'IMPORTED', '2025-12-20 10:00:00', '2025-12-20 10:00:00'),
+-- Saigon Blitz Championship
+(2, 9,  1, 'AUTO',     '2026-01-20 09:00:00', '2026-01-20 09:00:00'),
+(2, 10, 2, 'AUTO',     '2026-01-20 09:00:00', '2026-01-20 09:00:00'),
+(2, 11, 3, 'AUTO',     '2026-01-20 09:00:00', '2026-01-20 09:00:00'),
+(2, 12, 4, 'AUTO',     '2026-01-20 09:00:00', '2026-01-20 09:00:00');
 GO
 
 /* =========================
@@ -919,6 +1047,26 @@ INSERT INTO Tournament_Referee (tournament_id, referee_id, referee_role, assigne
 (2, 8, 'Chief',     5, N'Trọng tài trưởng giải Saigon Blitz'),
 (2, 7, 'Assistant',  5, N'Trọng tài phụ'),
 (3, 7, 'Chief',     6, N'Trọng tài trưởng - chờ xác nhận');
+GO
+
+/* =========================
+   12.1 REFEREE_INVITATION (sample email invites)
+   ========================= */
+INSERT INTO Referee_Invitation (
+    tournament_id, invited_email, referee_role, invited_by,
+    status, invited_at, expires_at, token, accepted_at, referee_id, last_reminder_at
+) VALUES
+-- Pending invitations (chưa accept, dùng để test resend / replace / cancel)
+(3, 'external.referee1@example.com', 'Assistant', 4,
+ 'Pending', '2026-02-15 09:00:00', '2026-02-20 09:00:00',
+ 'INVITE-T3-EXT1', NULL, NULL, NULL),
+(3, 'external.referee2@example.com', 'Chief',     4,
+ 'Pending', '2026-02-15 10:00:00', '2026-02-22 10:00:00',
+ 'INVITE-T3-EXT2', NULL, NULL, '2026-02-16 10:00:00'),
+-- Accepted invitation, đã gán vào referee_id = 8
+(2, 'ngoc.bui+invite@example.com',   'Assistant', 5,
+ 'Accepted', '2026-02-10 14:00:00', '2026-02-15 14:00:00',
+ 'INVITE-T2-ACC1', '2026-02-12 09:00:00', 8, '2026-02-11 09:00:00');
 GO
 
 /* =========================
@@ -1368,4 +1516,16 @@ ORDER BY COUNT(rp.permission_id) DESC;
 
 PRINT N'';
 PRINT N'--- Tournaments table now has: tournament_image, rules ---';
+GO
+
+/* Migration: Add REFEREE step to Tournament_Setup_State (run if table already exists with old constraint) */
+IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Tournament_Setup_State') BEGIN
+    DECLARE @ckName NVARCHAR(256);
+    SELECT @ckName = cc.name FROM sys.check_constraints cc
+    WHERE cc.parent_object_id = OBJECT_ID('Tournament_Setup_State');
+    IF @ckName IS NOT NULL
+        EXEC('ALTER TABLE Tournament_Setup_State DROP CONSTRAINT [' + @ckName + ']');
+    ALTER TABLE Tournament_Setup_State ADD CONSTRAINT CK_Tournament_Setup_State_step
+        CHECK (current_step IN ('STRUCTURE','PLAYERS','SCHEDULE','REFEREE','COMPLETED'));
+END
 GO

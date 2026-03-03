@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { API_BASE } from "../../config/api";
 import {
   Search,
   Calendar,
@@ -117,11 +118,11 @@ export default function PlayerTournamentList() {
       };
 
       const [listRes, filterRes] = await Promise.all([
-        axios.get("http://localhost:8080/ctms/api/player/tournaments", {
+        axios.get(`${API_BASE}/api/player/tournaments`, {
           params,
           withCredentials: true,
         }),
-        axios.get("http://localhost:8080/ctms/api/tournaments?action=filters", {
+        axios.get(`${API_BASE}/api/tournaments?action=filters`, {
           withCredentials: true,
         }),
       ]);
@@ -190,7 +191,7 @@ export default function PlayerTournamentList() {
 
     try {
       const res = await axios.post(
-        "http://localhost:8080/ctms/api/participants",
+        `${API_BASE}/api/participants`,
         {
           tournamentId: tournament.id,
           userId: user.userId,

@@ -1,10 +1,15 @@
-/* Tournament setup tab - scoped styles */
+/* Tournament setup tab - HomePage style */
+:root {
+  --tsu-accent: #ff4655;
+  --tsu-bg: #ece8e1;
+}
+
 .tsu-shell {
-  background: var(--ui-color-bg-card);
-  border: 1px solid var(--ui-color-border);
-  border-radius: var(--ui-radius-sm);
-  padding: 16px;
-  box-shadow: none;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 0;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
 .tsu-top {
@@ -187,9 +192,140 @@
 }
 
 .tsu-step-btn.active {
-  background: #fff1f3;
-  border-color: #fecdd3;
-  color: var(--ui-color-danger);
+  background: var(--tsu-accent);
+  border-color: var(--tsu-accent);
+  color: #fff;
+}
+
+/* Setup & Schedule - HomePage style (restructure) */
+.tsu-shell-hpv {
+  border-radius: 0;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: none;
+  padding: 24px;
+}
+
+.tsu-title-hpv {
+  margin: 0;
+  font-size: clamp(18px, 2vw, 22px);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  text-transform: none;
+}
+
+.tsu-desc-hpv {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.tsu-badge-players {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #f1f5f9;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 0;
+}
+
+.tsu-mode-chooser-hpv {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 0;
+  background: #fff;
+}
+
+.tsu-btn-hpv {
+  border-radius: 0;
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  padding: 12px 20px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #0f172a;
+  background: #fff;
+}
+
+.tsu-btn-hpv:hover {
+  border-color: #0f172a;
+}
+
+.tsu-btn-hpv-primary {
+  border-radius: 0;
+  border: none;
+  padding: 12px 20px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: var(--tsu-accent);
+}
+
+.tsu-btn-hpv-primary:hover {
+  background: #f73748;
+}
+
+/* Stepper - horizontal steps */
+.tsu-stepper-hpv {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.tsu-step-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 8px 0;
+}
+
+.tsu-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 0;
+}
+
+.tsu-step-item.active .tsu-step-num {
+  background: var(--tsu-accent);
+  border-color: var(--tsu-accent);
+  color: #fff;
+}
+
+.tsu-step-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.tsu-step-item.active .tsu-step-label {
+  color: #0f172a;
+}
+
+.tsu-step-connector {
+  width: 24px;
+  height: 1px;
+  margin-left: 8px;
+  background: rgba(15, 23, 42, 0.15);
 }
 
 .tsu-btn {
@@ -212,12 +348,12 @@
 }
 
 .tsu-btn-primary {
-  background: var(--ui-color-primary);
+  background: var(--tsu-accent);
   color: #fff;
 }
 
 .tsu-btn-primary:hover:not(:disabled) {
-  background: var(--ui-color-primary-hover);
+  background: #f73748;
 }
 
 .tsu-btn-outline {
@@ -466,6 +602,42 @@
   font-weight: 700;
 }
 
+.tsu-preview-referee {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.tsu-preview-referee .tsu-preview-seat {
+  min-width: 60px;
+  color: #475467;
+  font-weight: 600;
+}
+
+.tsu-preview-referee .tsu-mini-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.tsu-schedule-hint-inline {
+  color: #667085;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tsu-referee-empty-hint {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .tsu-ko-scroll {
   overflow-x: auto;
 }
@@ -486,15 +658,7 @@
   position: relative;
 }
 
-.tsu-ko-column:not(:last-child)::after {
-  content: "";
-  position: absolute;
-  right: -14px;
-  top: 50%;
-  width: var(--tsu-connector-len, 14px);
-  border-top: var(--tsu-connector-stroke, 2px) solid rgba(244, 63, 94, 0.55);
-  transform: translateY(-50%);
-}
+/* Red connector lines removed per design */
 
 .tsu-ko-column-head {
   margin-bottom: 8px;
@@ -530,48 +694,7 @@
   min-height: 78px;
 }
 
-.tsu-ko-match-card::after {
-  content: "";
-  position: absolute;
-  right: calc(-1 * var(--tsu-connector-len, 14px));
-  top: 50%;
-  width: calc(var(--tsu-connector-len, 14px) * 0.55);
-  border-top: max(1px, calc(var(--tsu-connector-stroke, 1.5px) - 0.5px))
-    solid rgba(244, 63, 94, 0.42);
-  transform: translateY(-50%);
-}
-
-.tsu-ko-in-branch {
-  position: absolute;
-  left: calc(-1 * var(--tsu-connector-len, 14px) - 2px);
-  top: 50%;
-  width: calc(var(--tsu-connector-len, 14px) + 6px);
-  height: var(--tsu-branch-span, 34px);
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.tsu-ko-in-branch::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  border-left: max(1px, calc(var(--tsu-connector-stroke, 1.5px) - 0.5px))
-    solid rgba(244, 63, 94, 0.36);
-  border-radius: 8px;
-}
-
-.tsu-ko-in-branch::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 100%;
-  border-top: max(1px, calc(var(--tsu-connector-stroke, 1.5px) - 0.5px))
-    solid rgba(244, 63, 94, 0.36);
-  transform: translateY(-50%);
-}
+/* Red connector lines removed per design */
 
 .tsu-ko-player-row {
   display: flex;

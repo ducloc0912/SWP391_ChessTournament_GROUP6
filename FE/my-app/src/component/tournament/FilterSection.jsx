@@ -3,7 +3,7 @@ import axios from "axios";
 import { Filter } from "lucide-react";
 import "../../assets/css/tournament-leader/FilterSection.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 
 const STATUS_LABELS = {
   Pending: "Chờ duyệt",

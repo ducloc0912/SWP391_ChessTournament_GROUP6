@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Calendar, MapPin, Search, Trophy, Users } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, MapPin, Search, Trophy, Users } from "lucide-react";
 import MainHeader from "./MainHeader";
 import "../../assets/css/TournamentPublic.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1528819622765-d6bcf132f793?auto=format&fit=crop&w=1200&q=80";
+const PAGE_SIZE = 9;
 
 const STATUS_OPTIONS = [
   { value: "registering", label: "Đang đăng ký" },
@@ -91,6 +92,7 @@ export default function TournamentPublic() {
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -115,12 +117,10 @@ export default function TournamentPublic() {
       setError("");
 
       try {
-        // Ưu tiên tải danh sách giải; nếu API filter lỗi vẫn hiển thị được dữ liệu chính.
         const tournamentRes = await axios.get(`${API_BASE}/api/public/tournaments`);
 
         let list = Array.isArray(tournamentRes?.data) ? tournamentRes.data : [];
 
-        // Fallback: một số backend cũ có thể trả [] cho public endpoint.
         if (list.length === 0) {
           const homeRes = await axios.get(`${API_BASE}/api/home`).catch(() => null);
           const upcomingList = Array.isArray(homeRes?.data?.upcomingTournaments)
@@ -178,139 +178,220 @@ export default function TournamentPublic() {
     });
   }, [tournaments, searchText, statusFilter, prizeFilter, feeFilter, nameSort]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredTournaments.length / PAGE_SIZE));
+  const paginatedTournaments = filteredTournaments.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchText, statusFilter, prizeFilter, feeFilter, nameSort]);
+
+  const menuItems = [
+    { to: "/home", label: "Home" },
+    { to: "/tournaments/public", label: "Tournaments" },
+    { to: "/blog", label: "Blog" },
+  ];
+
   return (
     <div className="tp-page">
-      <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
+      <MainHeader
+        user={user}
+        onLogout={handleLogout}
+        currentPath={location.pathname}
+        menuItems={menuItems}
+      />
 
-      <div className="tp-container">
-        <div className="tp-header">
-          <h1>Danh sách giải đấu</h1>
-          <button type="button" className="tp-all-btn" onClick={() => navigate("/tournaments/public/all")}>
-            Xem tất cả các trận đấu
-          </button>
-        </div>
-
-        <div className="tp-filter-row">
-          <div className="tp-search-box">
-            <Search size={18} />
-            <input
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              placeholder="Tìm theo tên giải hoặc địa điểm..."
-            />
-          </div>
-
-          <select
-            className="tp-status-select"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">Tất cả trạng thái</option>
-            {STATUS_OPTIONS.map((status) => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="tp-advanced-filter-row">
-          <select value={prizeFilter} onChange={(e) => setPrizeFilter(e.target.value)}>
-            <option value="">Tất cả giải thưởng</option>
-            <option value="lt3000000">Dưới 3.000.000</option>
-            <option value="3000000-7000000">3.000.000 - 7.000.000</option>
-            <option value="gt7000000">Trên 7.000.000</option>
-          </select>
-          <select value={feeFilter} onChange={(e) => setFeeFilter(e.target.value)}>
-            <option value="">Tất cả phí tham gia</option>
-            <option value="free">Miễn phí</option>
-            <option value="paid">Có phí</option>
-          </select>
-          <select value={nameSort} onChange={(e) => setNameSort(e.target.value)}>
-            <option value="az">Tên giải A-Z</option>
-            <option value="za">Tên giải Z-A</option>
-          </select>
-        </div>
-
-        {loading ? (
-          <div className="tp-state-card">Đang tải danh sách giải đấu...</div>
-        ) : error ? (
-          <div className="tp-state-card">
-            <p>{error}</p>
-            <button type="button" onClick={() => window.location.reload()}>
-              Thử lại
+      <section className="tp-section">
+        <div className="tp-container">
+          <div className="tp-header">
+            <div className="tp-header-text">
+              <h1>Danh sách giải đấu</h1>
+              <p>Tìm và đăng ký các giải cờ vua đang diễn ra</p>
+            </div>
+            <button
+              type="button"
+              className="tp-all-btn"
+              onClick={() => navigate("/tournaments/public")}
+            >
+              Xem tất cả các trận đấu
             </button>
           </div>
-        ) : filteredTournaments.length === 0 ? (
-          <div className="tp-state-card">Không có giải đấu phù hợp với bộ lọc hiện tại.</div>
-        ) : (
-          <div className="tp-grid">
-            {filteredTournaments.map((t) => {
-              const currentPlayers = Number(t.currentPlayers || 0);
-              const maxPlayers = Number(t.maxPlayer || 0);
-              const progress = maxPlayers > 0 ? Math.round((currentPlayers / maxPlayers) * 100) : 0;
-              const statusKey = normalizeStatus(t.status);
 
-              return (
-                <article key={t.tournamentId} className="tp-card">
-                  <div className="tp-card-banner">
-                    <img
-                      src={resolveImageUrl(t.tournamentImage)}
-                      alt={t.tournamentName || "Tournament"}
-                      onError={(e) => {
-                        e.currentTarget.src = FALLBACK_IMAGE;
-                      }}
-                    />
-                    <span className={`tp-status-badge tp-status-${statusKey}`}>
-                      {getStatusLabel(t.status)}
-                    </span>
-                  </div>
+          <div className="tp-filters">
+            <div className="tp-search-box">
+              <Search size={18} />
+              <input
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="Tìm theo tên giải hoặc địa điểm..."
+              />
+            </div>
 
-                  <div className="tp-card-body">
-                    <div className="tp-format">{getFormatLabel(t.format)}</div>
-                    <h3>{t.tournamentName || "Tournament"}</h3>
-
-                    <div className="tp-meta">
-                      <p>
-                        <MapPin size={15} />
-                        {t.location || "Online"}
-                      </p>
-                      <p>
-                        <Calendar size={15} />
-                        {formatDate(t.startDate)} - {formatDate(t.endDate)}
-                      </p>
-                      <p>
-                        <Trophy size={15} />
-                        Quỹ thưởng: {formatMoney(t.prizePool)} VND
-                      </p>
-                    </div>
-
-                    <div className="tp-progress">
-                      <div className="tp-progress-head">
-                        <span>
-                          <Users size={14} /> {currentPlayers}/{maxPlayers} người chơi
-                        </span>
-                        <strong>{progress}%</strong>
-                      </div>
-                      <div className="tp-progress-bar">
-                        <div className="tp-progress-fill" style={{ width: `${Math.min(progress, 100)}%` }} />
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="tp-detail-btn"
-                      onClick={() => navigate(`/tournaments/public/${t.tournamentId}`)}
-                    >
-                      Xem chi tiết
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
+            <div className="tp-filter-row">
+              <select
+                className="tp-select"
+                value={prizeFilter}
+                onChange={(e) => setPrizeFilter(e.target.value)}
+              >
+                <option value="">Tất cả giải thưởng</option>
+                <option value="lt3000000">Dưới 3.000.000</option>
+                <option value="3000000-7000000">3.000.000 - 7.000.000</option>
+                <option value="gt7000000">Trên 7.000.000</option>
+              </select>
+              <select
+                className="tp-select"
+                value={feeFilter}
+                onChange={(e) => setFeeFilter(e.target.value)}
+              >
+                <option value="">Tất cả phí tham gia</option>
+                <option value="free">Miễn phí</option>
+                <option value="paid">Có phí</option>
+              </select>
+              <select
+                className="tp-select"
+                value={nameSort}
+                onChange={(e) => setNameSort(e.target.value)}
+              >
+                <option value="az">Tên giải A-Z</option>
+                <option value="za">Tên giải Z-A</option>
+              </select>
+              <select
+                className="tp-select"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="">Tất cả trạng thái</option>
+                {STATUS_OPTIONS.map((status) => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-        )}
-      </div>
+
+          {loading ? (
+            <div className="tp-state-card">Đang tải danh sách giải đấu...</div>
+          ) : error ? (
+            <div className="tp-state-card">
+              <p>{error}</p>
+              <button type="button" className="tp-retry-btn" onClick={() => window.location.reload()}>
+                Thử lại
+              </button>
+            </div>
+          ) : filteredTournaments.length === 0 ? (
+            <div className="tp-state-card">Không có giải đấu phù hợp với bộ lọc hiện tại.</div>
+          ) : (
+            <>
+              <div className="tp-grid">
+                {paginatedTournaments.map((t) => {
+                  const currentPlayers = Number(t.currentPlayers ?? t.current_players ?? 0);
+                  const maxPlayers = Number(t.maxPlayer ?? t.max_player ?? 0);
+                  const progress = maxPlayers > 0 ? Math.round((currentPlayers / maxPlayers) * 100) : 0;
+                  const statusKey = normalizeStatus(t.status);
+
+                  return (
+                    <article key={t.tournamentId} className="tp-card">
+                      <div className="tp-card-banner">
+                        <img
+                          src={resolveImageUrl(t.tournamentImage)}
+                          alt={t.tournamentName || "Tournament"}
+                          onError={(e) => {
+                            e.currentTarget.src = FALLBACK_IMAGE;
+                          }}
+                        />
+                        <span className={`tp-status-badge tp-status-${statusKey}`}>
+                          {getStatusLabel(t.status)}
+                        </span>
+                      </div>
+
+                      <div className="tp-card-body">
+                        <span className="tp-format">{getFormatLabel(t.format)}</span>
+                        <h3>{t.tournamentName || "Tournament"}</h3>
+
+                        <div className="tp-meta">
+                          <p>
+                            <MapPin size={15} />
+                            {t.location || "Online"}
+                          </p>
+                          <p>
+                            <Calendar size={15} />
+                            {formatDate(t.startDate)} - {formatDate(t.endDate)}
+                          </p>
+                          <p>
+                            <Trophy size={15} />
+                            {formatMoney(t.prizePool)} VND
+                          </p>
+                        </div>
+
+                        <div className="tp-progress">
+                          <div className="tp-progress-head">
+                            <span>
+                              <Users size={14} /> {currentPlayers}/{maxPlayers} người chơi
+                            </span>
+                            <strong>{progress}%</strong>
+                          </div>
+                          <div className="tp-progress-bar">
+                            <div
+                              className="tp-progress-fill"
+                              style={{ width: `${Math.min(progress, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="tp-detail-btn"
+                          onClick={() => navigate(`/tournaments/public/${t.tournamentId}`)}
+                        >
+                          Xem chi tiết
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="tp-pagination">
+                  <button
+                    type="button"
+                    className="tp-page-btn"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                    aria-label="Trang trước"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <div className="tp-page-numbers">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        className={`tp-page-num ${currentPage === num ? "active" : ""}`}
+                        onClick={() => setCurrentPage(num)}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="tp-page-btn"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    aria-label="Trang sau"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

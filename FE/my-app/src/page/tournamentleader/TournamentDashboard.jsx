@@ -13,7 +13,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const STATUS_TEXT = {
@@ -35,10 +35,10 @@ const container = {
 
 const panel = {
   background: "#ffffff",
-  border: "1px solid #e2e8f0",
-  borderRadius: 16,
+  border: "1px solid rgba(15, 23, 42, 0.12)",
+  borderRadius: 0,
   padding: 20,
-  boxShadow: "0 8px 18px rgba(15, 23, 42, 0.04)",
+  boxShadow: "0 2px 8px rgba(15, 23, 42, 0.04)",
 };
 
 const sectionTitle = { margin: 0, fontSize: 18, fontWeight: 900, color: "#0f172a" };
@@ -77,12 +77,15 @@ const ActionButton = ({ label, icon, onClick, primary = false }) => (
     onClick={onClick}
     style={{
       height: 40,
-      borderRadius: 12,
-      padding: "0 14px",
-      border: primary ? "none" : "1px solid #e2e8f0",
-      background: primary ? "#f59e0b" : "#ffffff",
+      borderRadius: 0,
+      padding: "0 18px",
+      border: primary ? "none" : "1px solid rgba(15, 23, 42, 0.14)",
+      background: primary ? "#ff4655" : "#ffffff",
       color: primary ? "#ffffff" : "#334155",
       fontWeight: 800,
+      fontSize: 12,
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
       display: "inline-flex",
       alignItems: "center",
       gap: 8,
@@ -217,12 +220,12 @@ export default function TournamentDashboard() {
         <div style={panel}>
           <p style={{ ...muted, fontSize: 13 }}>Lấp đầy slot người chơi</p>
           <h3 style={{ margin: "6px 0 2px", fontSize: 32 }}>{summary.occupancy}%</h3>
-          <div style={{ height: 8, borderRadius: 999, overflow: "hidden", background: "#e2e8f0" }}>
+          <div style={{ height: 8, overflow: "hidden", background: "rgba(15, 23, 42, 0.08)" }}>
             <div
               style={{
                 height: "100%",
                 width: `${summary.occupancy}%`,
-                background: "linear-gradient(90deg, #f59e0b, #f97316)",
+                background: "#ff4655",
               }}
             />
           </div>
@@ -315,8 +318,11 @@ export default function TournamentDashboard() {
             style={{
               border: "none",
               background: "transparent",
-              color: "#2563eb",
-              fontWeight: 700,
+              color: "#ff4655",
+              fontWeight: 800,
+              fontSize: 12,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",

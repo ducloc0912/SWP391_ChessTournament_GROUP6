@@ -3,6 +3,7 @@ import "../../assets/css/Register.css";
 import chess from "../../assets/img/chessRegis.jpg";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
+import { API_BASE } from "../../config/api";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -14,8 +15,15 @@ export default function Register() {
     address: "",
     password: "",
     confirmPassword: "",
+    role: "Player",
     agree: false,
   });
+
+  const ROLE_OPTIONS = [
+    { value: "Player", label: "Người chơi (Player)", desc: "Tham gia thi đấu cờ vua" },
+    { value: "TournamentLeader", label: "Trưởng ban tổ chức (Tournament Leader)", desc: "Tạo và quản lý giải đấu, mời trọng tài" },
+    { value: "Referee", label: "Trọng tài (Referee)", desc: "Điều hành trận đấu, được mời bởi trưởng ban tổ chức" },
+  ];
 
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
@@ -39,7 +47,7 @@ export default function Register() {
 
     try {
       const res = await axios.post(
-        "http://localhost:8080/ctms/api/register",
+        `${API_BASE}/api/user/register`,
         form,
         { headers: { "Content-Type": "application/json" } },
       );
@@ -152,6 +160,27 @@ export default function Register() {
                   onChange={handleChange}
                 />
                 {errors.address && <p className="error">{errors.address}</p>}
+              </div>
+
+              {/* Role */}
+              <div className="form-field-full">
+                <label>Vai trò đăng ký</label>
+                <div className="role-options">
+                  {ROLE_OPTIONS.map((opt) => (
+                    <label key={opt.value} className={`role-option ${form.role === opt.value ? "selected" : ""}`}>
+                      <input
+                        type="radio"
+                        name="role"
+                        value={opt.value}
+                        checked={form.role === opt.value}
+                        onChange={handleChange}
+                      />
+                      <span className="role-label">{opt.label}</span>
+                      <span className="role-desc">{opt.desc}</span>
+                    </label>
+                  ))}
+                </div>
+                {errors.role && <p className="error">{errors.role}</p>}
               </div>
 
               {/* Password */}

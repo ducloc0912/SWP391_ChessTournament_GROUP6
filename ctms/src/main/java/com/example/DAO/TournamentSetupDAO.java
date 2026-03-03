@@ -116,7 +116,8 @@ public class TournamentSetupDAO extends DBContext {
                     r.round_index,
                     b.type AS bracket_type,
                     LTRIM(RTRIM(COALESCE(uw.first_name, '') + ' ' + COALESCE(uw.last_name, ''))) AS white_name,
-                    LTRIM(RTRIM(COALESCE(ub.first_name, '') + ' ' + COALESCE(ub.last_name, ''))) AS black_name
+                    LTRIM(RTRIM(COALESCE(ub.first_name, '') + ' ' + COALESCE(ub.last_name, ''))) AS black_name,
+                    (SELECT TOP 1 mr.referee_id FROM Match_Referee mr WHERE mr.match_id = m.match_id) AS referee_id
                 FROM Matches m
                 LEFT JOIN Round r ON r.round_id = m.round_id
                 LEFT JOIN Bracket b ON b.bracket_id = r.bracket_id
@@ -145,6 +146,8 @@ public class TournamentSetupDAO extends DBContext {
                     dto.setStage(rs.getString("bracket_type"));
                     dto.setWhitePlayerName(rs.getString("white_name"));
                     dto.setBlackPlayerName(rs.getString("black_name"));
+                    Object refObj = rs.getObject("referee_id");
+                    if (refObj != null) dto.setRefereeId(((Number) refObj).intValue());
                     list.add(dto);
                 }
             }
@@ -299,6 +302,50 @@ public class TournamentSetupDAO extends DBContext {
             stages.add(normalizeStage(null, format));
         }
         return stages;
+    }
+
+    public boolean updateMatchReferees(int tournamentId, List<TournamentSetupMatchDTO> matches) {
+        if (matches == null || matches.isEmpty()) {
+            return true;
+        }
+        String deleteSql = """
+                DELETE FROM Match_Referee
+                WHERE match_id IN (SELECT match_id FROM Matches WHERE tournament_id = ?)
+                """;
+        String insertSql = "INSERT INTO Match_Referee (match_id, referee_id, role) VALUES (?, ?, 'Main')";
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                try (PreparedStatement ps = conn.prepareStatement(deleteSql)) {
+                    ps.setInt(1, tournamentId);
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
+                    for (TournamentSetupMatchDTO m : matches) {
+                        Integer matchId = m.getMatchId();
+                        Integer refereeId = m.getRefereeId();
+                        if (matchId == null || matchId <= 0 || refereeId == null || refereeId <= 0) {
+                            continue;
+                        }
+                        ps.setInt(1, matchId);
+                        ps.setInt(2, refereeId);
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
+                conn.commit();
+                return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                e.printStackTrace();
+                return false;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     private String normalizeStage(String inputStage, String format) {

@@ -3,7 +3,9 @@ package com.example.controller.leader;
 import com.example.DAO.ParticipantDAO;
 import com.example.DAO.TournamentDAO;
 import com.example.model.dto.TournamentDTO;
+import com.example.model.dto.TournamentPlayerDTO;
 import com.example.model.entity.Participant;
+import com.example.model.entity.User;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -45,16 +47,37 @@ public class ParticipantServlet extends HttpServlet {
         }
 
         if (tournamentId != null) {
-            List<Participant> list =
-                    dao.getParticipantsByTournamentId(Integer.parseInt(tournamentId));
-            resp.getWriter().write(gson.toJson(list));
+            int tid = Integer.parseInt(tournamentId);
+            if ("true".equalsIgnoreCase(req.getParameter("unpaidOnly"))) {
+                List<TournamentPlayerDTO> unpaid = dao.getUnpaidPlayersWithUserInfo(tid);
+                resp.getWriter().write(gson.toJson(unpaid));
+            } else {
+                List<Participant> list = dao.getParticipantsByTournamentId(tid);
+                resp.getWriter().write(gson.toJson(list));
+            }
             return;
         }
 
         if (userId != null) {
-            List<Participant> list =
-                    dao.getParticipantsByUserId(Integer.parseInt(userId));
-            resp.getWriter().write(gson.toJson(list));
+            int uid;
+            if ("me".equalsIgnoreCase(userId.trim())) {
+                HttpSession session = req.getSession(false);
+                if (session == null || session.getAttribute("user") == null) {
+                    resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    resp.getWriter().write("[]");
+                    return;
+                }
+                uid = ((User) session.getAttribute("user")).getUserId();
+            } else {
+                uid = Integer.parseInt(userId);
+            }
+            if ("true".equalsIgnoreCase(req.getParameter("unpaidOnly"))) {
+                List<java.util.Map<String, Object>> unpaid = dao.getUnpaidWithTournamentInfoByUserId(uid);
+                resp.getWriter().write(gson.toJson(unpaid));
+            } else {
+                List<Participant> list = dao.getParticipantsByUserId(uid);
+                resp.getWriter().write(gson.toJson(list));
+            }
             return;
         }
 
@@ -155,8 +178,22 @@ public class ParticipantServlet extends HttpServlet {
         }
 
         int id = Integer.parseInt(idParam);
+        Participant p = dao.getParticipantById(id);
+        if (p == null) {
+            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            resp.getWriter().write("{\"success\": false, \"message\": \"Not found\"}");
+            return;
+        }
+        HttpSession session = req.getSession(false);
+        if (session != null && session.getAttribute("user") != null) {
+            Integer currentUserId = ((User) session.getAttribute("user")).getUserId();
+            if (currentUserId != null && p.getUserId() != null && p.getUserId() == currentUserId && Boolean.FALSE.equals(p.getIsPaid())) {
+                boolean ok = dao.deleteParticipant(id);
+                resp.getWriter().write("{\"success\": " + ok + ", \"message\": \"Đã hủy đăng ký\"}");
+                return;
+            }
+        }
         boolean ok = dao.deleteParticipant(id);
-
         resp.getWriter().write("{\"success\": " + ok + "}");
     }
 }

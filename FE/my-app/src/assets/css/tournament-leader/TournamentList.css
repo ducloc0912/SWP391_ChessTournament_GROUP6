@@ -1,15 +1,16 @@
-/* Tournament Dashboard - scoped styling */
+/* Tournament List - HomePage style (hpv-page for background/font) */
 .tl-page {
   min-height: 100vh;
   padding-top: 72px;
-  background: linear-gradient(180deg, #f8f7f4 0%, #ece8e1 100%);
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--hpv-bg, #ece8e1);
+  color: var(--hpv-text, #1f2937);
+  font-family: Inter, "Segoe UI", sans-serif;
 }
 
 .tl-body {
-  max-width: 1280px;
+  max-width: 1260px;
   margin: 0 auto;
-  padding: 28px 16px 44px;
+  padding: 28px 24px 44px;
 }
 
 .tl-header-section {

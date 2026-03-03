@@ -1,49 +1,57 @@
+/* Tournament Detail Public - Match Homepage style (Valorant inspired) */
 .tdp-page {
   min-height: 100vh;
   padding-top: 72px;
-  background:
-    radial-gradient(circle at 10% -20%, rgba(59, 130, 246, 0.16), transparent 42%),
-    radial-gradient(circle at 90% -20%, rgba(14, 165, 233, 0.12), transparent 38%),
-    #070b16;
-  color: #e2e8f0;
+  background: #ece8e1;
+  color: #1f2937;
+  font-family: Inter, "Segoe UI", sans-serif;
 }
 
 .tdp-container {
-  max-width: 1240px;
+  max-width: 1260px;
   margin: 0 auto;
-  padding: 30px 20px 56px;
+  padding: 30px 24px 56px;
 }
 
 .tdp-back-btn {
-  border: 1px solid rgba(59, 130, 246, 0.45);
-  background: rgba(15, 23, 42, 0.72);
-  color: #dbeafe;
-  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  background: #fff;
+  color: #0f172a;
   padding: 10px 14px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tdp-back-btn:hover {
+  border-color: #0f172a;
 }
 
 .tdp-state-card {
   margin-top: 14px;
-  border: 1px solid rgba(51, 65, 85, 0.7);
-  background: rgba(15, 23, 42, 0.82);
-  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
   padding: 20px;
+  color: #4b5563;
 }
 
-.tdp-hero {
+/* Hero banner - match hpv-season-slider style */
+.tdp-hero.tdp-hero-banner {
   margin-top: 14px;
   position: relative;
-  height: 320px;
-  border-radius: 18px;
+  min-height: 280px;
   overflow: hidden;
-  border: 1px solid rgba(51, 65, 85, 0.72);
+  border: 1px solid rgba(15, 23, 42, 0.14);
 }
 
-.tdp-hero img {
+.tdp-hero-bg {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -52,242 +60,466 @@
 .tdp-hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.9));
+  background: linear-gradient(90deg, rgba(8, 13, 20, 0.84) 0%, rgba(8, 13, 20, 0.54) 45%, rgba(8, 13, 20, 0.3) 100%);
 }
 
 .tdp-hero-content {
   position: absolute;
-  left: 22px;
-  right: 22px;
-  bottom: 20px;
+  left: 52px;
+  right: 52px;
+  bottom: 48px;
+  color: #fff;
 }
 
-.tdp-top-tags {
+.tdp-hero-fee {
+  position: absolute;
+  right: 52px;
+  bottom: 48px;
+  color: #fff;
+  text-align: right;
   display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
 }
 
-.tdp-tag,
-.tdp-status-badge {
-  border-radius: 999px;
-  padding: 6px 11px;
+.tdp-hero-fee-label {
   font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.9;
+}
+
+.tdp-hero-fee-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #fecaca;
+}
+
+.tdp-hero-fee-free {
+  font-size: 14px;
   font-weight: 700;
-}
-
-.tdp-tag {
-  background: rgba(15, 23, 42, 0.85);
-  color: #bfdbfe;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.tdp-status-registering {
-  background: rgba(37, 99, 235, 0.92);
-}
-
-.tdp-status-ongoing {
-  background: rgba(22, 163, 74, 0.92);
-}
-
-.tdp-status-finished {
-  background: rgba(100, 116, 139, 0.92);
+  color: #86efac;
 }
 
 .tdp-hero h1 {
-  margin: 0 0 8px;
-  font-size: clamp(28px, 2.2vw, 36px);
-  color: #fff;
+  margin: 0 0 14px;
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 0.96;
 }
 
-.tdp-hero p {
-  margin: 0;
-  max-width: 820px;
-  color: #cbd5e1;
-}
-
-.tdp-register-btn {
-  margin-top: 14px;
-  border: none;
-  border-radius: 10px;
-  padding: 11px 16px;
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, #2563eb, #4f46e5);
-  cursor: pointer;
-  transition: transform 0.2s ease, filter 0.2s ease;
-}
-
-.tdp-register-btn:hover {
-  transform: translateY(-1px);
-  filter: brightness(1.07);
-}
-
-.tdp-info-grid {
-  margin-top: 18px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.tdp-info-card {
-  border: 1px solid rgba(51, 65, 85, 0.72);
-  background: rgba(15, 23, 42, 0.85);
-  border-radius: 14px;
-  padding: 16px;
-}
-
-.tdp-info-card h3 {
-  margin: 0 0 12px;
-  color: #fff;
-}
-
-.tdp-info-card p {
-  margin: 0 0 10px;
+.tdp-hero-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  color: #cbd5e1;
-}
-
-.tdp-text-block {
-  display: block !important;
-  line-height: 1.55;
-}
-
-.tdp-text-title {
-  margin: 0 0 6px !important;
-  color: #93c5fd !important;
-  font-weight: 700;
-}
-
-.tdp-podium-box {
-  margin-top: 12px;
-  border: 1px solid rgba(251, 191, 36, 0.35);
-  background: rgba(120, 53, 15, 0.16);
-  border-radius: 10px;
-  padding: 10px 12px;
-}
-
-.tdp-podium-title {
-  margin: 0 0 10px !important;
-  color: #fde68a !important;
-  font-weight: 800;
-  letter-spacing: 0.2px;
-}
-
-.tdp-podium-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.tdp-podium-player {
-  border-radius: 10px;
-  padding: 10px 12px;
-  border: 1px solid transparent;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.tdp-podium-player strong {
-  font-size: 15px;
-  color: #fff;
-}
-
-.tdp-podium-rank {
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.tdp-podium-champion {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.32), rgba(217, 119, 6, 0.22));
-  border-color: rgba(245, 158, 11, 0.58);
-  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.18) inset;
-}
-
-.tdp-podium-champion .tdp-podium-rank {
-  color: #fde68a;
-}
-
-.tdp-podium-runnerup {
-  background: linear-gradient(135deg, rgba(148, 163, 184, 0.3), rgba(100, 116, 139, 0.2));
-  border-color: rgba(148, 163, 184, 0.58);
-}
-
-.tdp-podium-runnerup .tdp-podium-rank {
-  color: #e2e8f0;
-}
-
-.tdp-matches {
-  margin-top: 18px;
-}
-
-.tdp-match-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 
-.tdp-match-card {
-  border: 1px solid rgba(51, 65, 85, 0.72);
-  background: rgba(15, 23, 42, 0.85);
-  border-radius: 14px;
-  padding: 16px;
+.tdp-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.tdp-match-card h3 {
-  margin: 0 0 12px;
-  color: #fff;
+.tdp-status-pill.tdp-status-registering {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fca5a5;
 }
 
-.tdp-empty {
-  margin: 0;
-  color: #94a3b8;
+.tdp-status-pill.tdp-status-ongoing {
+  background: rgba(34, 197, 94, 0.3);
+  color: #86efac;
 }
 
-.tdp-match-item {
-  border: 1px solid rgba(51, 65, 85, 0.72);
-  background: rgba(30, 41, 59, 0.55);
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
+.tdp-status-pill.tdp-status-finished {
+  background: rgba(100, 116, 139, 0.4);
+  color: #cbd5e1;
 }
 
-.tdp-match-item:last-child {
-  margin-bottom: 0;
-}
-
-.tdp-match-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.tdp-match-head span {
-  color: #93c5fd;
-  font-size: 13px;
-}
-
-.tdp-match-item p {
-  margin: 6px 0 0;
-  color: #dbeafe;
-}
-
-.tdp-time {
+.tdp-meta-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #cbd5e1 !important;
+  color: #cbd5e1;
+  font-size: 14px;
+}
+
+.tdp-meta-item svg {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.tdp-register-btn {
+  margin-top: 18px;
+  border: none;
+  border-radius: 0;
+  padding: 14px 24px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  color: #fff;
+  background: #ff4655;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tdp-register-btn:hover {
+  background: #f73748;
+}
+
+/* Tab navigation - match hpv style */
+.tdp-tabs {
+  display: flex;
+  gap: 0;
+  margin-top: 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.14);
+  background: #fff;
+}
+
+.tdp-tab {
+  padding: 14px 20px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.tdp-tab:hover {
+  color: #0f172a;
+}
+
+.tdp-tab.active {
+  color: #0f172a;
+  background: #f4f1eb;
+  border-bottom-color: #ff4655;
+}
+
+/* Overview - cards match hpv-detail-item, hpv-latest-card */
+.tdp-overview {
+  margin-top: 24px;
+}
+
+.tdp-overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+}
+
+.tdp-card {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  padding: 20px;
+}
+
+.tdp-overview-left {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tdp-overview-card h2 {
+  margin: 0 0 14px;
+  font-size: clamp(24px, 2.3vw, 34px);
+  font-weight: 900;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.tdp-desc {
+  margin: 0 0 20px;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.tdp-placement-rewards h4 {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.tdp-placement-rewards ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tdp-placement-rewards li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.tdp-placement-rewards li:last-child {
+  border-bottom: none;
+}
+
+.tdp-medal {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tdp-medal-gold {
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.4);
+}
+
+.tdp-medal-silver {
+  background: linear-gradient(135deg, #94a3b8, #64748b);
+  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.4);
+}
+
+.tdp-medal-bronze {
+  background: linear-gradient(135deg, #d97706, #92400e);
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.4);
+}
+
+.tdp-placement-rewards li div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tdp-placement-rewards li strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.tdp-placement-rewards li span {
+  color: #6b7280;
   font-size: 13px;
 }
 
-.tdp-result {
-  color: #86efac !important;
+.tdp-event-phases h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.tdp-event-phases > p {
+  margin: 0 0 16px;
+  color: #4b5563;
+  line-height: 1.55;
+}
+
+.tdp-phase-block {
+  margin-top: 14px;
+}
+
+.tdp-phase-block h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
   font-weight: 700;
+  color: #ef4444;
+}
+
+.tdp-phase-block p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.tdp-participants-card h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.tdp-participants-intro {
+  margin: 0 0 14px;
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.tdp-participants-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tdp-participants-info p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+/* Bracket - match hpv-player-item, hpv-detail-item style */
+.tdp-bracket {
+  margin-top: 24px;
+}
+
+.tdp-bracket-main {
+  display: flex;
+  gap: 24px;
+}
+
+.tdp-rounds {
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+}
+
+.tdp-round-col {
+  min-width: 260px;
+  flex-shrink: 0;
+}
+
+.tdp-round-header {
+  padding: 10px 14px;
+  background: #f4f1eb;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.tdp-round-matches {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 0 0 8px 8px;
+}
+
+.tdp-match-card-item {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  padding: 12px;
+}
+
+.tdp-match-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.tdp-player-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.08);
+  flex-shrink: 0;
+}
+
+.tdp-player-name {
+  flex: 1;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tdp-score {
+  font-weight: 800;
+  color: #ef4444;
+  min-width: 24px;
+  text-align: right;
+}
+
+.tdp-match-divider {
+  height: 1px;
+  background: rgba(15, 23, 42, 0.12);
+  margin: 4px 0;
+}
+
+.tdp-match-meta {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tdp-empty-bracket {
+  padding: 48px 24px;
+  text-align: center;
+  color: #6b7280;
+  border: 1px dashed #cbd5e1;
+  background: #fff;
+}
+
+.tdp-bracket-side {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tdp-side-panel {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  overflow: hidden;
+}
+
+.tdp-side-panel h4 {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+  background: #f4f1eb;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.tdp-side-list {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tdp-side-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.tdp-side-item.tbd {
+  color: #9ca3af;
 }
 
 @media (max-width: 900px) {
@@ -296,19 +528,160 @@
   }
 
   .tdp-container {
-    padding: 24px 14px 44px;
+    padding: 24px 16px 44px;
   }
 
-  .tdp-hero {
-    height: 260px;
+  .tdp-hero.tdp-hero-banner {
+    min-height: 220px;
   }
 
-  .tdp-info-grid,
-  .tdp-match-columns {
+  .tdp-hero-content {
+    left: 20px;
+    right: 20px;
+    bottom: 28px;
+  }
+
+  .tdp-hero-fee {
+    right: 20px;
+    bottom: 28px;
+  }
+
+  .tdp-tabs {
+    overflow-x: auto;
+  }
+
+  .tdp-tab {
+    white-space: nowrap;
+    padding: 12px 16px;
+  }
+
+  .tdp-overview-grid {
     grid-template-columns: 1fr;
   }
 
-  .tdp-podium-grid {
-    grid-template-columns: 1fr;
+  .tdp-bracket-main {
+    flex-direction: column;
   }
+
+  .tdp-bracket-side {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .tdp-side-panel {
+    flex: 1;
+    min-width: 180px;
+  }
+}
+
+/* ===== Trang đăng ký giải (TournamentRegister) ===== */
+.tdp-register-page {
+  margin-top: 24px;
+  max-width: 640px;
+}
+
+.tdp-register-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 20px;
+  color: #0f172a;
+}
+
+.tdp-register-section {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.tdp-register-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: #0f172a;
+}
+
+.tdp-register-desc {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin: 0 0 20px;
+  line-height: 1.45;
+}
+
+.tdp-register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tdp-register-form label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  margin-top: 4px;
+}
+
+.tdp-register-form input {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.tdp-register-form input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.tdp-form-error {
+  color: #b91c1c;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px;
+  background: #fef2f2;
+  border-radius: 8px;
+}
+
+.tdp-field-error {
+  color: #b91c1c;
+  font-size: 0.8rem;
+  margin-top: -6px;
+}
+
+.tdp-register-submit {
+  margin-top: 8px;
+  padding: 12px 20px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.tdp-register-submit:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.tdp-register-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.tdp-success-msg {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.tdp-success-msg p {
+  margin: 0;
+  color: #166534;
+  font-weight: 500;
 }

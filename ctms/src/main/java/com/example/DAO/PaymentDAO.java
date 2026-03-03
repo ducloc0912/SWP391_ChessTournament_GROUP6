@@ -14,8 +14,8 @@ public class PaymentDAO {
                 +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-        // Cập nhật is_paid cho Participant
-        String sqlPart = "UPDATE Participants SET is_paid = 1, payment_date = ? WHERE participant_id = ?";
+        // Cập nhật is_paid và status Active cho Participant (từ PendingPayment → thành viên chính thức)
+        String sqlPart = "UPDATE Participants SET is_paid = 1, payment_date = ?, status = 'Active' WHERE participant_id = ?";
 
         try (Connection conn = DBContext.getConnection()) {
             conn.setAutoCommit(false); // Bắt đầu transaction

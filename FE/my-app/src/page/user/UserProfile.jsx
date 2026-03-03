@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import MainHeader from "../../component/common/MainHeader";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 const API_PROFILE_ME = `${API_BASE}/api/profile/me`;
 const API_PROFILE_AVATAR = `${API_BASE}/api/profile/me/avatar`;
 const API_CHANGE_PASSWORD = `${API_BASE}/api/change-password`;

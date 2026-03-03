@@ -8,12 +8,12 @@ import java.util.HashMap;
 
 public class RegisterService {
 
-    private static final String DEFAULT_ROLE = "PLAYER";
+    private static final String DEFAULT_ROLE = "Player";
 
     public HashMap<String, Object> register(
             String firstName, String lastName, String username,
             String phone, String email, String address,
-            String password, String confirmPassword, boolean agree) {
+            String password, String confirmPassword, String role, boolean agree) {
 
         HashMap<String, String> errors =
                 ValidationUtil.validateRegister(
@@ -57,8 +57,9 @@ public class RegisterService {
             return result;
         }
 
-        // 6️⃣ Get role_id (PLAYER)
-        int roleId = dao.getRoleIdByName(DEFAULT_ROLE);
+        // 6️⃣ Get role_id (Player, TournamentLeader, Referee)
+        String roleName = normalizeRole(role);
+        int roleId = dao.getRoleIdByName(roleName);
         if (roleId <= 0) {
             result.put("success", false);
             result.put("message", "Default role not found");
@@ -75,5 +76,13 @@ public class RegisterService {
         // 8️⃣ Done
         result.put("success", true);
         return result;
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null || role.isBlank()) return DEFAULT_ROLE;
+        String r = role.trim();
+        if (r.equalsIgnoreCase("TournamentLeader") || r.equalsIgnoreCase("tournament_leader")) return "TournamentLeader";
+        if (r.equalsIgnoreCase("Referee")) return "Referee";
+        return "Player";
     }
 }

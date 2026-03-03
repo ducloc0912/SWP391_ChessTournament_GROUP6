@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import '../../assets/css/StaffDashboard.css';
+import { API_BASE } from '../../config/api';
 import StatusBadge from '../../component/staff/StatusBadge';
 import StatsCard from '../../component/staff/StatsCard';
 
@@ -30,7 +31,7 @@ const StaffTournament = ({ currentUser }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await axios.get("http://localhost:8080/ctms/api/staff/tournaments", { withCredentials: true });
+            const response = await axios.get(`${API_BASE}/api/staff/tournaments`, { withCredentials: true });
             setTournaments(Array.isArray(response.data) ? response.data : []);
         } catch (e) {
             console.error(e);
@@ -52,7 +53,7 @@ const StaffTournament = ({ currentUser }) => {
 
         try {
             await axios.post(
-                "http://localhost:8080/ctms/api/staff/tournaments?action=updateStatus",
+                `${API_BASE}/api/staff/tournaments?action=updateStatus`,
                 {
                     tournamentId: selectedTournament.tournamentId,
                     staffId: currentUser?.userId || 0,

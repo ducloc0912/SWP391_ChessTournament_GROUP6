@@ -37,15 +37,22 @@ public class AuthFilter implements Filter {
     /** API không cần đăng nhập (khớp theo path sau context) */
     private static final Set<String> PUBLIC_PATHS = Set.of(
             "/api/login",
-            "/api/register",
+            "/api/logout",
             "/api/forgot-password",
             "/api/reset-password",
             "/api/verify-otp",
-            "/api/home"
+            "/api/home",
+            // Đăng ký tài khoản mới
+            "/api/user/register",
+            // Kết quả thanh toán VNPay (được FE gọi sau khi redirect)
+            "/api/vnpay/vnpay-return"
     );
 
     private static boolean isPublicPath(String uri) {
         if (uri == null) return false;
+        if (uri.startsWith("/api/public/")) return true;
+        /* VNPay return: GET với query params, không có session khi user quay từ VNPay */
+        if (uri.startsWith("/api/vnpay/vnpay-return")) return true;
         for (String p : PUBLIC_PATHS) {
             if (uri.equals(p) || uri.startsWith(p + "?")) return true;
         }
@@ -70,13 +77,14 @@ public class AuthFilter implements Filter {
         String apiPath = ctx >= 0 ? path.substring(ctx) : path;
 
         if (isPublicPath(apiPath)) {
+            addCorsHeaders(request, response);
             chain.doFilter(req, res);
             return;
         }
 
+        addCorsHeaders(request, response);
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("user") == null) {
-            addCorsHeaders(request, response);
             response.setContentType("application/json");
             response.setCharacterEncoding("UTF-8");
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

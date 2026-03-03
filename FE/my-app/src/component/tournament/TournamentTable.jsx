@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { API_BASE } from "../../config/api";
 import {
   Calendar,
   MapPin,
@@ -42,7 +43,7 @@ const TournamentTable = ({ tournaments = [], refresh }) => {
     }
     try {
       await axios.delete(
-        `http://localhost:8080/ctms/api/tournaments`,
+        `${API_BASE}/api/tournaments`,
         {
           params: {
             id: selectedTournament.tournamentId,

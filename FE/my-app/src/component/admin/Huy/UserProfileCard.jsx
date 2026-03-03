@@ -1,4 +1,5 @@
 import React from 'react';
+import { resolveAssetUrl } from '../../../config/api';
 
 function formatDate(dateString) {
   if (!dateString) return '—';
@@ -7,17 +8,9 @@ function formatDate(dateString) {
   return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function resolveAvatarUrl(avatar) {
-  if (!avatar) return '';
-  const s = String(avatar);
-  if (s.startsWith('http://') || s.startsWith('https://')) return s;
-  if (s.startsWith('/')) return `http://localhost:8080${s}`;
-  return s;
-}
-
 const UserProfileCard = ({ user }) => {
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.username || '—';
-  const avatarUrl = resolveAvatarUrl(user?.avatar);
+  const avatarUrl = resolveAssetUrl(user?.avatar);
   const username = user?.username || user?.email || '—';
 
   return (

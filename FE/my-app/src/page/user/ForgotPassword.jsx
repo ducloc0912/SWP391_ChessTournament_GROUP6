@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "../../assets/css/ForgotPassword.css";
+import { API_BASE } from "../../config/api";
 import { Link } from "react-router-dom";
 import chess from "../../assets/img/chessForgot.jpg";
 
@@ -18,7 +19,7 @@ export default function ForgotPassword() {
 
     try {
       const res = await axios.post(
-        "http://localhost:8080/ctms/api/forgot-password",
+        `${API_BASE}/api/forgot-password`,
         {
           email,
         },

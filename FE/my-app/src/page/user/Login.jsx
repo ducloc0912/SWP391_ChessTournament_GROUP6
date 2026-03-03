@@ -4,7 +4,7 @@ import chessImg from "../../assets/img/chessLogin.jpg";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 
 export default function Login() {
   const [email, setEmail] = useState("");

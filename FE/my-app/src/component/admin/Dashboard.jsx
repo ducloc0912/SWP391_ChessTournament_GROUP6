@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Users, Trophy, Gamepad2, XCircle } from "lucide-react";
 
-const API_BASE = "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 
 const StatCard = ({ label, value, icon, tone = "amber", valueColor }) => {
   const toneMap = {

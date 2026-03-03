@@ -2,11 +2,10 @@ import React, { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Trophy, PlusCircle, FileText } from "lucide-react";
 import "../../assets/css/admin.css";
-import logo from "../../assets/img/logo.jpg";
-import { BRAND, ICONS } from "../../constants";
+import { ICONS } from "../../constants";
 import { useAuth } from "../../component/common/AuthContext";
 
-const API_BASE = "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 
 const MENU_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
@@ -53,7 +52,7 @@ const TournamentSlideBar = ({ activeTab, onNavigate }) => {
 
   const handleLogout = async () => {
     try {
-      await fetch(`${API_BASE}/api/auth/logout`, {
+      await fetch(`${API_BASE}/api/logout`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -72,16 +71,7 @@ const TournamentSlideBar = ({ activeTab, onNavigate }) => {
   };
 
   return (
-    <aside className="sidebar">
-      <div className="sidebarBrand">
-        <div className="brandMark">
-          <img src={logo} alt="chess logo" className="brandLogo" />
-        </div>
-        <div className="brandName" style={{ color: "#000000" }}>
-          {BRAND.name}
-        </div>
-      </div>
-
+    <aside className="sidebar tll-sidebar">
       <div className="sidebarSection">Menu chính</div>
 
       <nav className="sidebarNav">

@@ -66,4 +66,28 @@ public class EmailUtil {
 
         sendEmail(toEmail, subject, content);
     }
+
+    /** Gửi reminder cho lời mời trọng tài (24h hoặc 48h) */
+    public static void sendRefereeInviteReminder(String toEmail, String tournamentName, String inviterName, boolean is48h) {
+        String subject = is48h ? "[Nhắc lần 2] Lời mời trọng tài sắp hết hạn" : "[Nhắc nhở] Bạn có lời mời làm trọng tài";
+        String content = """
+            Xin chào,
+
+            %s
+
+            Giải đấu: %s
+            Người mời: %s
+
+            Vui lòng đăng nhập và kiểm tra lời mời để chấp nhận hoặc từ chối.
+            Lời mời sẽ hết hạn sau 7 ngày kể từ khi gửi.
+
+            Trân trọng,
+            Chess Tournament Management System
+            """.formatted(
+                is48h ? "Đây là lời nhắc lần 2: Bạn vẫn chưa phản hồi lời mời làm trọng tài." : "Bạn đã nhận được lời mời làm trọng tài cho giải đấu sau.",
+                tournamentName != null ? tournamentName : "—",
+                inviterName != null ? inviterName : "—"
+            );
+        sendEmail(toEmail, subject, content);
+    }
 }

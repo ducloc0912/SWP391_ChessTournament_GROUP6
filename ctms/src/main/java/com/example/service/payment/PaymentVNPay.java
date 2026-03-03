@@ -13,12 +13,14 @@ public class PaymentVNPay {
 
     private PaymentDAO paymentDAO = new PaymentDAO();
 
+    /** Tạo URL thanh toán VNPay. Đăng ký có phí: luôn dùng participantId (đã tạo Participant PendingPayment khi đăng ký). */
     public String createPaymentUrl(int amount, String ipAddress, int userId, int tournamentId, int participantId) {
+        return createPaymentUrlInternal(amount, ipAddress, userId, tournamentId, String.valueOf(participantId));
+    }
+
+    private String createPaymentUrlInternal(int amount, String ipAddress, int userId, int tournamentId, String orderInfoLastPart) {
         String vnp_Version = "2.1.0";
         String vnp_Command = "pay";
-        // String orderType = "other";
-
-        // vnp_Amount = amount * 100
         long amountVal = (long) amount * 100;
 
         Map<String, String> vnp_Params = new HashMap<>();
@@ -31,7 +33,7 @@ public class PaymentVNPay {
         String vnp_TxnRef = VNPayConfig.getRandomNumber(8);
         vnp_Params.put("vnp_TxnRef", vnp_TxnRef);
         vnp_Params.put("vnp_OrderInfo",
-                "Thanh toan phi tham gia giai dau_CTMS_" + userId + "_" + tournamentId + "_" + participantId);
+                "Thanh toan phi tham gia giai dau_CTMS_" + userId + "_" + tournamentId + "_" + orderInfoLastPart);
         vnp_Params.put("vnp_OrderType", "other");
         vnp_Params.put("vnp_Locale", "vn");
         vnp_Params.put("vnp_ReturnUrl", VNPayConfig.vnp_ReturnUrl);
@@ -90,27 +92,33 @@ public class PaymentVNPay {
             fields.remove("vnp_SecureHash");
         }
 
-        String signValue = VNPayConfig.hashAllFields(fields);
+        if (vnp_SecureHash == null || vnp_SecureHash.isEmpty()) {
+            response.put("success", false);
+            response.put("message", "Chữ ký không hợp lệ");
+            return response;
+        }
 
-        // Kiểm tra chữ ký
-        if (signValue.equals(vnp_SecureHash)) {
+        String signValue = VNPayConfig.hashAllFields(fields);
+        String signValueEncoded = VNPayConfig.hashAllFieldsEncoded(fields);
+
+        // Kiểm tra chữ ký (VNPay có thể trả hash chữ hoa; một số môi trường dùng chuỗi raw, một số dùng encoded)
+        boolean validSignature = signValue.equalsIgnoreCase(vnp_SecureHash) || signValueEncoded.equalsIgnoreCase(vnp_SecureHash);
+        if (validSignature) {
             if ("00".equals(fields.get("vnp_ResponseCode"))) {
                 // Giao dịch thành công
                 String orderInfo = fields.get("vnp_OrderInfo"); // VD: Thanh toan phi tham gia giai dau_CTMS_1_2_3
                 String vnp_Amount = fields.get("vnp_Amount");
 
-                // Giải mã orderInfo để lấy userId, tournamentId, participantId
                 int userId = 0;
                 int tournamentId = 0;
                 int participantId = 0;
                 try {
-                    // Lấy phần _CTMS_1_2_3
                     String[] parts = orderInfo.split("_CTMS_");
                     if (parts.length > 1) {
                         String[] ids = parts[1].split("_");
                         userId = Integer.parseInt(ids[0]);
                         tournamentId = Integer.parseInt(ids[1]);
-                        participantId = Integer.parseInt(ids[2]);
+                        if (ids.length > 2) participantId = Integer.parseInt(ids[2]);
                     }
                 } catch (Exception e) {
                     System.out.println("Lỗi parse order info");

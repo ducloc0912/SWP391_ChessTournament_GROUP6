@@ -401,6 +401,111 @@ public class TournamentDAO extends DBContext {
         return images;
     }
 
+    public boolean updateTournamentCoverImage(int tournamentId, String imageUrl) {
+        if (tournamentId <= 0 || imageUrl == null || imageUrl.isBlank()) return false;
+        String sql = "UPDATE Tournaments SET tournament_image = ? WHERE tournament_id = ?";
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, imageUrl);
+            ps.setInt(2, tournamentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean addTournamentDetailImage(int tournamentId, String imageUrl) {
+        if (tournamentId <= 0 || imageUrl == null || imageUrl.isBlank()) return false;
+        String sql = "INSERT INTO Tournament_Images (tournament_id, image_url, display_order) VALUES (?, ?, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM Tournament_Images ti WHERE ti.tournament_id = ?))";
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            ps.setString(2, imageUrl);
+            ps.setInt(3, tournamentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean deleteTournamentDetailImage(int tournamentId, String imageUrl) {
+        if (tournamentId <= 0 || imageUrl == null || imageUrl.isBlank()) return false;
+        String sql = "DELETE FROM Tournament_Images WHERE tournament_id = ? AND image_url = ?";
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            ps.setString(2, imageUrl);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean saveTournamentImages(int tournamentId, String coverImageUrl, List<String> detailImages) {
+        if (tournamentId <= 0) return false;
+        try (Connection conn = getConnection()) {
+            if (coverImageUrl != null && !coverImageUrl.isBlank()) {
+                try (PreparedStatement ps = conn.prepareStatement("UPDATE Tournaments SET tournament_image = ? WHERE tournament_id = ?")) {
+                    ps.setString(1, coverImageUrl);
+                    ps.setInt(2, tournamentId);
+                    ps.executeUpdate();
+                }
+            }
+            try (PreparedStatement del = conn.prepareStatement("DELETE FROM Tournament_Images WHERE tournament_id = ?")) {
+                del.setInt(1, tournamentId);
+                del.executeUpdate();
+            }
+            if (detailImages != null && !detailImages.isEmpty()) {
+                String ins = "INSERT INTO Tournament_Images (tournament_id, image_url, display_order) VALUES (?, ?, ?)";
+                try (PreparedStatement ps = conn.prepareStatement(ins)) {
+                    for (int i = 0; i < detailImages.size(); i++) {
+                        String url = detailImages.get(i);
+                        if (url != null && !url.isBlank()) {
+                            ps.setInt(1, tournamentId);
+                            ps.setString(2, url);
+                            ps.setInt(3, i + 1);
+                            ps.addBatch();
+                        }
+                    }
+                    ps.executeBatch();
+                }
+            }
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public Map<String, Object> getTournamentPodium(int tournamentId) {
+        Map<String, Object> out = new HashMap<>();
+        out.put("championName", null);
+        out.put("runnerUpName", null);
+        if (tournamentId <= 0) return out;
+        String sql = """
+            SELECT u.first_name, u.last_name, s.current_rank
+            FROM Standing s
+            JOIN Users u ON u.user_id = s.user_id
+            WHERE s.tournament_id = ? AND s.current_rank IN (1, 2)
+            ORDER BY s.current_rank
+            """;
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                int idx = 0;
+                while (rs.next() && idx < 2) {
+                    String name = (rs.getString("first_name") + " " + rs.getString("last_name")).trim();
+                    if (idx == 0) out.put("championName", name);
+                    else out.put("runnerUpName", name);
+                    idx++;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return out;
+    }
+
     public List<PlayerTournamentDTO> getPlayerTournamentCards(
             Integer userId,
             String keyword,

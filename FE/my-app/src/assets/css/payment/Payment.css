@@ -1,24 +1,65 @@
-/* ====== GLOBAL BACKGROUND ====== */
-.payment-container {
-    background: #f5f5f5;
+/* ====== PAGE WRAPPER (đồng bộ Homepage) ====== */
+#payment-page.payment-page {
+    --hpv-bg: #ece8e1;
+    --hpv-accent: #ff4655;
+    --hpv-text: #1f2937;
+    --hpv-muted: #6b7280;
+    background: var(--hpv-bg);
+    color: var(--hpv-text);
+    font-family: Inter, "Segoe UI", sans-serif;
     min-height: 100vh;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    padding: 20px;
 }
 
-/* ====== CARD STYLE (Giống box sản phẩm) ====== */
+.payment-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 20px;
+    min-height: 60vh;
+}
+
+/* ====== CARD STYLE (đồng bộ hpv-detail-item / hpv-latest-card) ====== */
+.payment-card,
 .glass-card {
     background: #ffffff;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    transition: all 0.2s ease;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 0;
+    box-shadow: none;
+    transition: border-color 0.2s ease;
     padding: 24px;
     margin-bottom: 24px;
 }
 
+.payment-card:hover,
 .glass-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: rgba(15, 23, 42, 0.2);
+}
+
+.payment-back {
+    margin-bottom: 20px;
+    background: transparent;
+    border: none;
+    color: #0f172a;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.payment-back:hover {
+    color: var(--hpv-accent, #ff4655);
+}
+
+.payment-error-title {
+    color: var(--hpv-accent, #ee4d2d);
+}
+
+.payment-method-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--hpv-muted);
+    margin-bottom: 12px;
 }
 
 /* ====== INPUT STYLE ====== */
@@ -35,9 +76,9 @@
 
 .input-premium:focus {
     outline: none;
-    border-color: #ee4d2d;
+    border-color: var(--hpv-accent, #ff4655);
     background: #fff;
-    box-shadow: 0 0 0 2px rgba(238, 77, 45, 0.15);
+    box-shadow: 0 0 0 2px rgba(255, 70, 85, 0.15);
 }
 
 /* ====== BADGE / PILL ====== */
@@ -72,7 +113,7 @@
 }
 
 .radio-option.selected {
-    border: 2px solid #ee4d2d;
+    border: 2px solid var(--hpv-accent, #ff4655);
     background: #fff7f5;
 }
 
@@ -100,30 +141,31 @@
 }
 
 .price-final {
-    color: #ee4d2d;
+    color: var(--hpv-accent, #ff4655);
     font-size: 28px;
     font-weight: 800;
 }
 
-/* ====== PRIMARY BUTTON (Mua ngay style) ====== */
-.btn-primary {
-    background: #ee4d2d;
+/* ====== PRIMARY BUTTON (đồng bộ hpv-btn-primary) ====== */
+.payment-page .btn-primary {
+    background: var(--hpv-accent, #ff4655);
     transition: all 0.2s ease;
     color: white;
     width: 100%;
-    padding: 14px;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 16px;
+    padding: 14px 24px;
+    border-radius: 0;
+    font-weight: 800;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
     border: none;
     cursor: pointer;
     text-align: center;
 }
 
-.btn-primary:hover {
-    background: #d84325;
+.payment-page .btn-primary:hover {
+    background: #f73748;
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(238, 77, 45, 0.35);
 }
 
 .btn-primary:active {
@@ -156,6 +198,40 @@
 
 .btn-secondary:hover {
     background: #f3f4f6;
+}
+
+.payment-no-fee-msg,
+.payment-has-fee-msg {
+    margin: 0 0 16px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.45;
+}
+.payment-no-fee-msg {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #166534;
+}
+.payment-has-fee-msg {
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+}
+.payment-form-error {
+    color: #b91c1c;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px;
+    background: #fef2f2;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+.payment-field-error {
+    display: block;
+    color: #b91c1c;
+    font-size: 12px;
+    margin-top: 4px;
 }
 
 .btn-dark {
@@ -269,6 +345,10 @@ h2 {
 
 .text-gray {
     color: #6b7280;
+}
+
+.text-green {
+    color: #15803d;
 }
 
 .text-xs {

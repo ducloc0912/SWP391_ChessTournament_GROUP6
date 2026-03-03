@@ -4,12 +4,14 @@ import com.example.service.user.RegisterService;
 import com.google.gson.Gson;
 
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.*;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.util.HashMap;
 
-@WebServlet("/api/register")
+@WebServlet("/api/user/register")
 public class RegisterController extends HttpServlet {
 
     private final RegisterService registerService = new RegisterService();
@@ -25,6 +27,7 @@ public class RegisterController extends HttpServlet {
         HashMap<String, Object> data =
                 gson.fromJson(request.getReader(), HashMap.class);
 
+        String role = data.get("role") != null ? String.valueOf(data.get("role")).trim() : "Player";
         HashMap<String, Object> result =
                 registerService.register(
                         (String) data.get("firstName"),
@@ -35,6 +38,7 @@ public class RegisterController extends HttpServlet {
                         (String) data.get("address"),
                         (String) data.get("password"),
                         (String) data.get("confirmPassword"),
+                        role,
                         Boolean.TRUE.equals(data.get("agree"))
                 );
 

@@ -670,12 +670,103 @@
 
 /*===============================================TournamentDetail===============================================*/
 
-/* ===== PAGE ===== */
-.td-page-wrapper {
-  min-height: 100vh;
-  background: #f8fafc;
-  padding: 40px;
-  font-family: 'Inter', sans-serif;
+/* ===== PAGE (HomePage style) ===== */
+.td-page-wrapper.hpv-page {
+  background: var(--hpv-bg, #ece8e1);
+  color: var(--hpv-text, #1f2937);
+  font-family: Inter, "Segoe UI", sans-serif;
+  padding-top: 72px;
+  padding-bottom: 40px;
+}
+
+.td-leader-container {
+  padding: 24px 0 56px;
+}
+
+/* Leader hero = banner như tournament detail public, nút Sửa banner góc phải trên */
+.td-leader-hero {
+  margin-top: 14px;
+  position: relative;
+  min-height: 280px;
+}
+
+.td-leader-hero .tdp-hero-content {
+  left: 52px;
+  right: auto;
+  bottom: 48px;
+}
+
+.td-leader-hero-edit {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 3;
+}
+
+.td-leader-hero-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: none;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f1923;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.td-leader-hero-edit-btn:hover:not(:disabled) {
+  background: #fff;
+}
+
+.td-leader-hero-edit-btn:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.td-leader-hero-badges {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* Phí tham gia góc phải banner (giống public), đặt trên nút hành động */
+.td-leader-hero .td-leader-hero-fee {
+  bottom: 100px;
+}
+
+.td-leader-hero-actions {
+  position: absolute;
+  right: 52px;
+  bottom: 48px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.td-leader-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.td-leader-btn-danger:hover {
+  background: rgba(220, 38, 38, 0.8);
+  border-color: #fecaca;
 }
 
 /* ===== HERO ===== */
@@ -817,6 +908,31 @@
   font-weight: 700;
   font-size: 12px;
   text-transform: uppercase;
+}
+
+.td-stats-row-hpv .td-stat-card {
+  border-radius: 0;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: none;
+}
+
+.td-tabs-section-hpv {
+  margin-top: 28px;
+}
+
+.td-tabs-section-hpv .td-tabs-header {
+  border-bottom-color: rgba(15, 23, 42, 0.14);
+  background: #fff;
+}
+
+.td-tabs-section-hpv .td-tab-button.active {
+  border-bottom-color: #ff4655;
+  color: #0f172a;
+}
+
+.td-tabs-section-hpv .td-tab-button.active .td-tab-icon {
+  background: rgba(255, 70, 85, 0.12);
+  color: #ff4655;
 }
 
 /* =================================================================================== TABS ================= */
@@ -987,6 +1103,165 @@
   color: #475569;
   line-height: 1.7;
   font-weight: 500;
+}
+
+/* Inline edit - sửa tại chỗ từng phần (Overview) */
+.td-overview-inline-block {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+.td-overview-inline-block:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.td-overview-inline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.td-overview-inline-head label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin: 0;
+}
+.td-overview-inline-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  background: transparent;
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  cursor: pointer;
+  border-radius: 0;
+}
+.td-overview-inline-edit-btn:hover {
+  border-color: #ff4655;
+  color: #ff4655;
+}
+.td-overview-inline-view {
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.td-overview-inline-edit textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: #fff;
+  color: #0f172a;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 10px;
+  border-radius: 0;
+}
+.td-overview-inline-edit textarea:focus {
+  outline: none;
+  border-color: #0f172a;
+}
+.td-overview-inline-actions {
+  display: flex;
+  gap: 10px;
+}
+.td-overview-btn-outline {
+  background: transparent;
+  color: #64748b;
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  padding: 10px 18px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  border-radius: 0;
+}
+.td-overview-btn-outline:hover {
+  border-color: #0f172a;
+  color: #0f172a;
+}
+.td-overview-card.tdp-card {
+  border-radius: 0;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: none;
+}
+.td-overview-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+}
+.td-overview-left {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Progress & timeline trong tdp-participants-card (leader overview) */
+.tdp-reg-progress-wrap {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+.tdp-reg-progress-wrap .td-reg-progress-bar {
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 0;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.tdp-reg-progress-wrap .td-reg-progress-fill {
+  height: 100%;
+  background: #ff4655;
+  transition: width 0.2s ease;
+}
+.tdp-reg-progress-wrap .td-reg-progress-footer {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+.tdp-reg-progress-wrap .td-reg-progress-footer strong {
+  color: #0f172a;
+}
+.tdp-timeline-wrap {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+.tdp-timeline-wrap h4 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.tdp-timeline-wrap .td-timeline-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: #4b5563;
+}
+.tdp-timeline-wrap .td-timeline-item .dim {
+  color: #9ca3af;
+}
+.tdp-overview .td-overview-inline-block {
+  margin-bottom: 14px;
+}
+.tdp-overview .td-overview-inline-view {
+  color: #4b5563;
+  line-height: 1.6;
 }
 
 /* ===== SCHEDULE ===== */

@@ -10,17 +10,15 @@ import PlayerTournamentList from "./page/user/PlayerTournamentList";
 import PendingTournamentRegistrations from "./page/user/PendingTournamentRegistrations";
 import AdminLayout from "./page/admin/AdminLayout";
 import TournamentList from "./page/tournamentleader/TournamentList";
-import TournamentDetail from "./page/tournamentleader/TournamentDetail";
+import TournamentDetailLeader from "./page/tournamentleader/TournamentDetail";
+import TournamentPublic from "./component/common/TournamentPublic";
+import TournamentDetailPublic from "./component/common/TournamentDetail";
 import CreateTournament from "./page/tournamentleader/CreateTournament";
 import UpdateTournament from "./page/tournamentleader/UpdateTournament";
 import StaffDashboard from "./page/staff/StaffDashboard";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import WaitingList from "./page/user/WaitingList";
 import PaymentPage from "./page/payment/PaymentPage";
 import PaymentResult from "./page/payment/PaymentResult";
-//import AdminLayout from "./page/admin/AdminLayout"; import PlayerLayout from "./page/Player/PlayerLayout";
-// import RefereeLayout from "./page/referee/RefereeLayout";
-// import TournamentLeaderLayout from "./page/tournamentLeader/TournamentLeaderLayout";
 
 export default function App() {
   return (
@@ -41,12 +39,13 @@ export default function App() {
         />
         <Route path="/admin/dashboard" element={<AdminLayout />} />
         <Route path="/tournaments" element={<TournamentList />} />
-        <Route path="/tournaments/:id" element={<TournamentDetail />} />
+        <Route path="/tournaments/public" element={<TournamentPublic />} />
+        <Route path="/tournaments/public/:id" element={<TournamentDetailPublic />} />
+        <Route path="/tournaments/:id" element={<TournamentDetailLeader />} />
         <Route path="/tournaments/create" element={<CreateTournament />} />
         <Route path="/tournaments/edit/:id" element={<UpdateTournament />} />
         <Route path="/staff" element={<Navigate to="/staff/dashboard" />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
-        <Route path="/tournaments/:id/waiting-list" element={<WaitingList />} />
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/payment-result" element={<PaymentResult />} />
       </Routes>

@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import MainHeader from "../../component/common/MainHeader";
 import { validateRegistrationForm } from "../../utils/registrationValidation";
 
-const API_BASE = "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 
 export default function PendingTournamentRegistrations() {
   const navigate = useNavigate();
@@ -50,17 +50,15 @@ export default function PendingTournamentRegistrations() {
       setLoading(true);
       setError("");
       try {
-        const waitingRes = await axios.get(`${API_BASE}/api/waiting-list`, {
-          params: { userId: currentUser.userId },
+        const res = await axios.get(`${API_BASE}/api/participants`, {
+          params: { userId: "me", unpaidOnly: "true" },
           withCredentials: true,
         });
-        const list = Array.isArray(waitingRes?.data?.data)
-          ? waitingRes.data.data
-          : [];
+        const list = Array.isArray(res?.data) ? res.data : [];
         setRows(list);
       } catch (err) {
         setRows([]);
-        setError("Không thể tải danh sách chờ duyệt.");
+        setError("Không thể tải danh sách đăng ký chờ thanh toán.");
       } finally {
         setLoading(false);
       }
@@ -71,15 +69,15 @@ export default function PendingTournamentRegistrations() {
 
   const handleCancelRegistration = async () => {
     if (!confirmTarget) return;
-    setCancellingId(confirmTarget.waitingId);
+    setCancellingId(confirmTarget.participantId);
     setFeedback(null);
     try {
-      const res = await axios.delete(`${API_BASE}/api/waiting-list`, {
-        params: { id: confirmTarget.waitingId },
+      const res = await axios.delete(`${API_BASE}/api/participants`, {
+        params: { id: confirmTarget.participantId },
         withCredentials: true,
       });
       setRows((prev) =>
-        prev.filter((x) => x.waitingId !== confirmTarget.waitingId),
+        prev.filter((x) => x.participantId !== confirmTarget.participantId),
       );
       setFeedback({
         type: "success",
@@ -96,12 +94,12 @@ export default function PendingTournamentRegistrations() {
     }
   };
 
-  const fetchRegistrationDetail = async (waitingId) => {
-    const res = await axios.get(`${API_BASE}/api/waiting-list`, {
-      params: { id: waitingId },
+  const fetchRegistrationDetail = async (participantId) => {
+    const res = await axios.get(`${API_BASE}/api/participants`, {
+      params: { id: participantId },
       withCredentials: true,
     });
-    return res?.data?.data || null;
+    return res?.data || null;
   };
 
   const openViewModal = async (row) => {
@@ -109,8 +107,8 @@ export default function PendingTournamentRegistrations() {
     setDetailTarget(null);
     setDetailLoading(true);
     try {
-      const detail = await fetchRegistrationDetail(row.waitingId);
-      setDetailTarget(detail);
+      const detail = await fetchRegistrationDetail(row.participantId);
+      setDetailTarget({ ...row, ...detail });
     } catch (err) {
       setDetailMode(null);
       setFeedback({
@@ -128,8 +126,9 @@ export default function PendingTournamentRegistrations() {
     setEditErrors({});
     setDetailLoading(true);
     try {
-      const detail = await fetchRegistrationDetail(row.waitingId);
-      setDetailTarget(detail);
+      const detail = await fetchRegistrationDetail(row.participantId);
+      const d = { ...row, ...detail };
+      setDetailTarget(d);
       setEditForm({
         fullName: detail?.registrationFullName || "",
         username: detail?.registrationUsername || "",
@@ -160,7 +159,7 @@ export default function PendingTournamentRegistrations() {
   };
 
   const handleSubmitEdit = async () => {
-    if (!detailTarget?.waitingId) return;
+    if (!detailTarget?.participantId) return;
     const formErrors = validateRegistrationForm(editForm);
     setEditErrors(formErrors);
     if (Object.keys(formErrors).length > 0) return;
@@ -168,23 +167,16 @@ export default function PendingTournamentRegistrations() {
     setEditSubmitting(true);
     try {
       const payload = {
-        fullName: editForm.fullName.trim(),
-        username: editForm.username.trim(),
-        email: editForm.email.trim(),
-        phone: editForm.phone.trim(),
-        rankAtRegistration:
-          editForm.rankAtRegistration === ""
-            ? null
-            : Number(editForm.rankAtRegistration),
-        note: editForm.note.trim() || null,
+        titleAtRegistration: editForm.fullName.trim() || null,
+        notes: editForm.note.trim() || null,
       };
-      const res = await axios.put(`${API_BASE}/api/waiting-list`, payload, {
-        params: { id: detailTarget.waitingId },
+      const res = await axios.put(`${API_BASE}/api/participants`, payload, {
+        params: { participantId: detailTarget.participantId },
         withCredentials: true,
       });
       setRows((prev) =>
         prev.map((x) =>
-          x.waitingId === detailTarget.waitingId
+          x.participantId === detailTarget.participantId
             ? {
                 ...x,
                 rankAtRegistration: payload.rankAtRegistration,
@@ -371,7 +363,7 @@ export default function PendingTournamentRegistrations() {
                   </tr>
                 ) : (
                   rows.map((row, idx) => (
-                    <tr key={row.waitingId}>
+                    <tr key={row.participantId}>
                       <td style={tdStyle}>{idx + 1}</td>
                       <td style={{ ...tdStyle, fontWeight: 600 }}>
                         {row.tournamentName}
@@ -435,7 +427,7 @@ export default function PendingTournamentRegistrations() {
                           <ActionIconButton
                             title="Xóa đăng ký"
                             color={
-                              cancellingId === row.waitingId
+                              cancellingId === row.participantId
                                 ? "#9ca3af"
                                 : "#dc2626"
                             }
@@ -539,24 +531,24 @@ export default function PendingTournamentRegistrations() {
               </button>
               <button
                 onClick={handleCancelRegistration}
-                disabled={cancellingId === confirmTarget.waitingId}
+                disabled={cancellingId === confirmTarget.participantId}
                 style={{
                   border: "none",
                   background:
-                    cancellingId === confirmTarget.waitingId
+                    cancellingId === confirmTarget.participantId
                       ? "#9ca3af"
                       : "#dc2626",
                   color: "#fff",
                   borderRadius: 8,
                   padding: "8px 14px",
                   cursor:
-                    cancellingId === confirmTarget.waitingId
+                    cancellingId === confirmTarget.participantId
                       ? "not-allowed"
                       : "pointer",
                   fontWeight: 600,
                 }}
               >
-                {cancellingId === confirmTarget.waitingId
+                {cancellingId === confirmTarget.participantId
                   ? "Đang xóa..."
                   : "Xóa đăng ký"}
               </button>
@@ -616,23 +608,23 @@ export default function PendingTournamentRegistrations() {
               >
                 <b>Giải đấu</b>
                 <span>
-                  {rows.find((x) => x.waitingId === detailTarget.waitingId)
-                    ?.tournamentName || "-"}
+                  {rows.find((x) => x.participantId === detailTarget.participantId)
+                    ?.tournamentName || detailTarget.tournamentName || "-"}
                 </span>
                 <b>Họ và tên</b>
-                <span>{detailTarget.registrationFullName || "-"}</span>
+                <span>{detailTarget.titleAtRegistration || detailTarget.tournamentName || "-"}</span>
                 <b>Username</b>
-                <span>{detailTarget.registrationUsername || "-"}</span>
+                <span>{detailTarget.titleAtRegistration || "-"}</span>
                 <b>Email</b>
-                <span>{detailTarget.registrationEmail || "-"}</span>
+                <span>—</span>
                 <b>Số điện thoại</b>
                 <span>{detailTarget.registrationPhone || "-"}</span>
                 <b>Rank đăng ký</b>
-                <span>{detailTarget.rankAtRegistration ?? "-"}</span>
+                <span>—</span>
                 <b>Ghi chú</b>
-                <span>{detailTarget.note || "-"}</span>
+                <span>{detailTarget.notes || "-"}</span>
                 <b>Trạng thái</b>
-                <span>{detailTarget.status || "-"}</span>
+                <span>Chờ thanh toán</span>
                 <b>Thời điểm đăng ký</b>
                 <span>
                   {detailTarget.registrationDate
