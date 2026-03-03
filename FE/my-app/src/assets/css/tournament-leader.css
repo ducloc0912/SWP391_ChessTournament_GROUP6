@@ -703,6 +703,13 @@
   z-index: 3;
 }
 
+.td-leader-hero-edit.td-leader-hero-actions-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
 .td-leader-hero-edit-btn {
   display: inline-flex;
   align-items: center;

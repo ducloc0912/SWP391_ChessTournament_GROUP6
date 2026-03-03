@@ -15,34 +15,19 @@ USE SWP391;
 GO
 /* =====================================================================
    SWP391 - CHESS TOURNAMENT MANAGEMENT SYSTEM (CTMS)
-   Database Schema v2.1
+   SCHEMA THỐNG NHẤT – Tạo DB + Tạo toàn bộ bảng (chạy từ đầu để có DB hiện tại)
 
-   Nguyen tac:
-     - GIU NGUYEN tat ca bang hien tai (Users, RBAC, Participants, 
-       Bracket, Round, Matches, Standing, Report, Feedback,
-       Blog_Post, Notification, Payment, password_reset_otp)
-     - CHI CHINH bang Tournaments (them tournament_image, rules)
-     - THEM bang MOI cho cac tinh nang bo sung
+   Nội dung file:
+     0. Tạo database SWP391 (reset nếu đã tồn tại – chỉ dùng DEV)
+     1. Tạo tất cả bảng theo thứ tự phụ thuộc
+     2. Seed data (Roles, Permission, Users, Tournaments, ...)
 
-   Thay doi:
-     [Chinh] Tournaments         + tournament_image, rules
-     [Moi]   Blog_Image          - Anh cho noi dung blog
-     [Moi]   Avatar_Frame        - Danh sach khung avatar
-     [Moi]   User_Avatar_Frame   - User dang dung khung nao
-     [Moi]   Chess_Title         - Danh sach cap bac co thu
-     [Moi]   User_Chess_Profile  - Elo + title cua tung nguoi choi
-     [Moi]   Prize_Template      - Mau chia thuong top 1,2,3
-     [Moi]   Prize_Distribution  - Thuc te chia thuong
-     [Moi]   Payment_Transaction - Lich su dong tien
-     [Moi]   Match_PGN           - Lich su van co
-
-   Fixes ky thuat:
-     - IDENTITY cho Bracket, Round, Matches, Notification, Permission
-     - snake_case thong nhat (Payment tables)
-     - Fix typo creat_at -> create_at (Report)
-     - Fix typo created_at -> create_at (Tournament_Approval_Log)
-     - CHECK constraints cho Matches, Bracket, Report, Feedback, Notification
-     - ON DELETE CASCADE cho Matches, Standing, Bracket -> Tournaments
+   Schema đã gộp các thay đổi:
+     - Participants: status có PendingPayment (đăng ký chờ thanh toán)
+     - Participants: payment_expires_at, removed_at (hạn thanh toán, khóa 24h)
+     - Referee_Invitation (mời trọng tài bằng email)
+     - Tournament_Setup_State: bước REFEREE (STRUCTURE, PLAYERS, SCHEDULE, REFEREE, COMPLETED)
+     - Tournament_Referee, Match_Referee, Payment_Transaction, ...
    ===================================================================== */
 
 
@@ -218,7 +203,9 @@ CREATE TABLE Referee_Invitation (
 GO
 
 /* =========================
-   PARTICIPANTS (GIU NGUYEN)
+   PARTICIPANTS
+   (status: Active, PendingPayment = chờ thanh toán, Withdrawn, Disqualified;
+    payment_expires_at = hạn thanh toán 1h; removed_at = thời điểm rút/hết hạn, dùng cho khóa 24h)
    ========================= */
 CREATE TABLE Participants (
     participant_id INT IDENTITY(1,1) PRIMARY KEY,
@@ -227,7 +214,7 @@ CREATE TABLE Participants (
     title_at_registration NVARCHAR(20),
     seed INT,
     status NVARCHAR(20) DEFAULT 'Active'
-        CHECK (status IN ('Active','Withdrawn','Disqualified')),
+        CHECK (status IN ('Active','PendingPayment','Withdrawn','Disqualified')),
     is_paid BIT DEFAULT 0,
     payment_date DATETIME,
     payment_expires_at DATETIME NULL,
@@ -1518,14 +1505,5 @@ PRINT N'';
 PRINT N'--- Tournaments table now has: tournament_image, rules ---';
 GO
 
-/* Migration: Add REFEREE step to Tournament_Setup_State (run if table already exists with old constraint) */
-IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Tournament_Setup_State') BEGIN
-    DECLARE @ckName NVARCHAR(256);
-    SELECT @ckName = cc.name FROM sys.check_constraints cc
-    WHERE cc.parent_object_id = OBJECT_ID('Tournament_Setup_State');
-    IF @ckName IS NOT NULL
-        EXEC('ALTER TABLE Tournament_Setup_State DROP CONSTRAINT [' + @ckName + ']');
-    ALTER TABLE Tournament_Setup_State ADD CONSTRAINT CK_Tournament_Setup_State_step
-        CHECK (current_step IN ('STRUCTURE','PLAYERS','SCHEDULE','REFEREE','COMPLETED'));
-END
+/* Schema thống nhất: Tournament_Setup_State đã có bước REFEREE trong CREATE TABLE. */
 GO

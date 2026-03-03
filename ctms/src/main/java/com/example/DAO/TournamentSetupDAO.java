@@ -1,6 +1,8 @@
 package com.example.DAO;
 
 import com.example.model.dto.TournamentSetupMatchDTO;
+import com.example.model.dto.TournamentSetupStateDTO;
+import com.example.model.enums.SetupStep;
 import com.example.util.DBContext;
 
 import java.sql.Connection;
@@ -16,6 +18,11 @@ import java.util.Map;
 import java.util.Set;
 
 public class TournamentSetupDAO extends DBContext {
+
+    private static final String COL_BRACKET = "bracket_status";
+    private static final String COL_PLAYERS = "players_status";
+    private static final String COL_SCHEDULE = "schedule_status";
+    private static final String COL_REFEREES = "referees_status";
 
     public String getSetupStep(int tournamentId) {
         String sql = "SELECT current_step FROM Tournament_Setup_State WHERE tournament_id = ?";
@@ -53,6 +60,204 @@ public class TournamentSetupDAO extends DBContext {
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    /**
+     * Full state for wizard: current_step + per-step status (DRAFT/FINALIZED). If row missing or migration not run, returns defaults.
+     */
+    public TournamentSetupStateDTO getSetupStateFull(int tournamentId) {
+        String sql = """
+            SELECT tournament_id, current_step, updated_at, updated_by,
+                   bracket_status, players_status, schedule_status, referees_status
+            FROM Tournament_Setup_State WHERE tournament_id = ?
+            """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    TournamentSetupStateDTO dto = new TournamentSetupStateDTO();
+                    dto.setTournamentId(rs.getInt("tournament_id"));
+                    dto.setCurrentStep(normalizeStepFromDb(rs.getString("current_step")));
+                    dto.setUpdatedAt(rs.getTimestamp("updated_at"));
+                    Object ub = rs.getObject("updated_by");
+                    dto.setUpdatedBy(ub != null ? ((Number) ub).intValue() : null);
+                    Map<String, String> statuses = new HashMap<>();
+                    statuses.put("BRACKET", safeStatus(rs, COL_BRACKET));
+                    statuses.put("PLAYERS", safeStatus(rs, COL_PLAYERS));
+                    statuses.put("SCHEDULE", safeStatus(rs, COL_SCHEDULE));
+                    statuses.put("REFEREES", safeStatus(rs, COL_REFEREES));
+                    dto.setStepStatuses(statuses);
+                    return dto;
+                }
+            }
+        } catch (SQLException e) {
+            if (e.getMessage() != null && (e.getMessage().contains("bracket_status") || e.getMessage().contains("Invalid column"))) {
+                return getSetupStateFullLegacy(tournamentId);
+            }
+            e.printStackTrace();
+        }
+        return defaultSetupState(tournamentId);
+    }
+
+    private TournamentSetupStateDTO getSetupStateFullLegacy(int tournamentId) {
+        String sql = "SELECT tournament_id, current_step, updated_at FROM Tournament_Setup_State WHERE tournament_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    TournamentSetupStateDTO dto = new TournamentSetupStateDTO();
+                    dto.setTournamentId(rs.getInt("tournament_id"));
+                    dto.setCurrentStep(normalizeStepFromDb(rs.getString("current_step")));
+                    dto.setUpdatedAt(rs.getTimestamp("updated_at"));
+                    dto.setStepStatuses(Map.of("BRACKET", "DRAFT", "PLAYERS", "DRAFT", "SCHEDULE", "DRAFT", "REFEREES", "DRAFT"));
+                    return dto;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return defaultSetupState(tournamentId);
+    }
+
+    private TournamentSetupStateDTO defaultSetupState(int tournamentId) {
+        TournamentSetupStateDTO dto = new TournamentSetupStateDTO();
+        dto.setTournamentId(tournamentId);
+        dto.setCurrentStep("BRACKET");
+        dto.setStepStatuses(Map.of("BRACKET", "DRAFT", "PLAYERS", "DRAFT", "SCHEDULE", "DRAFT", "REFEREES", "DRAFT"));
+        return dto;
+    }
+
+    private String safeStatus(ResultSet rs, String column) throws SQLException {
+        try {
+            String v = rs.getString(column);
+            return (v != null && ("DRAFT".equalsIgnoreCase(v) || "FINALIZED".equalsIgnoreCase(v))) ? v : "DRAFT";
+        } catch (SQLException e) {
+            return "DRAFT";
+        }
+    }
+
+    private String normalizeStepFromDb(String dbStep) {
+        if (dbStep == null) return "BRACKET";
+        String s = dbStep.trim().toUpperCase();
+        if ("STRUCTURE".equals(s)) return "BRACKET";
+        if ("REFEREE".equals(s)) return "REFEREES";
+        return s;
+    }
+
+    /** Ensure row exists with default DRAFT statuses (for new tournaments). If migration not run, fallback insert without new columns. */
+    public void ensureSetupStateRow(int tournamentId) {
+        String sel = "SELECT 1 FROM Tournament_Setup_State WHERE tournament_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sel)) {
+            ps.setInt(1, tournamentId);
+            if (ps.executeQuery().next()) return;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return;
+        }
+        String insExtended = """
+            INSERT INTO Tournament_Setup_State (tournament_id, current_step, updated_at, bracket_status, players_status, schedule_status, referees_status, updated_by)
+            VALUES (?, 'STRUCTURE', GETDATE(), 'DRAFT', 'DRAFT', 'DRAFT', 'DRAFT', NULL)
+            """;
+        String insLegacy = "INSERT INTO Tournament_Setup_State (tournament_id, current_step, updated_at) VALUES (?, 'STRUCTURE', GETDATE())";
+        try (Connection conn = getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(insExtended)) {
+                ps.setInt(1, tournamentId);
+                ps.executeUpdate();
+                return;
+            } catch (SQLException e) {
+                if (e.getMessage() != null && (e.getMessage().contains("bracket_status") || e.getMessage().contains("Invalid column"))) {
+                    try (PreparedStatement ps = conn.prepareStatement(insLegacy)) {
+                        ps.setInt(1, tournamentId);
+                        ps.executeUpdate();
+                    } catch (SQLException e2) {
+                        e2.printStackTrace();
+                    }
+                } else {
+                    e.printStackTrace();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /** Finalize one step: set its status to FINALIZED and advance current_step to next. */
+    public boolean finalizeStep(int tournamentId, SetupStep step, Integer userId) {
+        String statusCol = statusColumn(step);
+        if (statusCol == null) return false;
+        SetupStep next = step.next();
+        String nextDb = next != null ? next.toDbValue() : "COMPLETED";
+        String sql = "UPDATE Tournament_Setup_State SET current_step = ?, updated_at = GETDATE(), " + statusCol + " = 'FINALIZED', updated_by = ? WHERE tournament_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, nextDb);
+            ps.setObject(2, userId);
+            ps.setInt(3, tournamentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /** Unlock step K: set step K and all later steps to DRAFT, current_step to step K. */
+    public boolean unlockStep(int tournamentId, SetupStep step, Integer userId) {
+        String stepDb = step.toDbValue();
+        String sql = """
+            UPDATE Tournament_Setup_State SET
+            current_step = ?,
+            updated_at = GETDATE(),
+            updated_by = ?,
+            bracket_status = CASE WHEN ? <= 1 THEN 'DRAFT' ELSE bracket_status END,
+            players_status = CASE WHEN ? <= 2 THEN 'DRAFT' ELSE players_status END,
+            schedule_status = CASE WHEN ? <= 3 THEN 'DRAFT' ELSE schedule_status END,
+            referees_status = CASE WHEN ? <= 4 THEN 'DRAFT' ELSE referees_status END
+            WHERE tournament_id = ?
+            """;
+        int order = step.order();
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, stepDb);
+            ps.setObject(2, userId);
+            ps.setInt(3, order);
+            ps.setInt(4, order);
+            ps.setInt(5, order);
+            ps.setInt(6, order);
+            ps.setInt(7, tournamentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private String statusColumn(SetupStep step) {
+        switch (step) {
+            case BRACKET: return COL_BRACKET;
+            case PLAYERS: return COL_PLAYERS;
+            case SCHEDULE: return COL_SCHEDULE;
+            case REFEREES: return COL_REFEREES;
+            default: return null;
+        }
+    }
+
+    public void insertAuditLog(int tournamentId, String step, String action, String beforeJson, String afterJson, Integer createdBy) {
+        String sql = "INSERT INTO Setup_Audit_Log (tournament_id, step, action, before_json, after_json, created_by) VALUES (?, ?, ?, ?, ?, ?)";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            ps.setString(2, step);
+            ps.setString(3, action);
+            ps.setString(4, beforeJson);
+            ps.setString(5, afterJson);
+            ps.setObject(6, createdBy);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 
