@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Bell, Crown, LogOut, Menu, X } from "lucide-react";
+import { Bell, Crown, LogOut, Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import "./MainHeader.css";
 
 function ImageWithFallback({ src, alt = "", className = "", fallback = "https://ui-avatars.com/api/?name=User&background=random" }) {
@@ -25,6 +25,8 @@ export default function MainHeader({
   onLogout,
   currentPath = "/",
   menuItems = null,
+  onSidebarToggle,
+  sidebarOpen = true,
 }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -65,6 +67,16 @@ export default function MainHeader({
     <header className="header main-header">
       <div className="container">
         <div className="header-content">
+          {typeof onSidebarToggle === "function" && (
+            <button
+              type="button"
+              className="sidebar-toggle-btn"
+              onClick={onSidebarToggle}
+              aria-label={sidebarOpen ? "Ẩn menu" : "Hiện menu"}
+            >
+              {sidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
+            </button>
+          )}
           <div className="logo-wrapper" onClick={() => navigate("/home")} style={{ cursor: "pointer" }}>
             <div className="logo-icon"><Crown size={16} strokeWidth={2.5} /></div>
             <div className="logo-text">

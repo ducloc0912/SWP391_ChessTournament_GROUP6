@@ -71,6 +71,11 @@ public class Participant {
         this.paymentDate = paymentDate;
     }
 
+    public Timestamp getPaymentExpiresAt() { return paymentExpiresAt; }
+    public void setPaymentExpiresAt(Timestamp paymentExpiresAt) { this.paymentExpiresAt = paymentExpiresAt; }
+    public Timestamp getRemovedAt() { return removedAt; }
+    public void setRemovedAt(Timestamp removedAt) { this.removedAt = removedAt; }
+
     public Timestamp getRegistrationDate() {
         return registrationDate;
     }
@@ -93,6 +98,8 @@ public class Participant {
     private ParticipantStatus status;
     private Boolean isPaid;
     private Timestamp paymentDate;
+    private Timestamp paymentExpiresAt;
+    private Timestamp removedAt;
     private Timestamp registrationDate;
     private String notes;
 

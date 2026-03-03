@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, MapPin, Mail, Calendar } from "lucide-react";
 
-const API_BASE = "http://localhost:8080/ctms";
+import { API_BASE, resolveAssetUrl } from "../../config/api";
 
 const ROLES = {
   PLAYER: "Player",
@@ -39,11 +39,7 @@ function formatDateOnly(v) {
 }
 
 function resolveAvatarUrl(avatar) {
-  if (!avatar) return "";
-  const s = String(avatar);
-  if (s.startsWith("http://") || s.startsWith("https://")) return s;
-  if (s.startsWith("/")) return `http://localhost:8080${s}`;
-  return s;
+  return resolveAssetUrl(avatar || "");
 }
 
 function statusLabel(status) {

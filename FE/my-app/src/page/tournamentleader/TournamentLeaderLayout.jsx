@@ -2,38 +2,15 @@ import React, { useState } from "react";
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import MainHeader from "../../component/common/MainHeader";
-import TournamentSlideBar from "./TournamentSlideBar";
+import TournamentSlideBar from "./TournamentSlidebar";
 import TournamentList from "./TournamentList";
 import TournamentDashboard from "./TournamentDashboard";
 import "../../assets/css/admin.css";
-
-const TAB_CONTENT_STYLE = {
-  paddingTop: 72,
-  minHeight: "100vh",
-  background: "#f8fafc",
-};
-
-const SHELL_STYLE = {
-  display: "flex",
-  minHeight: "calc(100vh - 72px)",
-};
-
-const SIDEBAR_WRAP_STYLE = {
-  position: "sticky",
-  top: 72,
-  alignSelf: "flex-start",
-};
-
-const MAIN_STYLE = {
-  flex: 1,
-  minWidth: 0,
-  padding: "24px 28px",
-};
+import "../../assets/css/tournament-leader/TournamentLeaderLayout.css";
 
 const CARD_STYLE = {
   background: "#ffffff",
-  border: "1px solid #e2e8f0",
-  borderRadius: 16,
+  border: "1px solid rgba(15, 23, 42, 0.12)",
   padding: 24,
 };
 
@@ -41,6 +18,7 @@ export default function TournamentLeaderLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [user, setUser] = useState(() => {
     const stored = localStorage.getItem("user");
@@ -52,6 +30,10 @@ export default function TournamentLeaderLayout() {
     localStorage.removeItem("role");
     setUser(null);
     navigate("/login");
+  };
+
+  const handleSidebarToggle = () => {
+    setSidebarOpen((prev) => !prev);
   };
 
   const handleSidebarNavigate = (tabId) => {
@@ -80,7 +62,7 @@ export default function TournamentLeaderLayout() {
         return <TournamentList hideHeader />;
       case "reports":
         return (
-          <div style={CARD_STYLE}>
+          <div style={CARD_STYLE} className="tll-card">
             <h2 style={{ marginTop: 0 }}>Báo cáo</h2>
             <p style={{ marginBottom: 0, color: "#64748b" }}>
               Chức năng báo cáo sẽ được triển khai ở bước tiếp theo.
@@ -94,7 +76,7 @@ export default function TournamentLeaderLayout() {
   };
 
   return (
-    <div style={TAB_CONTENT_STYLE}>
+    <div className="tll-page">
       <MainHeader
         user={user}
         onLogout={handleLogout}
@@ -103,16 +85,21 @@ export default function TournamentLeaderLayout() {
           { to: "/home", label: "Home" },
           { to: "/blog", label: "Blog" },
         ]}
+        onSidebarToggle={handleSidebarToggle}
+        sidebarOpen={sidebarOpen}
       />
 
-      <div style={SHELL_STYLE}>
-        <div style={SIDEBAR_WRAP_STYLE}>
+      <div className="tll-shell">
+        <div
+          className={`tll-sidebar-wrap ${!sidebarOpen ? "collapsed" : ""}`}
+          style={{ width: sidebarOpen ? 260 : 0 }}
+        >
           <TournamentSlideBar
             activeTab={activeTab}
             onNavigate={handleSidebarNavigate}
           />
         </div>
-        <main style={MAIN_STYLE}>{renderContent()}</main>
+        <main className="tll-main">{renderContent()}</main>
       </div>
     </div>
   );

@@ -1,7 +1,9 @@
 package com.example.controller.leader;
 
 import com.example.model.dto.TournamentDTO;
+import com.example.model.dto.TournamentManualSetupRequestDTO;
 import com.example.model.dto.TournamentPlayerDTO;
+import com.example.model.dto.TournamentSetupMatchDTO;
 import com.example.model.dto.TournamentRefereeDTO;
 import com.example.model.dto.TournamentReportDTO;
 import com.example.model.entity.User;
@@ -16,13 +18,23 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @WebServlet("/api/tournaments")
 public class TournamentController extends HttpServlet {
+
+    private static final List<String> ALLOWED_IMAGE_EXT = List.of("jpg", "jpeg", "png", "gif", "webp");
 
     private TournamentService tournamentService;
     private Gson gson;
@@ -103,6 +115,24 @@ public class TournamentController extends HttpServlet {
             return;
         }
 
+        if ("refereeInvitations".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Missing tournament id\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(tid);
+                List<Map<String, Object>> list = tournamentService.getRefereeInvitations(tournamentId);
+                response.getWriter().write(gson.toJson(list));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Invalid tournament id\"}");
+            }
+            return;
+        }
+
         if ("reports".equals(action)) {
             String tid = request.getParameter("id");
             if (tid == null) {
@@ -155,6 +185,94 @@ public class TournamentController extends HttpServlet {
         response.setCharacterEncoding("UTF-8");
 
         String action = request.getParameter("action");
+        if ("uploadImageFile".equals(action)) {
+            try {
+                Part filePart;
+                try {
+                    filePart = request.getPart("file");
+                } catch (Exception e) {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    response.getWriter().write("{\"success\": false, \"message\": \"Missing uploaded file\"}");
+                    return;
+                }
+
+                String imageUrl = saveTournamentImageFile(request, filePart);
+                if (imageUrl == null) {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    response.getWriter().write("{\"success\": false, \"message\": \"Invalid image file or upload failed\"}");
+                    return;
+                }
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("success", true);
+                result.put("imageUrl", imageUrl);
+                response.getWriter().write(gson.toJson(result));
+            } catch (Exception e) {
+                e.printStackTrace();
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.getWriter().write("{\"success\": false, \"message\": \"Upload failed: " + (e.getMessage() != null ? e.getMessage().replace("\"", "'") : "Unknown error") + "\"}");
+            }
+            return;
+        }
+
+        if ("uploadImage".equals(action)) {
+            String tid = request.getParameter("id");
+            String type = request.getParameter("type");
+            if (tid == null || type == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing id or type\"}");
+                return;
+            }
+
+            int tournamentId;
+            try {
+                tournamentId = Integer.parseInt(tid);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+                return;
+            }
+
+            Part filePart;
+            try {
+                filePart = request.getPart("file");
+            } catch (Exception e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing uploaded file\"}");
+                return;
+            }
+
+            String imageUrl = saveTournamentImageFile(request, filePart);
+            if (imageUrl == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid image file\"}");
+                return;
+            }
+
+            boolean success;
+            if ("cover".equalsIgnoreCase(type)) {
+                success = tournamentService.updateTournamentCoverImage(tournamentId, imageUrl);
+            } else if ("detail".equalsIgnoreCase(type)) {
+                success = tournamentService.addTournamentDetailImage(tournamentId, imageUrl);
+            } else {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid image type\"}");
+                return;
+            }
+
+            if (!success) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Save image metadata failed\"}");
+                return;
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("imageUrl", imageUrl);
+            response.getWriter().write(gson.toJson(result));
+            return;
+        }
+
         if ("createReferee".equals(action)) {
             Map<?, ?> body = gson.fromJson(request.getReader(), Map.class);
             String firstName = body == null || body.get("firstName") == null ? null : String.valueOf(body.get("firstName"));
@@ -231,6 +349,203 @@ public class TournamentController extends HttpServlet {
             return;
         }
 
+        if ("inviteReferee".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+                return;
+            }
+            int tournamentId;
+            try {
+                tournamentId = Integer.parseInt(tid);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+                return;
+            }
+            Map<?, ?> body = gson.fromJson(request.getReader(), Map.class);
+            String email = body != null && body.get("email") != null ? String.valueOf(body.get("email")).trim() : null;
+            String refereeRole = body != null && body.get("refereeRole") != null ? String.valueOf(body.get("refereeRole")) : "Assistant";
+            if (email == null || email.isBlank()) {
+                response.getWriter().write("{\"success\": false, \"message\": \"Email không được để trống\"}");
+                return;
+            }
+            HttpSession session = request.getSession(false);
+            Integer invitedBy = null;
+            if (session != null) {
+                Object userObj = session.getAttribute("user");
+                if (userObj instanceof User user && user.getUserId() != null) {
+                    invitedBy = user.getUserId();
+                }
+            }
+            if (invitedBy == null) {
+                response.getWriter().write("{\"success\": false, \"message\": \"Vui lòng đăng nhập\"}");
+                return;
+            }
+            int invId = tournamentService.inviteRefereeByEmail(tournamentId, email, refereeRole, invitedBy);
+            if (invId > 0) {
+                Map<String, Object> result = new HashMap<>();
+                result.put("success", true);
+                result.put("invitationId", invId);
+                result.put("message", "Đã gửi lời mời đến " + email);
+                response.getWriter().write(gson.toJson(result));
+            } else if (invId == -1) {
+                response.getWriter().write("{\"success\": false, \"message\": \"Email này đã có lời mời đang chờ\"}");
+            } else {
+                response.getWriter().write("{\"success\": false, \"message\": \"Gửi lời mời thất bại\"}");
+            }
+            return;
+        }
+
+        if ("resendInvite".equals(action)) {
+            String invIdParam = request.getParameter("invitationId");
+            if (invIdParam == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing invitationId\"}");
+                return;
+            }
+            int invitationId;
+            try {
+                invitationId = Integer.parseInt(invIdParam);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid invitationId\"}");
+                return;
+            }
+            HttpSession session = request.getSession(false);
+            Integer invitedBy = null;
+            if (session != null) {
+                Object userObj = session.getAttribute("user");
+                if (userObj instanceof User user && user.getUserId() != null) {
+                    invitedBy = user.getUserId();
+                }
+            }
+            boolean success = tournamentService.resendRefereeInvite(invitationId, invitedBy != null ? invitedBy : 0);
+            response.getWriter().write("{\"success\": " + success + "}");
+            return;
+        }
+
+        if ("replaceInvite".equals(action)) {
+            String invIdParam = request.getParameter("invitationId");
+            if (invIdParam == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing invitationId\"}");
+                return;
+            }
+            int invitationId;
+            try {
+                invitationId = Integer.parseInt(invIdParam);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid invitationId\"}");
+                return;
+            }
+            Map<?, ?> body = gson.fromJson(request.getReader(), Map.class);
+            String newEmail = body != null && body.get("email") != null ? String.valueOf(body.get("email")).trim() : null;
+            String refereeRole = body != null && body.get("refereeRole") != null ? String.valueOf(body.get("refereeRole")) : "Assistant";
+            if (newEmail == null || newEmail.isBlank()) {
+                response.getWriter().write("{\"success\": false, \"message\": \"Email không được để trống\"}");
+                return;
+            }
+            HttpSession session = request.getSession(false);
+            Integer invitedBy = null;
+            if (session != null) {
+                Object userObj = session.getAttribute("user");
+                if (userObj instanceof User user && user.getUserId() != null) {
+                    invitedBy = user.getUserId();
+                }
+            }
+            boolean success = tournamentService.replaceRefereeInvite(invitationId, newEmail, refereeRole, invitedBy != null ? invitedBy : 0);
+            response.getWriter().write("{\"success\": " + success + "}");
+            return;
+        }
+
+        if ("manualSetup".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+                return;
+            }
+
+            int tournamentId;
+            try {
+                tournamentId = Integer.parseInt(tid);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+                return;
+            }
+
+            TournamentManualSetupRequestDTO body = gson.fromJson(request.getReader(), TournamentManualSetupRequestDTO.class);
+            TournamentService.SetupValidationResult result = tournamentService.saveManualSetup(tournamentId, body);
+            if (!result.isValid()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("success", result.isValid());
+            payload.put("message", result.getMessage());
+            response.getWriter().write(gson.toJson(payload));
+            return;
+        }
+
+        if ("saveRefereeAssignments".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+                return;
+            }
+            int tournamentId;
+            try {
+                tournamentId = Integer.parseInt(tid);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+                return;
+            }
+            TournamentManualSetupRequestDTO body = gson.fromJson(request.getReader(), TournamentManualSetupRequestDTO.class);
+            List<TournamentSetupMatchDTO> matches = body != null && body.getMatches() != null ? body.getMatches() : List.of();
+            TournamentService.SetupValidationResult result = tournamentService.saveRefereeAssignments(tournamentId, matches);
+            if (!result.isValid()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("success", result.isValid());
+            payload.put("message", result.getMessage());
+            response.getWriter().write(gson.toJson(payload));
+            return;
+        }
+
+        if ("setupStep".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+                return;
+            }
+            int tournamentId;
+            try {
+                tournamentId = Integer.parseInt(tid);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+                return;
+            }
+
+            TournamentManualSetupRequestDTO body = gson.fromJson(request.getReader(), TournamentManualSetupRequestDTO.class);
+            TournamentService.SetupValidationResult result = tournamentService.advanceSetupStep(tournamentId, body);
+            if (!result.isValid()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("success", result.isValid());
+            payload.put("message", result.getMessage());
+            response.getWriter().write(gson.toJson(payload));
+            return;
+        }
+
         TournamentDTO tournament =
                 gson.fromJson(request.getReader(), TournamentDTO.class);
 
@@ -244,7 +559,7 @@ public class TournamentController extends HttpServlet {
     // =======================
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+throws ServletException, IOException {
 
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
@@ -313,6 +628,26 @@ public class TournamentController extends HttpServlet {
             return;
         }
 
+        if ("removePendingInvite".equals(action)) {
+            String invIdParam = request.getParameter("invitationId");
+            if (invIdParam == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing invitationId\"}");
+                return;
+            }
+            int invitationId;
+            try {
+                invitationId = Integer.parseInt(invIdParam);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid invitationId\"}");
+                return;
+            }
+            boolean success = tournamentService.removePendingInvitation(invitationId);
+            response.getWriter().write("{\"success\": " + success + "}");
+            return;
+        }
+
         String idParam = request.getParameter("id");
         if (idParam == null) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -332,7 +667,7 @@ public class TournamentController extends HttpServlet {
         boolean hard = "true".equals(request.getParameter("hard"));
 
         if (hard) {
-            boolean success = tournamentService.deleteTournament(id);
+        boolean success = tournamentService.deleteTournament(id);
             response.getWriter().write("{\"success\": " + success + "}");
         } else {
             String reason = request.getParameter("reason");
@@ -342,7 +677,94 @@ public class TournamentController extends HttpServlet {
                 return;
             }
             boolean success = tournamentService.cancelTournament(id, reason);
-            response.getWriter().write("{\"success\": " + success + "}");
+        response.getWriter().write("{\"success\": " + success + "}");
         }
+    }
+
+    private String saveTournamentImageFile(HttpServletRequest request, Part filePart) {
+        if (filePart == null || filePart.getSize() <= 0) return null;
+        String submitted = filePart.getSubmittedFileName();
+        if (submitted == null || submitted.isBlank()) return null;
+
+        String ext = "";
+        int dot = submitted.lastIndexOf('.');
+        if (dot >= 0 && dot < submitted.length() - 1) {
+            ext = submitted.substring(dot + 1).toLowerCase();
+        }
+        if (!ALLOWED_IMAGE_EXT.contains(ext)) return null;
+
+        String fileName = UUID.randomUUID() + "." + ext;
+        for (Path uploadDir : List.of(getPersistentUploadDir(), getLegacyUploadDir(), getTempUploadDir())) {
+            try {
+                Files.createDirectories(uploadDir);
+                Path target = uploadDir.resolve(fileName);
+                try (InputStream in = filePart.getInputStream()) {
+                    Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+                }
+                return buildAbsoluteFileUrl(request, "/api/tournaments?action=uploadedImage&file=" + fileName);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
+
+    private String buildAbsoluteFileUrl(HttpServletRequest request, String path) {
+        String scheme = request.getScheme();
+        String host = request.getServerName();
+        int port = request.getServerPort();
+        String context = request.getContextPath();
+        return scheme + "://" + host + ":" + port + context + path;
+    }
+
+    private void deleteUploadedTournamentImageIfLocal(HttpServletRequest request, String imageUrl) {
+        if (imageUrl == null) return;
+        String marker = "action=uploadedImage&file=";
+        int idx = imageUrl.indexOf(marker);
+        if (idx < 0) return;
+        String fileName = imageUrl.substring(idx + marker.length());
+        int amp = fileName.indexOf('&');
+        if (amp >= 0) {
+            fileName = fileName.substring(0, amp);
+        }
+        fileName = URLDecoder.decode(fileName, StandardCharsets.UTF_8);
+        if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\")) return;
+
+        for (Path dir : List.of(getPersistentUploadDir(), getLegacyUploadDir(), getVeryOldUploadDir(), getTempUploadDir())) {
+            try {
+                Files.deleteIfExists(dir.resolve(fileName));
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    private Path getPersistentUploadDir() {
+        // Local demo mode: team commit/copy duoc folder FE/my-app/src/assets/image.
+        String projectDir = System.getProperty("user.dir");
+        return Paths.get(projectDir, "..", "FE", "my-app", "src", "assets", "image").normalize();
+    }
+
+    private Path getLegacyUploadDir() {
+        String projectDir = System.getProperty("user.dir");
+        return Paths.get(projectDir, "uploads", "tournaments");
+    }
+
+    private Path getVeryOldUploadDir() {
+        String home = System.getProperty("user.home");
+        return Paths.get(home, "ctms-uploads", "tournaments");
+    }
+
+    private Path getTempUploadDir() {
+        return Paths.get(System.getProperty("java.io.tmpdir"), "ctms-uploads");
+    }
+
+    private Path findExistingUploadFile(String fileName) {
+        for (Path dir : List.of(getPersistentUploadDir(), getLegacyUploadDir(), getVeryOldUploadDir(), getTempUploadDir())) {
+            Path candidate = dir.resolve(fileName);
+            if (Files.exists(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
     }
 }

@@ -13,6 +13,15 @@ public class TournamentSetupMatchDTO {
     private Integer blackPlayerId;
     private String blackPlayerName;
     private Timestamp startTime;
+    private Integer refereeId;
+
+    public Integer getRefereeId() {
+        return refereeId;
+    }
+
+    public void setRefereeId(Integer refereeId) {
+        this.refereeId = refereeId;
+    }
 
     public Integer getMatchId() {
         return matchId;

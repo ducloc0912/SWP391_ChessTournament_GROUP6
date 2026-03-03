@@ -5,7 +5,7 @@ import { ArrowLeft, Calendar, MapPin, Search } from "lucide-react";
 import MainHeader from "./MainHeader";
 import "../../assets/css/MatchesPublic.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 
 function formatDate(raw) {
   if (!raw) return "—";

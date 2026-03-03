@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import axios from "axios";
 import "../../assets/css/Verify.css";
+import { API_BASE } from "../../config/api";
 
 const Verify = () => {
   const navigate = useNavigate();
@@ -65,7 +66,7 @@ const Verify = () => {
 
     try {
       const res = await axios.post(
-        "http://localhost:8080/ctms/api/verify-otp",
+        `${import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms"}/api/verify-otp`,
         {
           email,
           otp: otpCode,
@@ -93,7 +94,7 @@ const Verify = () => {
       setCounter(60); // ⏱ bắt đầu đếm SAU khi bấm
 
       const res = await axios.post(
-        "http://localhost:8080/ctms/api/forgot-password",
+        `${API_BASE}/api/forgot-password`,
         { email },
       );
 

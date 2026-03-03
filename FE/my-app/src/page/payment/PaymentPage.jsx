@@ -1,56 +1,105 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import MainHeader from '../../component/common/MainHeader';
+import '../../assets/css/HomePage.css';
 import '../../assets/css/payment/Payment.css';
 import axios from 'axios';
+import { API_BASE } from '../../config/api';
+import { validateRegistrationForm } from '../../utils/registrationValidation';
 
 const PaymentPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  // Lấy ID từ router state (navigate) hoặc từ URL
   const paramTournamentId = location.state?.tournamentId || searchParams.get('tournamentId');
-  const paramParticipantId = location.state?.participantId || searchParams.get('participantId') || 3; // Mặc định 3 để test nếu không có
+  const paramEntryFee = location.state?.entryFee;
+  const paramParticipantId = Number(location.state?.participantId || searchParams.get('participantId') || 0);
 
-  // Lấy User từ Session (AuthContext)
-  const sessionUserStr = sessionStorage.getItem("user");
-  const sessionUser = sessionUserStr ? JSON.parse(sessionUserStr) : null;
-
-  const [tournament, setTournament] = useState(null);
-  const [user] = useState({
-    id: sessionUser?.userId || 1,
-    full_name: sessionUser?.fullName || "Khách quen",
-    phone: sessionUser?.phone || "0900000000",
-    email: sessionUser?.email || "guest@example.com"
+  const [sessionUser, setSessionUser] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem("user") || localStorage.getItem("user");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   });
+  const [tournament, setTournament] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem("user") || localStorage.getItem("user");
+      if (!raw) return { id: 0, full_name: "Khách", phone: "0900000000", email: "guest@example.com" };
+      const parsed = JSON.parse(raw);
+      return {
+        id: (parsed?.userId ?? parsed?.id) ?? 0,
+        full_name: (parsed?.fullName ?? `${parsed?.firstName || ""} ${parsed?.lastName || ""}`.trim()) || "Khách",
+        phone: (parsed?.phoneNumber ?? parsed?.phone) || "0900000000",
+        email: parsed?.email || "guest@example.com"
+      };
+    } catch {
+      return { id: 0, full_name: "Khách", phone: "0900000000", email: "guest@example.com" };
+    }
+  });
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem("user") || localStorage.getItem("user");
+    if (!raw) {
+      setSessionUser(null);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      setSessionUser(parsed);
+      setUser({
+        id: (parsed?.userId ?? parsed?.id) ?? 0,
+        full_name: (parsed?.fullName ?? `${parsed?.firstName || ""} ${parsed?.lastName || ""}`.trim()) || "Khách",
+        phone: (parsed?.phoneNumber ?? parsed?.phone) || "0900000000",
+        email: parsed?.email || "guest@example.com"
+      });
+    } catch {
+      setSessionUser(null);
+    }
+  }, []);
 
   const [paymentMethod, setPaymentMethod] = useState('VNPAY');
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [participantId, setParticipantId] = useState(paramParticipantId || 0);
 
-  // Fetch dữ liệu giải đấu
+  const [form, setForm] = useState({
+    fullName: "",
+    username: "",
+    email: "",
+    phone: "",
+    rankAtRegistration: "",
+  });
+  const [formErrors, setFormErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
+
   useEffect(() => {
     if (!paramTournamentId) {
-      setErrorMsg("Không tìm thấy thông tin Giải đấu cần thanh toán. Vui lòng quay lại danh sách giải đấu.");
+      setErrorMsg("Không tìm thấy thông tin Giải đấu. Vui lòng quay lại danh sách giải đấu.");
       setPageLoading(false);
       return;
     }
 
     const fetchTournament = async () => {
       try {
-        // Sử dụng API lấy chi tiết giải đấu như trang TournamentDetail
-        const res = await axios.get(`http://localhost:8080/ctms/api/tournaments?id=${paramTournamentId}`, {
-          withCredentials: true,
-        });
-        if (res.data) {
-          setTournament(res.data);
+        const pub = await axios.get(`${API_BASE}/api/public/tournaments?action=detail&id=${paramTournamentId}`);
+        if (pub.data) {
+          setTournament(pub.data);
         } else {
-          setErrorMsg("Không thể lấy dữ liệu giải đấu từ máy chủ.");
+          setErrorMsg("Không thể lấy dữ liệu giải đấu.");
         }
-      } catch (error) {
-        console.error(error);
-        setErrorMsg("Lỗi khi kết nối máy chủ để lấy thông tin giải đấu.");
+      } catch (err) {
+        try {
+          const res = await axios.get(`${API_BASE}/api/tournaments?id=${paramTournamentId}`, { withCredentials: true });
+          if (res.data) setTournament(res.data);
+          else setErrorMsg("Không thể lấy dữ liệu giải đấu từ máy chủ.");
+        } catch {
+          setErrorMsg("Không thể kết nối máy chủ để lấy thông tin giải đấu.");
+        }
       } finally {
         setPageLoading(false);
       }
@@ -58,47 +107,188 @@ const PaymentPage = () => {
     fetchTournament();
   }, [paramTournamentId]);
 
-  const handlePayment = async () => {
-    if (paymentMethod !== 'VNPAY') {
-      alert("Chức năng chỉ đang hỗ trợ VNPAY lúc này.");
+  useEffect(() => {
+    if (!sessionUser || !tournament) return;
+    setForm({
+      fullName: `${sessionUser.firstName || ""} ${sessionUser.lastName || ""}`.trim(),
+      username: sessionUser.username || "",
+      email: sessionUser.email || "",
+      phone: sessionUser.phoneNumber || "",
+      rankAtRegistration: sessionUser.rank == null ? "" : String(sessionUser.rank),
+    });
+  }, [sessionUser?.userId, tournament?.tournamentId]);
+
+  const entryFeeNum = Number(paramEntryFee ?? tournament?.entryFee ?? 0);
+  const hasFee = entryFeeNum > 0;
+  const actualFee = entryFeeNum || 500000;
+
+  const handleFormChange = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    setSubmitError('');
+  };
+
+  const getNormalizedForm = () => ({
+    ...form,
+    fullName: form.fullName.trim(),
+    username: form.username.trim(),
+    email: form.email.trim().toLowerCase(),
+    phone: form.phone.trim(),
+    rankAtRegistration: String(form.rankAtRegistration ?? "").trim(),
+  });
+
+  /** Giải miễn phí: đăng ký ngay → thành công. Giải có phí: đăng ký + chuyển VNPay → thành công khi thanh toán xong. */
+  const submitRegister = async () => {
+    if (!sessionUser) {
+      navigate('/login');
       return;
     }
-
+    const normalized = getNormalizedForm();
+    const errors = validateRegistrationForm(normalized);
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
+    setSubmitError('');
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8080/ctms/api/vnpay/create-payment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
+      const res = await axios.post(
+        `${API_BASE}/api/register`,
+        {
+          tournamentId: Number(tournament.tournamentId),
+          fullName: normalized.fullName,
+          username: normalized.username,
+          email: normalized.email,
+          phone: normalized.phone,
+          rankAtRegistration: Number(normalized.rankAtRegistration),
+          rank: Number(normalized.rankAtRegistration),
         },
-        body: JSON.stringify({
-          amount: tournament.prizePool || 500000, // CSDL của bạn có prize_pool/entry_fee, dùng trường cho đúng
-          userId: user.id,
-          tournamentId: tournament.tournamentId,
-          participantId: paramParticipantId
-        })
-      });
+        { withCredentials: true }
+      );
+      const data = res.data?.data ?? res.data;
+      const needPayment = data?.needPayment === true;
 
-      const data = await response.json();
-      if (data.success && data.paymentUrl) {
-        window.location.href = data.paymentUrl;
-      } else {
-        alert("Có lỗi xảy ra: " + (data.message || "Không thể lấy payment URL"));
+      if (!needPayment) {
         setLoading(false);
+        alert(res.data?.message || "Đăng ký thành công. Bạn đã là thành viên giải.");
+        navigate(`/tournaments/public/${tournament.tournamentId}`);
+        return;
       }
 
-    } catch (error) {
-      console.error("Lỗi khi tạo payment:", error);
-      alert("Lỗi kết nối đến máy chủ.");
+      const newParticipantId = Number(data?.participantId ?? 0);
+      setParticipantId(newParticipantId);
+      if (!newParticipantId) {
+        setSubmitError("Không nhận được thông tin đăng ký. Vui lòng thử lại.");
+        setLoading(false);
+        return;
+      }
+      await handlePayment(newParticipantId);
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401) {
+        sessionStorage.removeItem("user");
+        localStorage.removeItem("user");
+        setSessionUser(null);
+        setSubmitError("Phiên đăng nhập đã hết hạn hoặc bạn chưa đăng nhập. Vui lòng đăng nhập lại để đăng ký giải.");
+        setLoading(false);
+        return;
+      }
+      const d = err?.response?.data;
+      const msg = (typeof d?.message === 'string' && d.message) ? d.message
+        : (typeof d?.error === 'string' && d.error) ? d.error
+        : status === 403 ? "Bạn đã hết hạn thanh toán lần trước. Vui lòng thử lại sau 24 giờ."
+        : status === 409 ? "Bạn đã đăng ký giải này rồi."
+        : "Đăng ký thất bại. Vui lòng thử lại.";
+      setSubmitError(msg);
       setLoading(false);
     }
   };
 
+  const handlePayment = async (overrideParticipantId) => {
+    if (paymentMethod !== 'VNPAY') {
+      alert("Chức năng chỉ đang hỗ trợ VNPAY.");
+      return;
+    }
+    const pId = Number(overrideParticipantId ?? participantId ?? paramParticipantId ?? 0);
+    if (!pId || !tournament?.tournamentId) {
+      setSubmitError("Thiếu thông tin thanh toán. Vui lòng thử lại.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/vnpay/create-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          amount: actualFee,
+          userId: user.id || sessionUser?.userId || sessionUser?.id,
+          tournamentId: tournament.tournamentId,
+          participantId: pId
+        })
+      });
+      const data = await response.json();
+      if (data.success && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+        return;
+      }
+      if (response.status === 401) {
+        sessionStorage.removeItem("user");
+        localStorage.removeItem("user");
+        setSessionUser(null);
+        setSubmitError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để thanh toán.");
+      } else {
+        setSubmitError(data?.message || "Không thể lấy link thanh toán. Vui lòng thử lại.");
+      }
+    } catch (error) {
+      if (error?.response?.status === 401) {
+        sessionStorage.removeItem("user");
+        localStorage.removeItem("user");
+        setSessionUser(null);
+        setSubmitError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để thanh toán.");
+      } else {
+        setSubmitError("Lỗi kết nối máy chủ. Vui lòng thử lại.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitPaid = (e) => {
+    e?.preventDefault();
+    if (participantId || paramParticipantId) {
+      handlePayment();
+      return;
+    }
+    submitRegister();
+  };
+
+  const handleSubmitFree = (e) => {
+    e?.preventDefault();
+    submitRegister();
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("user");
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    setSessionUser(null);
+    navigate("/login");
+  };
+
+  const menuItems = [
+    { to: "/home", label: "Home" },
+    { to: "/tournaments/public", label: "Tournaments" },
+  ];
+
   if (pageLoading) {
     return (
-      <div className="payment-container flex-center">
-        <div className="glass-card text-center slide-up">
-          <h2>Đang tải thông tin thanh toán...</h2>
+      <div id="payment-page" className="hpv-page payment-page">
+        <MainHeader user={sessionUser} onLogout={handleLogout} currentPath={location.pathname} menuItems={menuItems} />
+        <div className="hpv-container payment-container flex-center">
+          <div className="payment-card text-center slide-up">
+            <h2>Đang tải thông tin...</h2>
+          </div>
         </div>
       </div>
     );
@@ -106,36 +296,63 @@ const PaymentPage = () => {
 
   if (errorMsg || !tournament) {
     return (
-      <div className="payment-container flex-center">
-        <div className="glass-card text-center slide-up">
-          <h2 className="text-red">Lỗi</h2>
-          <p>{errorMsg}</p>
-          <div className="mt-4">
-            <button className="btn-secondary" onClick={() => navigate('/tournaments')}>Quay lại danh sách</button>
+      <div id="payment-page" className="hpv-page payment-page">
+        <MainHeader user={sessionUser} onLogout={handleLogout} currentPath={location.pathname} menuItems={menuItems} />
+        <div className="hpv-container payment-container flex-center">
+          <div className="payment-card text-center slide-up">
+            <h2 className="payment-error-title">Lỗi</h2>
+            <p>{errorMsg}</p>
+            <div className="mt-4">
+              <button className="btn-secondary" onClick={() => navigate('/tournaments/public')}>Quay lại danh sách</button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Tùy chỉnh giá tiền (Trong TournamentEntity không có entry_fee mà thường là lệ phí, tôi giả định lấy prizePool/10 hoặc số cố định tuỳ logic của bạn)
-  const actualFee = 500000;
+  if (!sessionUser && (tournament || paramTournamentId)) {
+    return (
+      <div id="payment-page" className="hpv-page payment-page">
+        <MainHeader
+          user={sessionUser}
+          onLogout={handleLogout}
+          currentPath={location.pathname}
+          menuItems={menuItems}
+        />
+        <div className="hpv-container payment-container flex-center">
+          <div className="payment-card text-center slide-up">
+            <h2>Đăng ký giải đấu</h2>
+            <p>Bạn cần đăng nhập để đăng ký giải.</p>
+            <button className="btn-primary" style={{ marginTop: '16px' }} onClick={() => navigate('/login', { state: { from: location.pathname, tournamentId: paramTournamentId } })}>
+              Đăng nhập
+            </button>
+            <button className="btn-secondary" style={{ marginTop: '12px', marginLeft: '8px' }} onClick={() => navigate('/tournaments/public')}>
+              Quay lại
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="payment-container">
+    <div id="payment-page" className="hpv-page payment-page">
+      <MainHeader
+        user={sessionUser}
+        onLogout={handleLogout}
+        currentPath={location.pathname}
+        menuItems={menuItems}
+      />
+      <div className="hpv-container payment-container">
       <div className="payment-layout">
 
-        {/* CỘT TRÁI: THÔNG TIN CHI TIẾT */}
         <div className="payment-left">
-          <button
-            style={{ marginBottom: '20px', background: 'transparent', border: 'none', color: '#0066cc', cursor: 'pointer', fontWeight: 'bold' }}
-            onClick={() => navigate(-1)}
-          >
+          <button type="button" className="payment-back" onClick={() => navigate(-1)}>
             ❮ Quay lại trang trước
           </button>
 
-          {/* Section 1: Thông tin giải đấu */}
-          <div className="glass-card slide-up delay-1">
+          <div className="payment-card slide-up delay-1">
             <h2>
               <svg className="icon-svg text-blue" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
               Giải đấu đăng ký
@@ -156,36 +373,63 @@ const PaymentPage = () => {
               </div>
               <div className="text-right" style={{ minWidth: '100px' }}>
                 <div className="text-xs text-gray mb-2">Lệ phí:</div>
-                <div className="flex-center" style={{ justifyContent: 'flex-end', marginBottom: '4px' }}>
-                  <span className="price-original">600.000đ</span>
-                  <span className="price-discount">-16%</span>
-                </div>
-                <div className="text-red font-bold text-xl">{actualFee.toLocaleString()}đ</div>
+                {hasFee ? (
+                  <div className="text-red font-bold text-xl">{actualFee.toLocaleString()}đ</div>
+                ) : (
+                  <div className="text-green font-bold">Miễn phí</div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Section 2: Thông tin người đăng ký */}
-          <div className="glass-card slide-up delay-2">
+          <div className="payment-card slide-up delay-2">
             <h2>Thông tin kỳ thủ</h2>
+            {submitError && (
+              <>
+                <div className="payment-form-error">{submitError}</div>
+                {submitError.includes("đăng nhập lại") && (
+                  <div style={{ marginTop: 12 }}>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={() => navigate("/login", { state: { from: "/payment", tournamentId: paramTournamentId } })}
+                    >
+                      Đăng nhập lại
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
             <div className="grid-2">
               <div>
                 <label className="text-xs font-semibold text-gray">HỌ VÀ TÊN</label>
-                <input type="text" className="input-premium" defaultValue={user.full_name} readOnly />
+                <input type="text" className="input-premium" value={form.fullName} onChange={e => handleFormChange('fullName', e.target.value)} placeholder="Họ và tên" />
+                {formErrors.fullName && <span className="payment-field-error">{formErrors.fullName}</span>}
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray">USERNAME / TÊN IN-GAME</label>
+                <input type="text" className="input-premium" value={form.username} onChange={e => handleFormChange('username', e.target.value)} placeholder="Username" />
+                {formErrors.username && <span className="payment-field-error">{formErrors.username}</span>}
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray">SỐ ĐIỆN THOẠI</label>
-                <input type="text" className="input-premium" defaultValue={user.phone} readOnly />
+                <input type="text" className="input-premium" value={form.phone} onChange={e => handleFormChange('phone', e.target.value)} placeholder="SĐT" />
+                {formErrors.phone && <span className="payment-field-error">{formErrors.phone}</span>}
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label className="text-xs font-semibold text-gray">EMAIL LƯU TRỮ</label>
-                <input type="email" className="input-premium" defaultValue={user.email} readOnly />
+              <div>
+                <label className="text-xs font-semibold text-gray">EMAIL</label>
+                <input type="email" className="input-premium" value={form.email} onChange={e => handleFormChange('email', e.target.value)} placeholder="Email" />
+                {formErrors.email && <span className="payment-field-error">{formErrors.email}</span>}
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray">BẬC RANK</label>
+                <input type="number" min="0" className="input-premium" value={form.rankAtRegistration} onChange={e => handleFormChange('rankAtRegistration', e.target.value)} placeholder="Rank" />
+                {formErrors.rankAtRegistration && <span className="payment-field-error">{formErrors.rankAtRegistration}</span>}
               </div>
             </div>
           </div>
 
-          {/* Section 3: Địa điểm */}
-          <div className="glass-card slide-up delay-3">
+          <div className="payment-card slide-up delay-3">
             <h2>Địa điểm & Thời gian</h2>
             <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
               <p className="text-sm"><strong>Địa điểm:</strong> {tournament.location}</p>
@@ -195,79 +439,57 @@ const PaymentPage = () => {
           </div>
         </div>
 
-        {/* CỘT PHẢI: TỔNG KẾT & THANH TOÁN */}
         <div className="payment-right slide-up delay-2">
-
-          {/* Box Tổng tiền */}
-          <div className="glass-card">
-            <h2>Chi tiết thanh toán</h2>
-
-            <div className="flex-between text-sm mb-4">
-              <span className="text-gray">Lệ phí cơ bản</span>
-              <span className="font-semibold">600.000đ</span>
-            </div>
-            <div className="flex-between text-sm mb-4 text-green">
-              <span>Khuyến mãi</span>
-              <span className="font-semibold">-100.000đ</span>
-            </div>
-
-            <div className="section-divider"></div>
-
-            <div className="flex-between">
-              <div>
-                <div className="text-sm font-bold">Tổng thanh toán</div>
-                <div className="text-xs text-gray">Đã bao gồm thuế & phí</div>
+          {hasFee ? (
+            <>
+              <div className="payment-card">
+                <h2>Chi tiết thanh toán</h2>
+                <div className="flex-between text-sm mb-4">
+                  <span className="text-gray">Lệ phí tham gia</span>
+                  <span className="font-semibold">{actualFee.toLocaleString()}đ</span>
+                </div>
+                <div className="section-divider"></div>
+                <div className="flex-between">
+                  <div>
+                    <div className="text-sm font-bold">Tổng thanh toán</div>
+                    <div className="text-xs text-gray">Đã bao gồm thuế & phí</div>
+                  </div>
+                  <div className="price-final">{actualFee.toLocaleString()}đ</div>
+                </div>
               </div>
-              <div className="price-final">{actualFee.toLocaleString()}đ</div>
-            </div>
-          </div>
 
-          {/* Box Chọn phương thức */}
-          <div className="glass-card">
-            <h2 className="text-sm text-gray" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>Phương thức thanh toán</h2>
-
-            <div className="radio-option disabled">
-              <input type="radio" disabled />
-              <div className="method-icon-box method-red">QR</div>
-              <div style={{ flex: 1 }}>
-                <div className="text-sm font-semibold">VietQR (PayOS)</div>
-                <div className="text-xs text-red">Đang bảo trì</div>
+              <div className="payment-card">
+                <h2 className="payment-method-title">Phương thức thanh toán</h2>
+                <div className={`radio-option ${paymentMethod === 'VNPAY' ? 'selected' : ''}`} onClick={() => setPaymentMethod('VNPAY')}>
+                  <input type="radio" checked={paymentMethod === 'VNPAY'} readOnly />
+                  <div className="method-icon-box method-blue">VNP</div>
+                  <div style={{ flex: 1 }}>
+                    <div className="text-sm font-semibold">Thanh toán VNPay</div>
+                    <div className="text-xs text-gray">ATM / Visa / Master / JCB</div>
+                  </div>
+                </div>
+                <p className="payment-has-fee-msg" style={{ marginTop: '12px', marginBottom: '16px' }}>
+                  Chỉ sau khi thanh toán hoàn tất bạn mới được ghi nhận là thành viên giải.
+                </p>
+                <button onClick={handleSubmitPaid} disabled={loading} className={loading ? 'btn-loading' : 'btn-primary'}>
+                  {loading ? "ĐANG CHUYỂN..." : "ĐĂNG KÝ VÀ THANH TOÁN"}
+                </button>
+                <div className="text-center mt-4 text-xs text-gray font-semibold">HỖ TRỢ BỞI VNPAY</div>
               </div>
+            </>
+          ) : (
+            <div className="payment-card">
+              <h2>Đăng ký tham gia</h2>
+              <p className="payment-no-fee-msg" style={{ marginBottom: '16px' }}>
+                Giải này không yêu cầu lệ phí. Điền thông tin bên trái và nhấn <strong>Đăng ký ngay</strong> để tham gia.
+              </p>
+              <button onClick={handleSubmitFree} disabled={loading} className={loading ? 'btn-loading' : 'btn-primary'}>
+                {loading ? "ĐANG XỬ LÝ..." : "ĐĂNG KÝ NGAY"}
+              </button>
             </div>
-
-            <div className={`radio-option ${paymentMethod === 'VNPAY' ? 'selected' : ''}`} onClick={() => setPaymentMethod('VNPAY')}>
-              <input type="radio" checked={paymentMethod === 'VNPAY'} readOnly />
-              <div className="method-icon-box method-blue">VNP</div>
-              <div style={{ flex: 1 }}>
-                <div className="text-sm font-semibold">Thanh toán VNPay</div>
-                <div className="text-xs text-gray">ATM / Visa / Master / JCB</div>
-              </div>
-            </div>
-
-            <div className="radio-option disabled">
-              <input type="radio" disabled />
-              <div className="method-icon-box method-orange">Ví</div>
-              <div style={{ flex: 1 }}>
-                <div className="text-sm font-semibold">Ví hệ thống</div>
-                <div className="text-xs text-red">Đang bảo trì</div>
-              </div>
-            </div>
-
-            <button
-              onClick={handlePayment}
-              disabled={loading}
-              className={loading ? 'btn-loading' : 'btn-primary'}
-              style={{ marginTop: '20px' }}
-            >
-              {loading ? "ĐANG TIẾN HÀNH..." : "THANH TOÁN NGAY"}
-            </button>
-
-            <div className="text-center mt-4 text-xs text-gray font-semibold text-gray">
-              HỖ TRỢ BỞI VNPAY
-            </div>
-          </div>
-
+          )}
         </div>
+      </div>
       </div>
     </div>
   );

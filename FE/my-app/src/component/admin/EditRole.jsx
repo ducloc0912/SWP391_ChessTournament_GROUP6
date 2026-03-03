@@ -7,7 +7,7 @@ import { Save, RotateCcw, ChevronLeft } from "lucide-react";
 /* =======================
    CONFIG
 ======================= */
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 
 /* =======================
    HTTP HELPER (session-based)

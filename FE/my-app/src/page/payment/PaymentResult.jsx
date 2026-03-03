@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import '../../assets/css/payment/Payment.css'; // Import custom CSS
+import '../../assets/css/payment/Payment.css';
+import { API_BASE } from '../../config/api';
 
 const PaymentResult = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [status, setStatus] = useState('processing'); // processing, success, error
     const [message, setMessage] = useState('Hệ thống đang xác thực dữ liệu giao dịch từ VNPay...');
+    const [tournamentId, setTournamentId] = useState(null);
 
     useEffect(() => {
         // Thu thập tất cả param trả về từ VNPay
@@ -21,16 +23,19 @@ const PaymentResult = () => {
             return;
         }
 
-        // Gửi lên backend để xác minh chữ ký và lưu DB
+        // Gửi nguyên query string từ VNPay lên backend để xác minh chữ ký (tránh lệch encoding)
         const verifyPayment = async () => {
             try {
-                const queryParams = new URLSearchParams(params).toString();
-                const response = await fetch(`http://localhost:8080/ctms/api/vnpay/vnpay-return?${queryParams}`);
+                const queryString = window.location.search || '?' + new URLSearchParams(params).toString();
+                const response = await fetch(`${API_BASE}/api/vnpay/vnpay-return${queryString}`);
                 const data = await response.json();
 
                 if (data.success) {
                     setStatus('success');
-                    setMessage(data.message || 'Thanh toán thành công! Chúc bạn thi đấu tốt.');
+                    setMessage(data.message || 'Thanh toán thành công! Bạn đã hoàn tất đăng ký giải. Chúc bạn thi đấu tốt.');
+                    const orderInfo = searchParams.get('vnp_OrderInfo') || '';
+                    const match = orderInfo.match(/_CTMS_(\d+)_(\d+)/);
+                    if (match) setTournamentId(parseInt(match[2], 10));
                 } else {
                     setStatus('error');
                     setMessage(data.message || 'Thanh toán không hợp lệ hoặc đã bị hủy.');
@@ -80,7 +85,15 @@ const PaymentResult = () => {
                             <p className="flex justify-between"><span className="text-gray-500">Ngân hàng:</span> <span className="font-bold text-gray-800">{searchParams.get('vnp_BankCode') || 'N/A'}</span></p>
                         </div>
 
-                        <div className="pt-2">
+                        <div className="pt-2 flex flex-col gap-3">
+                            {tournamentId && (
+                                <button
+                                    onClick={() => navigate(`/tournaments/public/${tournamentId}`)}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-xl transition-all"
+                                >
+                                    Xem chi tiết giải đấu
+                                </button>
+                            )}
                             <button
                                 onClick={() => navigate('/')}
                                 className="w-full bg-gray-900 hover:bg-black text-white font-bold py-4 px-4 rounded-xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"

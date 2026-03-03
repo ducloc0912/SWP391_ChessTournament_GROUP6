@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import '../../assets/css/StaffDashboard.css';
+import { API_BASE } from '../../config/api';
 import StatusBadge from '../../component/staff/StatusBadge';
 import StatsCard from '../../component/staff/StatsCard';
 
@@ -62,7 +63,7 @@ const StaffBlog = () => {
     const fetchBlogs = async () => {
         setLoading(true);
         try {
-            const response = await axios.get("http://localhost:8080/ctms/api/staff/blogs", { withCredentials: true });
+            const response = await axios.get(`${API_BASE}/api/staff/blogs`, { withCredentials: true });
             setBlogs(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
             console.error(error);
@@ -111,7 +112,7 @@ const StaffBlog = () => {
 
         try {
             await axios.post(
-                "http://localhost:8080/ctms/api/staff/blogs?action=update", 
+                `${API_BASE}/api/staff/blogs?action=update`, 
                 updatedBlogData, 
                 { withCredentials: true }
             );
@@ -140,7 +141,7 @@ const StaffBlog = () => {
 
         try {
             await axios.post(
-                "http://localhost:8080/ctms/api/staff/blogs?action=update", 
+                `${API_BASE}/api/staff/blogs?action=update`, 
                 updatedBlogData, 
                 { withCredentials: true }
             );
@@ -166,7 +167,7 @@ const StaffBlog = () => {
         };
 
         try {
-            await axios.post("http://localhost:8080/ctms/api/staff/blogs?action=create", payload, { withCredentials: true });
+            await axios.post(`${API_BASE}/api/staff/blogs?action=create`, payload, { withCredentials: true });
             alert("Tạo bài viết thành công!");
             setShowCreateModal(false);
             setNewBlog(initialBlogState);

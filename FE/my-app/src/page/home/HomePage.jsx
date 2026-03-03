@@ -13,17 +13,13 @@ import {
 } from "lucide-react";
 import MainHeader from "../../component/common/MainHeader";
 import "../../assets/css/HomePage.css";
-import {
-  validateRegistrationForm,
-} from "../../utils/registrationValidation";
-
 import imgHero from "../../assets/image/952792579ca4f9e0836ceca4cc253c01.jpg";
 import imgSlide1 from "../../assets/image/08118f77077fd9e6795319a2c6428cbc.jpg";
 import imgSlide2 from "../../assets/image/96ef486bfb872c9ed5624c7763e55ea4.jpg";
 import imgSlide3 from "../../assets/image/487c55215d12b2b7275d13526ab0c844.jpg";
 import imgSlide4 from "../../assets/image/09ab0a288e7cf90b3e94f8e5f4c8921d.jpg";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 const FALLBACK_BANNERS = [imgSlide1, imgSlide2, imgSlide3, imgSlide4];
 
 const normalizeList = (data) => (Array.isArray(data) ? data : []);
@@ -67,25 +63,6 @@ export default function HomePage() {
   const [latestBlogs, setLatestBlogs] = useState([]);
   const [loadingHome, setLoadingHome] = useState(true);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [showTournamentModal, setShowTournamentModal] = useState(false);
-  const [selectedTournamentForModal, setSelectedTournamentForModal] =
-    useState(null);
-  const [showApprovedPlayersModal, setShowApprovedPlayersModal] =
-    useState(false);
-  const [approvedPlayers, setApprovedPlayers] = useState([]);
-  const [loadingApprovedPlayers, setLoadingApprovedPlayers] = useState(false);
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [registerTournament, setRegisterTournament] = useState(null);
-  const [registerSubmitting, setRegisterSubmitting] = useState(false);
-  const [registerForm, setRegisterForm] = useState({
-    fullName: "",
-    username: "",
-    email: "",
-    phone: "",
-    rankAtRegistration: "",
-    note: "",
-  });
-  const [registerErrors, setRegisterErrors] = useState({});
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -152,175 +129,28 @@ export default function HomePage() {
     return fromTournament.slice(0, 4);
   }, [navigate, upcomingTournaments]);
 
-  useEffect(() => {
-    if (seasonSlides.length <= 1) return undefined;
-    const timer = setInterval(() => {
-      setSlideIndex((prev) => (prev + 1) % seasonSlides.length);
-    }, 4500);
-    return () => clearInterval(timer);
-  }, [seasonSlides.length]);
+  // Không cho phép tự nhảy banner - chỉ chuyển khi user bấm mũi tên hoặc dot
 
   const activeSlide = seasonSlides[slideIndex] || seasonSlides[0];
 
-  const resolveCurrentTournament = () =>
-    upcomingTournaments.find(
-      (t) => Number(t.tournamentId) === Number(activeSlide?.tournamentId),
-    ) || null;
-
-  const handleRegisterFromBanner = async () => {
+  const handleRegisterFromBanner = () => {
     if (!user) {
       navigate("/login");
       return;
     }
     if (!activeSlide?.tournamentId) {
-      navigate("/player/tournaments");
+      navigate("/tournaments/public");
       return;
     }
-
-    const currentTournament = resolveCurrentTournament();
-    const registrationDeadline =
-      currentTournament?.registrationDeadline ||
-      activeSlide?.registrationDeadline;
-    if (registrationDeadline) {
-      const deadlineTime = new Date(registrationDeadline).getTime();
-      if (!Number.isNaN(deadlineTime) && Date.now() > deadlineTime) {
-        alert("Đã quá hạn đăng ký giải đấu.");
-        return;
-      }
-    }
-
-    try {
-      const waitingRes = await axios.get(`${API_BASE}/api/waiting-list`, {
-        params: { tournamentId: activeSlide.tournamentId },
-        withCredentials: true,
-      });
-      const list = Array.isArray(waitingRes?.data?.data)
-        ? waitingRes.data.data
-        : [];
-      const alreadyRegistered = list.some(
-        (row) => Number(row.userId) === Number(user?.userId),
-      );
-      if (alreadyRegistered) {
-        alert("Bạn đã đăng ký giải đấu rồi.");
-        return;
-      }
-    } catch (error) {
-      alert("Không thể kiểm tra trạng thái đăng ký. Vui lòng thử lại.");
-      return;
-    }
-    if (currentTournament) {
-      setRegisterTournament({ ...currentTournament });
-    } else {
-      setRegisterTournament({
-        tournamentId: activeSlide.tournamentId,
-        tournamentName: activeSlide.title,
-      });
-    }
-    setRegisterForm(buildRegisterFormFromUser(user));
-    setRegisterErrors({});
-    setShowRegisterModal(true);
+    navigate(`/tournaments/public/${activeSlide.tournamentId}?openRegister=1`);
   };
 
   const handleOpenTournamentModal = () => {
     if (!activeSlide?.tournamentId) {
-      navigate("/tournaments");
+      navigate("/tournaments/public");
       return;
     }
-    const currentTournament = resolveCurrentTournament();
-    if (currentTournament) {
-      setSelectedTournamentForModal({ ...currentTournament });
-    } else {
-      setSelectedTournamentForModal({
-        tournamentId: activeSlide.tournamentId,
-        tournamentName: activeSlide.title,
-        format: activeSlide.format,
-        location: activeSlide.location,
-        registrationDeadline: activeSlide.registrationDeadline,
-        minPlayer: activeSlide.minPlayer,
-        maxPlayer: activeSlide.maxPlayer,
-        prizePool: activeSlide.prizePool,
-      });
-    }
-    setShowTournamentModal(true);
-  };
-
-  const fetchApprovedPlayers = async (tournamentId) => {
-    if (!tournamentId) return;
-    setLoadingApprovedPlayers(true);
-    try {
-      const res = await axios.get(`${API_BASE}/api/waiting-list`, {
-        params: { tournamentId },
-        withCredentials: true,
-      });
-      const rows = Array.isArray(res?.data?.data) ? res.data.data : [];
-      setApprovedPlayers(
-        rows.filter((r) => String(r.status || "").toLowerCase() === "approved"),
-      );
-    } catch (error) {
-      console.error("Load approved players failed:", error);
-      setApprovedPlayers([]);
-    } finally {
-      setLoadingApprovedPlayers(false);
-    }
-  };
-
-  const handleOpenApprovedPlayersModal = async () => {
-    const tournamentId = selectedTournamentForModal?.tournamentId;
-    if (!tournamentId) return;
-    setShowTournamentModal(false);
-    setShowApprovedPlayersModal(true);
-    await fetchApprovedPlayers(tournamentId);
-  };
-
-  const handleRegisterFormChange = (field, value) => {
-    setRegisterForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const submitRegister = async () => {
-    const normalized = {
-      ...registerForm,
-      fullName: registerForm.fullName.trim(),
-      username: registerForm.username.trim(),
-      email: registerForm.email.trim().toLowerCase(),
-      phone: registerForm.phone.trim(),
-      rankAtRegistration: String(registerForm.rankAtRegistration ?? "").trim(),
-      note: registerForm.note?.trim() || "",
-    };
-
-    const allErrors = validateRegistrationForm(normalized);
-    if (Object.keys(allErrors).length > 0) {
-      setRegisterErrors(allErrors);
-      return;
-    }
-
-    setRegisterSubmitting(true);
-    setRegisterErrors({});
-    try {
-      const payload = {
-        tournamentId: Number(registerTournament?.tournamentId),
-        fullName: normalized.fullName,
-        username: normalized.username,
-        email: normalized.email,
-        phone: normalized.phone,
-        rankAtRegistration: Number(normalized.rankAtRegistration),
-        rank: Number(normalized.rankAtRegistration),
-        note: normalized.note,
-      };
-      const res = await axios.post(`${API_BASE}/api/waiting-list`, payload, {
-        withCredentials: true,
-      });
-
-      setShowRegisterModal(false);
-      alert(res?.data?.message || "Đăng ký thành công.");
-      navigate("/player/pending-registrations");
-    } catch (error) {
-      const msg =
-        error?.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
-      alert(msg);
-      setShowRegisterModal(false);
-    } finally {
-      setRegisterSubmitting(false);
-    }
+    navigate(`/tournaments/public/${activeSlide.tournamentId}`);
   };
 
   const handleLogout = () => {
@@ -332,12 +162,8 @@ export default function HomePage() {
 
   const menuItems = [
     { to: "/home", label: "Home" },
-    { sectionId: "hpv-season", label: "Tournament" },
-    { sectionId: "hpv-latest", label: "Latest" },
-    { sectionId: "hpv-players", label: "Top Players" },
     { sectionId: "hpv-feedback", label: "Feedback" },
-    { to: "/tournaments", label: "Tournaments" },
-    { to: "/player/tournaments", label: "Join" },
+    { to: "/tournaments/public", label: "Tournaments" },
   ];
 
   return (
@@ -366,7 +192,7 @@ export default function HomePage() {
           <div className="hpv-hero-actions">
             <button
               className="hpv-btn hpv-btn-primary"
-              onClick={() => navigate("/tournaments")}
+              onClick={() => navigate("/tournaments/public")}
             >
               Explore Tournaments
             </button>
@@ -651,395 +477,6 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
-
-      {showTournamentModal && (
-        <div
-          onClick={() => {
-            setShowTournamentModal(false);
-            setSelectedTournamentForModal(null);
-          }}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.6)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "min(92vw, 680px)",
-              maxHeight: "85vh",
-              overflowY: "auto",
-              borderRadius: 14,
-              background: "#fff",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-              padding: 20,
-            }}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: 12 }}>
-              Chi tiết giải đấu
-            </h3>
-            <div style={{ display: "grid", gap: 10, lineHeight: 1.6 }}>
-              <p style={{ margin: 0 }}>
-                <b>Tên giải:</b>{" "}
-                {selectedTournamentForModal?.tournamentName || "—"}
-              </p>
-              <p style={{ margin: 0 }}>
-                <b>Thể thức:</b> {selectedTournamentForModal?.format || "—"}
-              </p>
-              <p style={{ margin: 0 }}>
-                <b>Địa điểm:</b> {selectedTournamentForModal?.location || "—"}
-              </p>
-              <p style={{ margin: 0 }}>
-                <b>Thời gian:</b>{" "}
-                {formatDate(selectedTournamentForModal?.startDate)} -{" "}
-                {formatDate(selectedTournamentForModal?.endDate)}
-              </p>
-              <p style={{ margin: 0 }}>
-                <b>Hạn đăng ký:</b>{" "}
-                {formatDate(selectedTournamentForModal?.registrationDeadline)}
-              </p>
-              <p style={{ margin: 0 }}>
-                <b>Số người chơi:</b>{" "}
-                {selectedTournamentForModal?.minPlayer ?? "—"} -{" "}
-                {selectedTournamentForModal?.maxPlayer ?? "—"}
-              </p>
-              <p style={{ margin: 0 }}>
-                <b>Quỹ thưởng:</b>{" "}
-                {formatCurrency(selectedTournamentForModal?.prizePool)}
-              </p>
-              {selectedTournamentForModal?.description && (
-                <p style={{ margin: 0 }}>
-                  <b>Mô tả:</b> {selectedTournamentForModal.description}
-                </p>
-              )}
-            </div>
-            <div
-              style={{
-                marginTop: 18,
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 10,
-                flexWrap: "wrap",
-              }}
-            >
-              <button
-                className="hpv-btn"
-                onClick={handleOpenApprovedPlayersModal}
-                style={{
-                  border: "none",
-                  background: "#ff4655",
-                  color: "#fff",
-                  fontWeight: 700,
-                  padding: "10px 16px",
-                }}
-              >
-                Xem danh sách người chơi
-              </button>
-              <button
-                className="hpv-btn"
-                onClick={() => {
-                  setShowTournamentModal(false);
-                  setSelectedTournamentForModal(null);
-                }}
-                style={{
-                  border: "1px solid #d1d5db",
-                  background: "#ffffff",
-                  color: "#111827",
-                  fontWeight: 700,
-                  padding: "10px 16px",
-                }}
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showApprovedPlayersModal && (
-        <div
-          onClick={() => setShowApprovedPlayersModal(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.6)",
-            zIndex: 10000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "min(96vw, 980px)",
-              maxHeight: "85vh",
-              overflowY: "auto",
-              borderRadius: 14,
-              background: "#fff",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-              padding: 20,
-            }}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: 12 }}>
-              Danh sách người chơi đã duyệt
-            </h3>
-            <table
-              width="100%"
-              cellPadding="10"
-              style={{ borderCollapse: "collapse" }}
-            >
-              <thead>
-                <tr>
-                  <th align="left">Họ và tên</th>
-                  <th align="left">Tên in-game</th>
-                  <th align="left">Email</th>
-                  <th align="left">SĐT</th>
-                  <th align="left">Rank</th>
-                  <th align="left">Thời điểm đăng ký</th>
-                  <th align="left">Ghi chú</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadingApprovedPlayers ? (
-                  <tr>
-                    <td colSpan={7}>Đang tải danh sách người chơi...</td>
-                  </tr>
-                ) : approvedPlayers.length === 0 ? (
-                  <tr>
-                    <td colSpan={7}>Chưa có người chơi nào được duyệt.</td>
-                  </tr>
-                ) : (
-                  approvedPlayers.map((p) => (
-                    <tr key={p.waitingId}>
-                      <td>{p.registrationFullName || "-"}</td>
-                      <td>{p.registrationUsername || "-"}</td>
-                      <td>{p.registrationEmail || "-"}</td>
-                      <td>{p.registrationPhone || "-"}</td>
-                      <td>{p.rankAtRegistration ?? "-"}</td>
-                      <td>
-                        {p.registrationDate
-                          ? new Date(p.registrationDate).toLocaleString("vi-VN")
-                          : "-"}
-                      </td>
-                      <td>{p.note || "-"}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-            <div
-              style={{
-                marginTop: 16,
-                display: "flex",
-                justifyContent: "flex-end",
-              }}
-            >
-              <button
-                className="hpv-btn hpv-btn-outline"
-                onClick={() => setShowApprovedPlayersModal(false)}
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showRegisterModal && (
-        <div
-          onClick={() => setShowRegisterModal(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.6)",
-            zIndex: 10001,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "min(92vw, 560px)",
-              maxHeight: "85vh",
-              overflowY: "auto",
-              background: "#ffffff",
-              borderRadius: 14,
-              padding: 22,
-              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-            }}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: 12 }}>
-              Đăng ký giải: {registerTournament?.tournamentName || "—"}
-            </h3>
-            <div style={{ display: "grid", gap: 12 }}>
-              {registerErrors.general && (
-                <div
-                  style={{ color: "#b91c1c", fontSize: 13, fontWeight: 600 }}
-                >
-                  {registerErrors.general}
-                </div>
-              )}
-              <input
-                placeholder="Họ và tên"
-                value={registerForm.fullName}
-                onChange={(e) =>
-                  handleRegisterFormChange("fullName", e.target.value)
-                }
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  outline: "none",
-                }}
-              />
-              {registerErrors.fullName && (
-                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
-                  {registerErrors.fullName}
-                </div>
-              )}
-              <input
-                placeholder="Tên in-game"
-                value={registerForm.username}
-                onChange={(e) =>
-                  handleRegisterFormChange("username", e.target.value)
-                }
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  outline: "none",
-                }}
-              />
-              {registerErrors.username && (
-                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
-                  {registerErrors.username}
-                </div>
-              )}
-              <input
-                placeholder="Email"
-                value={registerForm.email}
-                onChange={(e) =>
-                  handleRegisterFormChange("email", e.target.value)
-                }
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  outline: "none",
-                }}
-              />
-              {registerErrors.email && (
-                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
-                  {registerErrors.email}
-                </div>
-              )}
-              <input
-                placeholder="SĐT"
-                value={registerForm.phone}
-                onChange={(e) =>
-                  handleRegisterFormChange("phone", e.target.value)
-                }
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  outline: "none",
-                }}
-              />
-              {registerErrors.phone && (
-                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
-                  {registerErrors.phone}
-                </div>
-              )}
-              <input
-                type="number"
-                min="0"
-                placeholder="Bậc rank"
-                value={registerForm.rankAtRegistration}
-                onChange={(e) =>
-                  handleRegisterFormChange("rankAtRegistration", e.target.value)
-                }
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  outline: "none",
-                }}
-              />
-              {registerErrors.rankAtRegistration && (
-                <div style={{ color: "#b91c1c", fontSize: 12, marginTop: -6 }}>
-                  {registerErrors.rankAtRegistration}
-                </div>
-              )}
-              <textarea
-                placeholder="Ghi chú"
-                value={registerForm.note}
-                onChange={(e) =>
-                  setRegisterForm({ ...registerForm, note: e.target.value })
-                }
-                rows={4}
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  outline: "none",
-                  resize: "vertical",
-                }}
-              />
-            </div>
-            <div
-              style={{
-                marginTop: 16,
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 10,
-              }}
-            >
-              <button
-                onClick={() => setShowRegisterModal(false)}
-                style={{
-                  border: "1px solid #d1d5db",
-                  background: "#ffffff",
-                  color: "#111827",
-                  borderRadius: 8,
-                  padding: "9px 16px",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                Hủy
-              </button>
-              <button
-                onClick={submitRegister}
-                disabled={registerSubmitting}
-                style={{
-                  border: "none",
-                  background: "#2563eb",
-                  color: "#ffffff",
-                  borderRadius: 8,
-                  padding: "9px 16px",
-                  cursor: registerSubmitting ? "not-allowed" : "pointer",
-                  fontWeight: 600,
-                  opacity: registerSubmitting ? 0.7 : 1,
-                }}
-              >
-                {registerSubmitting ? "Đang đăng ký..." : "Đăng ký"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -20,12 +20,12 @@ import com.example.util.EncodingUtil;
 
 public class HomeDAO extends DBContext {
 
-    // 1. Lấy 3 giải đấu sắp tới (Ngày bắt đầu > Hiện tại)
+    // 1. Lấy 4 giải đấu sắp tới để đăng ký (Ngày bắt đầu > Hiện tại, status Pending)
     public List<Tournament> getUpcomingTournaments() {
         List<Tournament> list = new ArrayList<>();
-        // SQL Server syntax: TOP 3
-        String sql = "SELECT TOP 3 * FROM Tournaments " +
-                     "WHERE start_date > GETDATE() " +
+        // SQL Server syntax: TOP 4
+        String sql = "SELECT TOP 4 * FROM Tournaments " +
+                     "WHERE start_date > GETDATE() AND status = 'Pending' " +
                      "ORDER BY start_date ASC";
         
         try (Connection conn = getConnection();
@@ -37,6 +37,7 @@ public class HomeDAO extends DBContext {
                 t.setTournamentId(rs.getInt("tournament_id"));
                 t.setTournamentName(EncodingUtil.fixUtf8Mojibake(rs.getString("tournament_name")));
                 t.setDescription(EncodingUtil.fixUtf8Mojibake(rs.getString("description")));
+                t.setTournamentImage(rs.getString("tournament_image"));
                 t.setLocation(rs.getString("location"));
                 String formatStr = rs.getString("format");
                 if (formatStr != null) {

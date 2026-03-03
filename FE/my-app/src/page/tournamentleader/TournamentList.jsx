@@ -20,9 +20,10 @@ import {
 } from "lucide-react";
 import MainHeader from "../../component/common/MainHeader";
 import FilterSection from "../../component/tournament/FilterSection";
+import "../../assets/css/HomePage.css";
 import "../../assets/css/tournament-leader/TournamentList.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 
 const EDITABLE_STATUSES = ["Pending", "Rejected", "Delayed", "Cancelled"];
 const CANCELLED_ABLE = ["Pending", "Ongoing", "Delayed"];
@@ -74,24 +75,24 @@ const TournamentList = () => {
     navigate("/login");
   };
 
-  const fetchTournaments = async () => {
-    try {
+    const fetchTournaments = async () => {
+      try {
       setLoading(true);
       const res = await axios.get(`${API_BASE}/api/tournaments`, {
         withCredentials: true,
       });
-      if (Array.isArray(res.data)) {
-        setTournaments(res.data);
-      } else {
+        if (Array.isArray(res.data)) {
+          setTournaments(res.data);
+        } else {
+          setTournaments([]);
+        }
+      } catch (err) {
+        console.error(err);
         setTournaments([]);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error(err);
-      setTournaments([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   useEffect(() => {
     fetchTournaments();
@@ -171,7 +172,7 @@ const TournamentList = () => {
   }
 
   return (
-    <div className="tl-page">
+    <div className="tl-page hpv-page">
       <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
 
       <div className="tl-body">
@@ -229,7 +230,7 @@ const TournamentList = () => {
             </div>
             <div className="tl-stat-icon gray"><CheckCircle size={24} /></div>
           </div>
-        </div>
+            </div>
 
         {/* Content: Sidebar + Grid */}
         <div className="tld-content-layout">

@@ -4,7 +4,7 @@ import chessForgot from "../../assets/img/logo.jpg";
 import { NAVIGATION_ITEMS, ICONS, BRAND } from "../../constants";
 import { useAuth } from "../common/AuthContext"; // đúng theo cây thư mục của bạn
 
-const API_BASE = "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 
 export const Slidebar = ({ activeTab, onNavigate }) => {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ export const Slidebar = ({ activeTab, onNavigate }) => {
   const handleLogout = async () => {
     try {
       // ✅ gọi BE để invalidate session
-      await fetch(`${API_BASE}/api/auth/logout`, {
+      await fetch(`${API_BASE}/api/logout`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

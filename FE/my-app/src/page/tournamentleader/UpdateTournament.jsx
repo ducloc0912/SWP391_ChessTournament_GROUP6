@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import "../../assets/css/tournament-leader/TournamentForm.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+import { API_BASE } from "../../config/api";
 
 const STEPS = [
   { id: 1, title: "Thông tin cơ bản" },

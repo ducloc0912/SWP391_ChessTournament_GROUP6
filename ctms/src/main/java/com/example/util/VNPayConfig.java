@@ -1,8 +1,8 @@
 package com.example.util;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -19,7 +19,17 @@ public class VNPayConfig {
     public static String secretKey = "9Z1DY4KEWZWYY1QIYEGI8DKC0261BBJR"; // Điền Secret Key
     public static String vnp_ApiUrl = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
 
+    /** Hash để verify return: giá trị raw (đã decode). */
     public static String hashAllFields(Map<String, String> fields) {
+        return hashAllFieldsInternal(fields, false);
+    }
+
+    /** Hash với giá trị URL-encode (một số môi trường VNPay dùng chuỗi encoded khi redirect). */
+    public static String hashAllFieldsEncoded(Map<String, String> fields) {
+        return hashAllFieldsInternal(fields, true);
+    }
+
+    private static String hashAllFieldsInternal(Map<String, String> fields, boolean urlEncodeValues) {
         List<String> fieldNames = new ArrayList<>(fields.keySet());
         Collections.sort(fieldNames);
         StringBuilder sb = new StringBuilder();
@@ -30,7 +40,15 @@ public class VNPayConfig {
             if ((fieldValue != null) && (fieldValue.length() > 0)) {
                 sb.append(fieldName);
                 sb.append("=");
-                sb.append(fieldValue);
+                if (urlEncodeValues) {
+                    try {
+                        sb.append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString()));
+                    } catch (Exception e) {
+                        sb.append(fieldValue);
+                    }
+                } else {
+                    sb.append(fieldValue);
+                }
             }
             if (itr.hasNext()) {
                 sb.append("&");
@@ -45,7 +63,7 @@ public class VNPayConfig {
                 throw new NullPointerException();
             }
             final Mac hmac512 = Mac.getInstance("HmacSHA512");
-            byte[] hmacKeyBytes = key.getBytes();
+            byte[] hmacKeyBytes = key.getBytes(StandardCharsets.UTF_8);
             final SecretKeySpec secretKey = new SecretKeySpec(hmacKeyBytes, "HmacSHA512");
             hmac512.init(secretKey);
             byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);

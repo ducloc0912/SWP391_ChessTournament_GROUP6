@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import "../../assets/css/ResetPassword.css";
+import { API_BASE } from "../../config/api";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ const ResetPassword = () => {
 
     try {
       const res = await axios.post(
-        "http://localhost:8080/ctms/api/reset-password",
+        `${API_BASE}/api/reset-password`,
         {
           email,
           password,

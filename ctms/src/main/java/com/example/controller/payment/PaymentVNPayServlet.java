@@ -30,17 +30,15 @@ public class PaymentVNPayServlet extends HttpServlet {
 
         try {
             if ("/create-payment".equals(path)) {
-                // Tạo URL thanh toán VNPay
                 Map<String, Object> body = gson.fromJson(BodyUtil.readBody(req), Map.class);
 
                 String ipAddress = VNPayConfig.getIpAddress(req);
-                int amount = ((Double) body.get("amount")).intValue();
-                int userId = ((Double) body.get("userId")).intValue();
-                int tournamentId = ((Double) body.get("tournamentId")).intValue();
-                int participantId = ((Double) body.get("participantId")).intValue();
+                int amount = body.get("amount") instanceof Number ? ((Number) body.get("amount")).intValue() : 0;
+                int userId = body.get("userId") instanceof Number ? ((Number) body.get("userId")).intValue() : 0;
+                int tournamentId = body.get("tournamentId") instanceof Number ? ((Number) body.get("tournamentId")).intValue() : 0;
+                int participantId = body.get("participantId") instanceof Number ? ((Number) body.get("participantId")).intValue() : 0;
 
-                String paymentUrl = paymentService.createPaymentUrl(amount, ipAddress, userId, tournamentId,
-                        participantId);
+                String paymentUrl = paymentService.createPaymentUrl(amount, ipAddress, userId, tournamentId, participantId);
 
                 responseData.put("success", true);
                 responseData.put("paymentUrl", paymentUrl);
