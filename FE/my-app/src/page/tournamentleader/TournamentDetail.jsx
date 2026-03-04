@@ -949,6 +949,7 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
   const [rankFilter, setRankFilter] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
   const fetchParticipants = async () => {
     try {
@@ -986,6 +987,62 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
     })();
     return (matchesEmail || matchesName) && matchesRank;
   });
+
+  const handleUpdateStatus = async (row, nextStatus) => {
+    if (!row?.participantId) return;
+    const isBan = nextStatus === "Disqualified";
+    const confirmText = isBan
+      ? `Bạn có chắc muốn ban người chơi ${fullName(row)} khỏi giải đấu?`
+      : `Gỡ ban cho người chơi ${fullName(row)}? (Người chơi sẽ bị xóa khỏi danh sách tham gia)`;
+    if (!window.confirm(confirmText)) return;
+
+    try {
+      setActionLoadingId(row.participantId);
+
+      if (!isBan) {
+        // Gỡ ban: xóa hẳn participant khỏi giải
+        const res = await axios.delete(`${API_BASE}/api/participants`, {
+          params: { id: row.participantId },
+          withCredentials: true,
+        });
+        if (res?.data && res.data.success === false) {
+          throw new Error(res.data.message || "Không thể gỡ ban người chơi.");
+        }
+      } else {
+        // Ban người chơi: cập nhật status = Disqualified
+        const payload = {
+          titleAtRegistration: row.titleAtRegistration,
+          seed: row.seed,
+          status: nextStatus,
+          isPaid: row.isPaid,
+          paymentDate: row.paymentDate || null,
+          paymentExpiresAt: row.paymentExpiresAt || null,
+          notes: row.notes || null,
+        };
+        const res = await axios.put(
+          `${API_BASE}/api/participants`,
+          payload,
+          {
+            params: { participantId: row.participantId },
+            withCredentials: true,
+          },
+        );
+        if (!res?.data?.success) {
+          throw new Error(res?.data?.message || "Cập nhật trạng thái thất bại.");
+        }
+      }
+
+      await fetchParticipants();
+      if (typeof onApprovedChanged === "function") {
+        onApprovedChanged();
+      }
+    } catch (err) {
+      console.error("Update participant status failed:", err);
+      window.alert(err?.response?.data?.message || err.message || "Không thể cập nhật trạng thái người chơi.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
 
   return (
     <div className="td-players-tab">
@@ -1082,7 +1139,7 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
                 className="text-right"
                 style={{ fontWeight: 800, color: "#0f172a", opacity: 1 }}
               >
-                Ghi chú
+                Ghi chú / Hành động
               </th>
             </tr>
           </thead>
@@ -1108,8 +1165,49 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
                       ? new Date(row.registrationDate).toLocaleString("vi-VN")
                       : "-"}
                   </td>
-                  <td>{row.isPaid ? "Đã thanh toán" : "Chờ thanh toán"}</td>
-                  <td className="text-right">—</td>
+                  <td>
+                    {(() => {
+                      const rawStatus = (row.status || "").toString();
+                      const norm = rawStatus.trim().toLowerCase();
+                      if (norm === "disqualified") return "Đã ban khỏi giải";
+                      if (row.isPaid) return "Đã thanh toán";
+                      return "Chờ thanh toán";
+                    })()}
+                  </td>
+                  <td className="text-right">
+                    <div style={{ display: "inline-flex", gap: 8, justifyContent: "flex-end" }}>
+                      <span style={{ marginRight: 8 }}>
+                        {row.notes || "—"}
+                      </span>
+                      {(() => {
+                        const norm = (row.status || "").toString().trim().toLowerCase();
+                        const isDisqualified = norm === "disqualified";
+                        const loadingThis = actionLoadingId === row.participantId;
+                        if (isDisqualified) {
+                          return (
+                            <button
+                              type="button"
+                              className="td-btn td-btn-secondary"
+                              disabled={loadingThis}
+                              onClick={() => handleUpdateStatus(row, "Active")}
+                            >
+                              {loadingThis ? "Đang gỡ ban..." : "Gỡ ban"}
+                            </button>
+                          );
+                        }
+                        return (
+                          <button
+                            type="button"
+                            className="td-btn td-btn-danger"
+                            disabled={loadingThis}
+                            onClick={() => handleUpdateStatus(row, "Disqualified")}
+                          >
+                            {loadingThis ? "Đang ban..." : "Ban khỏi giải"}
+                          </button>
+                        );
+                      })()}
+                    </div>
+                  </td>
                 </tr>
               ))
             )}

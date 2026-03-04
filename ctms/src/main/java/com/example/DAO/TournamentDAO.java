@@ -381,13 +381,23 @@ public class TournamentDAO extends DBContext {
                             WHERE p2.tournament_id = t.tournament_id AND p2.user_id = ?
                         )
                         THEN 1 ELSE 0
-                    END AS registered
+                    END AS registered,
+                    CASE
+                        WHEN ? IS NOT NULL AND EXISTS (
+                            SELECT 1 FROM Participants p3
+                            WHERE p3.tournament_id = t.tournament_id AND p3.user_id = ? AND p3.status = 'Disqualified'
+                        )
+                        THEN 1 ELSE 0
+                    END AS banned
                 FROM Tournaments t
                 WHERE 1 = 1
                 """);
 
         List<Object> params = new ArrayList<>();
         // for registered flag
+        params.add(userId);
+        params.add(userId);
+        // for banned flag
         params.add(userId);
         params.add(userId);
 
@@ -467,6 +477,7 @@ public class TournamentDAO extends DBContext {
                     dto.setMaxPlayer((Integer) rs.getObject("max_player"));
                     dto.setCurrentPlayers((Integer) rs.getObject("current_players"));
                     dto.setRegistered(rs.getInt("registered") == 1);
+                    dto.setBanned(rs.getInt("banned") == 1);
                     list.add(dto);
                 }
             }

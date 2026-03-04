@@ -11,9 +11,10 @@ const FALLBACK_IMAGE =
 const PAGE_SIZE = 9;
 
 const STATUS_OPTIONS = [
-  { value: "registering", label: "Đang đăng ký" },
+  { value: "upcoming", label: "Sắp diễn ra" },
   { value: "ongoing", label: "Đang diễn ra" },
-  { value: "finished", label: "Kết thúc" },
+  { value: "completed", label: "Đã kết thúc" },
+  { value: "delayed", label: "Hoãn" },
 ];
 
 const FORMAT_LABELS = {
@@ -38,16 +39,22 @@ function formatMoney(amount) {
 function normalizeStatus(status) {
   const normalized = String(status || "").trim().toLowerCase();
 
-  if (["ongoing"].includes(normalized)) return "ongoing";
-  if (["completed", "finished", "cancelled", "rejected"].includes(normalized)) return "finished";
-  return "registering";
+  if (normalized === "upcoming") return "upcoming";
+  if (normalized === "ongoing") return "ongoing";
+  if (normalized === "completed") return "completed";
+  if (normalized === "delayed") return "delayed";
+
+  // Các trạng thái khác (Pending, Cancelled, Rejected, ...) không hiển thị trên trang public
+  return "other";
 }
 
 function getStatusLabel(status) {
   const key = normalizeStatus(status);
+  if (key === "upcoming") return "Sắp diễn ra";
   if (key === "ongoing") return "Đang diễn ra";
-  if (key === "finished") return "Kết thúc";
-  return "Đang đăng ký";
+  if (key === "completed") return "Đã kết thúc";
+  if (key === "delayed") return "Hoãn";
+  return "Trạng thái khác";
 }
 
 function getFormatLabel(format) {
@@ -150,7 +157,12 @@ export default function TournamentPublic() {
       const name = (t.tournamentName || "").toLowerCase();
       const locationName = (t.location || "").toLowerCase();
       const matchesSearch = !q || name.includes(q) || locationName.includes(q);
-      const matchesStatus = !statusFilter || normalizeStatus(t.status) === statusFilter;
+
+      const normStatus = normalizeStatus(t.status);
+      // Chỉ hiển thị các giải Upcoming, Ongoing, Completed, Delayed
+      if (normStatus === "other") return false;
+
+      const matchesStatus = !statusFilter || normStatus === statusFilter;
       const prize = Number(t.prizePool || 0);
       const matchesPrize = (() => {
         if (!prizeFilter) return true;
@@ -208,14 +220,17 @@ export default function TournamentPublic() {
           <div className="tp-header">
             <div className="tp-header-text">
               <h1>Danh sách giải đấu</h1>
-              <p>Tìm và đăng ký các giải cờ vua đang diễn ra</p>
+              <p>
+                Xem các giải cờ vua <strong>sắp diễn ra</strong>,{" "}
+                <strong>đang diễn ra</strong> hoặc <strong>đã kết thúc</strong>.
+              </p>
             </div>
             <button
               type="button"
               className="tp-all-btn"
               onClick={() => navigate("/tournaments/public")}
             >
-              Xem tất cả các trận đấu
+              Xem tất cả giải đấu
             </button>
           </div>
 

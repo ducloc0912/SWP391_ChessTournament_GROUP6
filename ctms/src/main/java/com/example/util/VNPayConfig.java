@@ -11,10 +11,10 @@ public class VNPayConfig {
     public static String vnp_PayUrl =
             "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
 
-    // Return URL: FE đang được expose qua ngrok
-    // https://nonsubjective-mayola-radiosymmetrical.ngrok-free.dev -> http://localhost:5173
+    // Return URL: FE local (Vite) tại http://localhost:5173
+    // Khi thanh toán xong, VNPay sẽ redirect về trang này
     public static String vnp_ReturnUrl =
-            "https://nonsubjective-mayola-radiosymmetrical.ngrok-free.dev/payment-result";
+            "http://localhost:5173/payment-result";
 
     // Thông tin sandbox mới từ email VNPay
     public static String vnp_TmnCode = "ZJKWGRX8";

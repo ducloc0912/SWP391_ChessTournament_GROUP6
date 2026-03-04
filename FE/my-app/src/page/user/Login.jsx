@@ -46,6 +46,7 @@ export default function Login() {
       if (role) {
         localStorage.setItem("role", role);
       }
+      // Không dùng JWT token nữa, chỉ dùng session + localStorage user/role
 
       console.log("NAVIGATING WITH ROLE:", role);
 

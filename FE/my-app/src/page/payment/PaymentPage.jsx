@@ -163,7 +163,9 @@ const PaymentPage = () => {
           rankAtRegistration: Number(normalized.rankAtRegistration),
           rank: Number(normalized.rankAtRegistration),
         },
-        { withCredentials: true }
+        {
+          withCredentials: true,
+        }
       );
       const data = res.data?.data ?? res.data;
       const needPayment = data?.needPayment === true;
@@ -218,7 +220,9 @@ const PaymentPage = () => {
     try {
       const response = await fetch(`${API_BASE}/api/vnpay/create-payment`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
         body: JSON.stringify({
           amount: actualFee,

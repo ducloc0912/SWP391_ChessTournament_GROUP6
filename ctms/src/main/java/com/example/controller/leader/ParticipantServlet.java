@@ -6,12 +6,14 @@ import com.example.model.dto.TournamentDTO;
 import com.example.model.dto.TournamentPlayerDTO;
 import com.example.model.entity.Participant;
 import com.example.model.entity.User;
+import com.example.model.enums.ParticipantStatus;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.List;
 
 @WebServlet("/api/participants")
@@ -71,9 +73,15 @@ public class ParticipantServlet extends HttpServlet {
             } else {
                 uid = Integer.parseInt(userId);
             }
-            if ("true".equalsIgnoreCase(req.getParameter("unpaidOnly"))) {
+            boolean unpaidOnly = "true".equalsIgnoreCase(req.getParameter("unpaidOnly"));
+            boolean activeOnly = "true".equalsIgnoreCase(req.getParameter("activeOnly"));
+
+            if (unpaidOnly) {
                 List<java.util.Map<String, Object>> unpaid = dao.getUnpaidWithTournamentInfoByUserId(uid);
                 resp.getWriter().write(gson.toJson(unpaid));
+            } else if (activeOnly) {
+                List<java.util.Map<String, Object>> active = dao.getActiveWithTournamentInfoByUserId(uid);
+                resp.getWriter().write(gson.toJson(active));
             } else {
                 List<Participant> list = dao.getParticipantsByUserId(uid);
                 resp.getWriter().write(gson.toJson(list));
@@ -106,9 +114,9 @@ public class ParticipantServlet extends HttpServlet {
             return;
         }
 
-        if (!"Ongoing".equalsIgnoreCase(tournament.getStatus())) {
+        if (!"Upcoming".equalsIgnoreCase(tournament.getStatus())) {
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"success\": false, \"message\": \"Only Ongoing tournaments can be registered\"}");
+            resp.getWriter().write("{\"success\": false, \"message\": \"Chỉ giải ở trạng thái Upcoming mới cho phép đăng ký\"}");
             return;
         }
 
@@ -187,8 +195,10 @@ public class ParticipantServlet extends HttpServlet {
         HttpSession session = req.getSession(false);
         if (session != null && session.getAttribute("user") != null) {
             Integer currentUserId = ((User) session.getAttribute("user")).getUserId();
-            if (currentUserId != null && p.getUserId() != null && p.getUserId() == currentUserId && Boolean.FALSE.equals(p.getIsPaid())) {
-                boolean ok = dao.deleteParticipant(id);
+            if (currentUserId != null && p.getUserId() != null && p.getUserId() == currentUserId) {
+                p.setStatus(ParticipantStatus.Withdrawn);
+                p.setRemovedAt(new Timestamp(System.currentTimeMillis()));
+                boolean ok = dao.updateParticipant(p);
                 resp.getWriter().write("{\"success\": " + ok + ", \"message\": \"Đã hủy đăng ký\"}");
                 return;
             }

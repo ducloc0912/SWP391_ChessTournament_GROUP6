@@ -69,10 +69,33 @@ export default function HomePage() {
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
+        return;
       } catch (error) {
         localStorage.removeItem("user");
       }
     }
+
+    // Nếu FE đang ở domain khác (vd: ngrok) và mất localStorage,
+    // thử hỏi backend xem session còn không để sync lại user.
+    const restoreFromSession = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/session/me`, {
+          withCredentials: true,
+        });
+        if (res?.data?.authenticated && res.data.user) {
+          const role = (res.data.role || "").toString().toUpperCase();
+          localStorage.setItem("user", JSON.stringify(res.data.user));
+          if (role) {
+            localStorage.setItem("role", role);
+          }
+          setUser(res.data.user);
+        }
+      } catch {
+        // ignore: user simply not logged in
+      }
+    };
+
+    restoreFromSession();
   }, []);
 
   useEffect(() => {
