@@ -10,37 +10,39 @@ import java.util.HashMap;
 public class LoginService {
 
     public HashMap<String, Object> login(String email, String password) {
-    HashMap<String, Object> result = new HashMap<>();
-        if (email == null || email.trim().isEmpty() ) {
+        HashMap<String, Object> result = new HashMap<>();
+        if (email == null || email.trim().isEmpty()) {
             result.put("success", false);
             result.put("message", "Email is required");
             return result;
-            }
+        }
 
         if (password == null || password.trim().isEmpty()) {
             result.put("success", false);
             result.put("message", "Password is required");
             return result;
         }
-    UserDAO dao = new UserDAO();
-    String hashedPassword = PasswordUtil.hashPassword(password);
-    UserRole user = dao.findUserWithRole(email, hashedPassword);
+        UserDAO dao = new UserDAO();
+        String hashedPassword = PasswordUtil.hashPassword(password);
+        UserRole userRole = dao.findUserWithRole(email, hashedPassword);
 
-    if (user == null) {
-        result.put("success", false);
-        result.put("message", "Invalid email or password");
+        if (userRole == null) {
+            result.put("success", false);
+            result.put("message", "Invalid email or password");
+            return result;
+        }
+
+        String roleName = userRole.getRoleName();
+        String role = (roleName != null && !roleName.isBlank()) ? roleName.toUpperCase() : "PLAYER";
+
+        User fullUser = dao.getUserById(userRole.getUserId());
+
+        result.put("success", true);
+        result.put("user", fullUser);
+        result.put("role", role);
+        result.put("email", fullUser.getEmail());
+
         return result;
     }
-
-    String roleName = user.getRoleName();
-    String role = (roleName != null && !roleName.isBlank()) ? roleName.toUpperCase() : "PLAYER";
-
-    result.put("success", true);
-    result.put("user", user);
-    result.put("role", role);
-    result.put("email", user.getEmail());
-
-    return result;
-}
 
 }
