@@ -1,6 +1,7 @@
 package com.example.controller.staff;
 
 import com.example.model.entity.BlogPost;
+import com.example.model.entity.User;
 import com.example.model.enums.BlogStatus;
 import com.example.service.staff.BlogPostStaffService;
 import com.google.gson.Gson;
@@ -29,18 +30,29 @@ public class StaffBlogController extends HttpServlet {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
 
+        User user = (User) req.getSession().getAttribute("user");
+        if (user == null) {
+            resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            resp.getWriter().write("{\"success\":false,\"message\":\"Unauthorized\"}");
+            return;
+        }
+
         if ("detail".equals(action)) {
             String idStr = req.getParameter("id");
             if (idStr != null) {
                 int id = Integer.parseInt(idStr);
                 BlogPost blog = service.getBlogPostById(id);
-                resp.getWriter().write(gson.toJson(blog));
+                if (blog != null && blog.getAuthorId().equals(user.getUserId())) {
+                    resp.getWriter().write(gson.toJson(blog));
+                } else {
+                    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                }
             } else {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
         } else {
-            // Default: list all
-            List<BlogPost> list = service.getAllBlogPosts();
+            // Default: list all for this author
+            List<BlogPost> list = service.getBlogPostsByAuthor(user.getUserId());
             resp.getWriter().write(gson.toJson(list));
         }
     }
@@ -54,12 +66,21 @@ public class StaffBlogController extends HttpServlet {
         Map<String, Object> responseMap = new HashMap<>();
 
         try {
+            User user = (User) req.getSession().getAttribute("user");
+            if (user == null) {
+                resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                resp.getWriter().write("{\"success\":false,\"message\":\"Unauthorized\"}");
+                return;
+            }
+
             if ("create".equals(action)) {
                 BlogPost blog = gson.fromJson(req.getReader(), BlogPost.class);
+                blog.setAuthorId(user.getUserId());
                 boolean success = service.createBlogPost(blog);
                 responseMap.put("success", success);
             } else if ("update".equals(action)) {
                 BlogPost blog = gson.fromJson(req.getReader(), BlogPost.class);
+                blog.setAuthorId(user.getUserId()); // Ensure they don't change author
                 boolean success = service.updateBlogPost(blog);
                 responseMap.put("success", success);
             } else if ("delete".equals(action)) {

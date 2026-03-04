@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import '../../assets/css/StaffDashboard.css';
 import { API_BASE } from '../../config/api';
@@ -7,7 +7,7 @@ import StatsCard from '../../component/staff/StatsCard';
 
 import {
     FileText, Search, CheckCircle, Eye, Filter,
-    ChevronDown, ChevronUp, XCircle, Save, Plus, RotateCcw, Edit3
+    ChevronDown, ChevronUp, XCircle, Save, Plus, RotateCcw, Edit3, Upload, Image
 } from 'lucide-react';
 
 const StaffBlog = () => {
@@ -22,16 +22,56 @@ const StaffBlog = () => {
 
     // --- State cho Modal "Create" ---
     const [showCreateModal, setShowCreateModal] = useState(false);
-    
+
     const initialBlogState = {
-        title: '', 
-        summary: '', 
-        content: '', 
-        thumbnailUrl: '', 
+        title: '',
+        summary: '',
+        contentBlocks: [{ type: 'text', value: '' }],
+        thumbnailUrl: '',
         categories: 'Strategy',
-        status: 'Draft' 
+        status: 'Draft'
     };
     const [newBlog, setNewBlog] = useState(initialBlogState);
+
+    // helper: convert local file to base64
+    const fileToBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+    });
+
+    // helper: handle thumbnail file pick
+    const handleThumbnailFileEdit = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const base64 = await fileToBase64(file);
+        setEditData(prev => ({ ...prev, thumbnailUrl: base64 }));
+    };
+    const handleThumbnailFileCreate = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const base64 = await fileToBase64(file);
+        setNewBlog(prev => ({ ...prev, thumbnailUrl: base64 }));
+    };
+
+    // helper: handle image block file pick
+    const handleImageBlockFileEdit = async (e, idx) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const base64 = await fileToBase64(file);
+        const newBlocks = [...editData.contentBlocks];
+        newBlocks[idx] = { ...newBlocks[idx], value: base64 };
+        setEditData(prev => ({ ...prev, contentBlocks: newBlocks }));
+    };
+    const handleImageBlockFileCreate = async (e, idx) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const base64 = await fileToBase64(file);
+        const newBlocks = [...newBlog.contentBlocks];
+        newBlocks[idx] = { ...newBlocks[idx], value: base64 };
+        setNewBlog(prev => ({ ...prev, contentBlocks: newBlocks }));
+    };
 
     // --- Filter States ---
     const [showFilters, setShowFilters] = useState(false);
@@ -49,10 +89,27 @@ const StaffBlog = () => {
         if (selectedBlog) {
             setUpdateStatus('');
             setIsEditing(false);
+
+            let parsedBlocks = [];
+            try {
+                parsedBlocks = JSON.parse(selectedBlog.content);
+                if (!Array.isArray(parsedBlocks)) throw new Error('not array');
+            } catch (e) {
+                parsedBlocks = [{ type: 'text', value: selectedBlog.content || '' }];
+            }
+
+            // merge legacy images if they exist and parsedBlocks has no images
+            const hasLegacyImages = selectedBlog.images && selectedBlog.images.length > 0;
+            if (hasLegacyImages && !parsedBlocks.some(b => b.type === 'image')) {
+                selectedBlog.images.forEach(img => {
+                    parsedBlocks.push({ type: 'image', value: img.imageUrl });
+                });
+            }
+
             setEditData({
                 title: selectedBlog.title || '',
                 summary: selectedBlog.summary || '',
-                content: selectedBlog.content || '',
+                contentBlocks: parsedBlocks,
                 thumbnailUrl: selectedBlog.thumbnailUrl || '',
                 categories: selectedBlog.categories || 'Strategy',
                 status: selectedBlog.status || 'Draft'
@@ -88,8 +145,8 @@ const StaffBlog = () => {
         const matchesCategory = categoryFilter === 'All' ? true : item.categories === categoryFilter;
         return matchesSearch && matchesStatus && matchesCategory;
     }).sort((a, b) => {
-        return sortOrder === 'asc' 
-            ? (a.title || '').localeCompare(b.title || '') 
+        return sortOrder === 'asc'
+            ? (a.title || '').localeCompare(b.title || '')
             : (b.title || '').localeCompare(a.title || '');
     });
 
@@ -100,26 +157,35 @@ const StaffBlog = () => {
             return;
         }
 
+        const extractedImages = editData.contentBlocks
+            .filter(b => b.type === 'image' && b.value)
+            .map(b => ({ imageUrl: b.value }));
+
         const updatedBlogData = {
             ...selectedBlog,
             title: editData.title,
             summary: editData.summary,
-            content: editData.content,
+            content: JSON.stringify(editData.contentBlocks),
             thumbnailUrl: editData.thumbnailUrl,
             categories: editData.categories,
-            status: updateStatus || selectedBlog.status
+            status: updateStatus || selectedBlog.status,
+            images: extractedImages
         };
 
         try {
-            await axios.post(
-                `${API_BASE}/api/staff/blogs?action=update`, 
-                updatedBlogData, 
+            const res = await axios.post(
+                `${API_BASE}/api/staff/blogs?action=update`,
+                updatedBlogData,
                 { withCredentials: true }
             );
-            alert("Cập nhật bài viết thành công!");
-            setSelectedBlog(null);
-            setIsEditing(false);
-            fetchBlogs(); 
+            if (res.data.success) {
+                alert("Cập nhật bài viết thành công!");
+                setSelectedBlog(null);
+                setIsEditing(false);
+                fetchBlogs();
+            } else {
+                alert("Lỗi: " + (res.data.message || "Không thể cập nhật bài viết."));
+            }
         } catch (error) {
             console.error("Update failed", error);
             alert("Cập nhật thất bại. Vui lòng kiểm tra lại.");
@@ -140,14 +206,18 @@ const StaffBlog = () => {
         };
 
         try {
-            await axios.post(
-                `${API_BASE}/api/staff/blogs?action=update`, 
-                updatedBlogData, 
+            const res = await axios.post(
+                `${API_BASE}/api/staff/blogs?action=update`,
+                updatedBlogData,
                 { withCredentials: true }
             );
-            alert("Cập nhật trạng thái thành công!");
-            setSelectedBlog(null);
-            fetchBlogs(); 
+            if (res.data.success) {
+                alert("Cập nhật trạng thái thành công!");
+                setSelectedBlog(null);
+                fetchBlogs();
+            } else {
+                alert("Lỗi: " + (res.data.message || "Không thể cập nhật trạng thái."));
+            }
         } catch (error) {
             console.error("Update failed", error);
             alert("Cập nhật thất bại. Vui lòng kiểm tra lại kết nối.");
@@ -161,20 +231,31 @@ const StaffBlog = () => {
             return;
         }
 
+        const extractedImages = newBlog.contentBlocks
+            .filter(b => b.type === 'image' && b.value)
+            .map(b => ({ imageUrl: b.value }));
+
         const payload = {
             ...newBlog,
+            content: JSON.stringify(newBlog.contentBlocks),
+            images: extractedImages,
             status: 'Draft'
         };
+        delete payload.contentBlocks;
 
         try {
-            await axios.post(`${API_BASE}/api/staff/blogs?action=create`, payload, { withCredentials: true });
-            alert("Tạo bài viết thành công!");
-            setShowCreateModal(false);
-            setNewBlog(initialBlogState);
-            fetchBlogs();
-        } catch(e) { 
+            const res = await axios.post(`${API_BASE}/api/staff/blogs?action=create`, payload, { withCredentials: true });
+            if (res.data.success) {
+                alert("Tạo bài viết thành công!");
+                setShowCreateModal(false);
+                setNewBlog(initialBlogState);
+                fetchBlogs();
+            } else {
+                alert("Lỗi: " + (res.data.message || "Không thể tạo bài viết."));
+            }
+        } catch (e) {
             console.error(e);
-            alert("Lỗi tạo bài viết. Vui lòng thử lại."); 
+            alert("Lỗi tạo bài viết. Vui lòng thử lại.");
         }
     };
 
@@ -209,7 +290,7 @@ const StaffBlog = () => {
                         </button>
                     </div>
                 </div>
-                
+
                 {showFilters && (
                     <div className="filters-panel">
                         <div className="filter-group">
@@ -221,7 +302,7 @@ const StaffBlog = () => {
                                 <option value="Draft">Bản nháp (Draft)</option>
                             </select>
                         </div>
-                        
+
                         <div className="filter-group">
                             <label>Danh mục</label>
                             <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
@@ -257,9 +338,9 @@ const StaffBlog = () => {
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan={5} style={{textAlign: 'center', padding: '40px'}}>Đang tải...</td></tr>
+                            <tr><td colSpan={5} style={{ textAlign: 'center', padding: '40px' }}>Đang tải...</td></tr>
                         ) : filteredData.length === 0 ? (
-                            <tr><td colSpan={5} style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>Không có bài viết nào</td></tr>
+                            <tr><td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>Không có bài viết nào</td></tr>
                         ) : (
                             filteredData.map(item => (
                                 <tr key={item.blogPostId}>
@@ -290,7 +371,7 @@ const StaffBlog = () => {
             {/* --- MODAL VIEW & UPDATE --- */}
             {selectedBlog && (
                 <div className="modal-overlay" onClick={() => { setSelectedBlog(null); setIsEditing(false); }}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{maxWidth: '650px'}}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '650px' }}>
                         <div className="modal-header">
                             <div>
                                 <h2 className="modal-title">
@@ -302,33 +383,46 @@ const StaffBlog = () => {
                                 <XCircle size={24} />
                             </button>
                         </div>
-                        
-                        <div className="modal-body" style={{maxHeight: '65vh', overflowY: 'auto'}}>
+
+                        <div className="modal-body" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
                             {/* Chế độ xem hoặc chỉnh sửa */}
                             {!isEditing ? (
                                 <>
                                     {/* Read-only Info */}
                                     <div className="modal-section">
                                         {selectedBlog.thumbnailUrl && (
-                                            <img 
-                                                src={selectedBlog.thumbnailUrl} 
-                                                alt="Thumbnail" 
-                                                style={{width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '12px', marginBottom: '16px'}} 
-                                                onError={(e) => e.target.style.display = 'none'} 
+                                            <img
+                                                src={selectedBlog.thumbnailUrl}
+                                                alt="Thumbnail"
+                                                style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '12px', marginBottom: '16px' }}
+                                                onError={(e) => e.target.style.display = 'none'}
                                             />
                                         )}
                                         <p><strong>Danh mục:</strong> {selectedBlog.categories}</p>
                                         <p><strong>Tóm tắt:</strong> {selectedBlog.summary || 'Chưa có'}</p>
-                                        <div className="content-preview" style={{marginTop: '12px', whiteSpace: 'pre-wrap'}}>
-                                            {selectedBlog.content || 'Chưa có nội dung'}
+                                        <div style={{ marginTop: '12px' }}>
+                                            {(() => {
+                                                let blocks = [];
+                                                try {
+                                                    blocks = JSON.parse(selectedBlog.content);
+                                                    if (!Array.isArray(blocks)) throw new Error();
+                                                } catch {
+                                                    blocks = [{ type: 'text', value: selectedBlog.content || 'Chưa có nội dung' }];
+                                                }
+                                                return blocks.map((block, i) => (
+                                                    block.type === 'image'
+                                                        ? <img key={i} src={block.value} alt={`Nội dung ${i}`} style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '8px', marginBottom: '12px' }} onError={(e) => e.target.style.display = 'none'} />
+                                                        : <p key={i} style={{ whiteSpace: 'pre-wrap', marginBottom: '12px', lineHeight: '1.7' }}>{block.value}</p>
+                                                ));
+                                            })()}
                                         </div>
                                     </div>
 
                                     {/* Nút chỉnh sửa cho Draft */}
                                     {isDraft && (
-                                        <button 
-                                            className="btn-primary" 
-                                            style={{width: '100%', marginBottom: '16px'}}
+                                        <button
+                                            className="btn-primary"
+                                            style={{ width: '100%', marginBottom: '16px' }}
                                             onClick={() => setIsEditing(true)}
                                         >
                                             <Edit3 size={18} /> Chỉnh sửa bài viết
@@ -336,13 +430,13 @@ const StaffBlog = () => {
                                     )}
 
                                     {/* Update Status Area */}
-                                    <div className="modal-section update-status-area" style={{borderTop: '1px solid #e2e8f0', paddingTop: '16px'}}>
+                                    <div className="modal-section update-status-area" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
                                         <h4>Cập nhật trạng thái</h4>
                                         <div className="form-group">
                                             <label>Chọn trạng thái mới:</label>
-                                            <select 
+                                            <select
                                                 className="form-control"
-                                                value={updateStatus} 
+                                                value={updateStatus}
                                                 onChange={(e) => setUpdateStatus(e.target.value)}
                                             >
                                                 <option value="">-- Giữ nguyên trạng thái hiện tại --</option>
@@ -351,9 +445,9 @@ const StaffBlog = () => {
                                                 <option value="Private">Riêng tư (Private)</option>
                                             </select>
                                         </div>
-                                        <button 
-                                            className="btn-primary" 
-                                            style={{width: '100%'}}
+                                        <button
+                                            className="btn-primary"
+                                            style={{ width: '100%' }}
                                             onClick={handleUpdateStatus}
                                         >
                                             <Save size={18} /> Lưu trạng thái
@@ -364,43 +458,47 @@ const StaffBlog = () => {
                                 <>
                                     {/* Edit Mode - Full Form */}
                                     <div className="form-group">
-                                        <label>Ảnh bìa (URL) <span style={{color: '#64748b', fontWeight: 'normal'}}>(Thumbnail)</span></label>
-                                        <input 
-                                            className="form-control" 
-                                            type="text" 
-                                            value={editData.thumbnailUrl} 
-                                            onChange={e => setEditData({...editData, thumbnailUrl: e.target.value})} 
+                                        <label>Ảnh bìa <span style={{ color: '#64748b', fontWeight: 'normal' }}>(Thumbnail)</span></label>
+                                        <input
+                                            className="form-control"
+                                            type="text"
+                                            value={editData.thumbnailUrl && !editData.thumbnailUrl.startsWith('data:') ? editData.thumbnailUrl : ''}
+                                            onChange={e => setEditData({ ...editData, thumbnailUrl: e.target.value })}
                                             placeholder="https://example.com/image.jpg"
                                         />
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', padding: '8px 12px', border: '1px dashed #cbd5e1', borderRadius: '6px', cursor: 'pointer', color: '#475569', fontSize: '14px' }}>
+                                            <Upload size={16} /> Chọn ảnh từ máy tính
+                                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleThumbnailFileEdit} />
+                                        </label>
                                         {editData.thumbnailUrl && (
-                                            <div style={{marginTop: '10px'}}>
-                                                <img 
-                                                    src={editData.thumbnailUrl} 
-                                                    alt="Preview" 
-                                                    style={{width: '100%', maxHeight: '150px', objectFit: 'cover', borderRadius: '8px'}} 
-                                                    onError={(e) => e.target.style.display='none'} 
+                                            <div style={{ marginTop: '10px' }}>
+                                                <img
+                                                    src={editData.thumbnailUrl}
+                                                    alt="Preview"
+                                                    style={{ width: '100%', maxHeight: '150px', objectFit: 'cover', borderRadius: '8px' }}
+                                                    onError={(e) => e.target.style.display = 'none'}
                                                 />
                                             </div>
                                         )}
                                     </div>
 
                                     <div className="form-group">
-                                        <label>Tiêu đề <span style={{color:'#ef4444'}}>*</span></label>
-                                        <input 
-                                            className="form-control" 
-                                            type="text" 
-                                            value={editData.title} 
-                                            onChange={e => setEditData({...editData, title: e.target.value})} 
-                                            placeholder="Nhập tiêu đề..." 
+                                        <label>Tiêu đề <span style={{ color: '#ef4444' }}>*</span></label>
+                                        <input
+                                            className="form-control"
+                                            type="text"
+                                            value={editData.title}
+                                            onChange={e => setEditData({ ...editData, title: e.target.value })}
+                                            placeholder="Nhập tiêu đề..."
                                         />
                                     </div>
 
                                     <div className="form-group">
                                         <label>Danh mục</label>
-                                        <select 
-                                            className="form-control" 
-                                            value={editData.categories} 
-                                            onChange={e => setEditData({...editData, categories: e.target.value})}
+                                        <select
+                                            className="form-control"
+                                            value={editData.categories}
+                                            onChange={e => setEditData({ ...editData, categories: e.target.value })}
                                         >
                                             <option value="Strategy">Chiến thuật (Strategy)</option>
                                             <option value="News">Tin tức (News)</option>
@@ -410,31 +508,81 @@ const StaffBlog = () => {
 
                                     <div className="form-group">
                                         <label>Tóm tắt</label>
-                                        <textarea 
-                                            className="form-control" 
-                                            value={editData.summary} 
-                                            onChange={e => setEditData({...editData, summary: e.target.value})} 
-                                            style={{minHeight:'80px'}} 
+                                        <textarea
+                                            className="form-control"
+                                            value={editData.summary}
+                                            onChange={e => setEditData({ ...editData, summary: e.target.value })}
+                                            style={{ minHeight: '80px' }}
                                             placeholder="Mô tả ngắn về bài viết..."
                                         />
                                     </div>
 
                                     <div className="form-group">
-                                        <label>Nội dung</label>
-                                        <textarea 
-                                            className="form-control" 
-                                            value={editData.content} 
-                                            onChange={e => setEditData({...editData, content: e.target.value})} 
-                                            style={{minHeight:'150px'}} 
-                                            placeholder="Nội dung bài viết..."
-                                        />
+                                        <label>Nội dung bài viết (Khối nội dung)</label>
+                                        {editData.contentBlocks && editData.contentBlocks.map((block, idx) => (
+                                            <div key={idx} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '16px', background: '#f8fafc' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                    <span style={{ fontWeight: '600', color: '#475569' }}>
+                                                        {block.type === 'text' ? 'Đoạn văn bản' : 'Hình ảnh đính kèm'}
+                                                    </span>
+                                                    <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px', color: '#ef4444' }} onClick={() => {
+                                                        const newBlocks = [...editData.contentBlocks];
+                                                        newBlocks.splice(idx, 1);
+                                                        setEditData({ ...editData, contentBlocks: newBlocks });
+                                                    }}>Xóa khối này</button>
+                                                </div>
+                                                {block.type === 'text' ? (
+                                                    <textarea
+                                                        className="form-control"
+                                                        value={block.value}
+                                                        onChange={e => {
+                                                            const newBlocks = [...editData.contentBlocks];
+                                                            newBlocks[idx].value = e.target.value;
+                                                            setEditData({ ...editData, contentBlocks: newBlocks });
+                                                        }}
+                                                        style={{ minHeight: '100px', marginBottom: 0 }}
+                                                        placeholder="Nhập nội dung văn bản..."
+                                                    />
+                                                ) : (
+                                                    <div>
+                                                        <input
+                                                            className="form-control"
+                                                            type="text"
+                                                            value={block.value && !block.value.startsWith('data:') ? block.value : ''}
+                                                            onChange={e => {
+                                                                const newBlocks = [...editData.contentBlocks];
+                                                                newBlocks[idx].value = e.target.value;
+                                                                setEditData({ ...editData, contentBlocks: newBlocks });
+                                                            }}
+                                                            placeholder="URL Hình ảnh..."
+                                                            style={{ marginBottom: '8px' }}
+                                                        />
+                                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', border: '1px dashed #cbd5e1', borderRadius: '6px', cursor: 'pointer', color: '#475569', fontSize: '13px' }}>
+                                                            <Upload size={14} /> Hoặc chọn ảnh từ máy tính
+                                                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleImageBlockFileEdit(e, idx)} />
+                                                        </label>
+                                                        {block.value && (
+                                                            <img src={block.value} alt="preview" style={{ marginTop: '8px', width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '6px' }} onError={e => e.target.style.display = 'none'} />
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                        <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                                            <button className="btn-secondary" onClick={() => setEditData({ ...editData, contentBlocks: [...(editData.contentBlocks || []), { type: 'text', value: '' }] })}>
+                                                + Thêm văn bản
+                                            </button>
+                                            <button className="btn-secondary" onClick={() => setEditData({ ...editData, contentBlocks: [...(editData.contentBlocks || []), { type: 'image', value: '' }] })}>
+                                                + Thêm hình ảnh
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="form-group">
                                         <label>Trạng thái sau khi lưu</label>
-                                        <select 
+                                        <select
                                             className="form-control"
-                                            value={updateStatus || selectedBlog.status} 
+                                            value={updateStatus || selectedBlog.status}
                                             onChange={(e) => setUpdateStatus(e.target.value)}
                                         >
                                             <option value="Draft">Bản nháp (Draft)</option>
@@ -469,46 +617,50 @@ const StaffBlog = () => {
                             <h2>Viết bài mới</h2>
                             <button className="close-btn" onClick={() => setShowCreateModal(false)}><XCircle size={24} /></button>
                         </div>
-                        <div className="modal-body" style={{maxHeight: '65vh', overflowY: 'auto'}}>
-                            
+                        <div className="modal-body" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+
                             <div className="form-group">
-                                <label>Ảnh bìa (URL)</label>
-                                <input 
-                                    className="form-control" 
-                                    type="text" 
-                                    value={newBlog.thumbnailUrl} 
-                                    onChange={e => setNewBlog({...newBlog, thumbnailUrl: e.target.value})} 
+                                <label>Ảnh bìa</label>
+                                <input
+                                    className="form-control"
+                                    type="text"
+                                    value={newBlog.thumbnailUrl && !newBlog.thumbnailUrl.startsWith('data:') ? newBlog.thumbnailUrl : ''}
+                                    onChange={e => setNewBlog({ ...newBlog, thumbnailUrl: e.target.value })}
                                     placeholder="https://example.com/image.jpg"
                                 />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', padding: '8px 12px', border: '1px dashed #cbd5e1', borderRadius: '6px', cursor: 'pointer', color: '#475569', fontSize: '14px' }}>
+                                    <Upload size={16} /> Chọn ảnh bìa từ máy tính
+                                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleThumbnailFileCreate} />
+                                </label>
                                 {newBlog.thumbnailUrl && (
-                                    <div style={{marginTop: '10px'}}>
-                                        <img 
-                                            src={newBlog.thumbnailUrl} 
-                                            alt="Preview" 
-                                            style={{width: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '8px'}} 
-                                            onError={(e) => e.target.style.display='none'} 
+                                    <div style={{ marginTop: '10px' }}>
+                                        <img
+                                            src={newBlog.thumbnailUrl}
+                                            alt="Preview"
+                                            style={{ width: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '8px' }}
+                                            onError={(e) => e.target.style.display = 'none'}
                                         />
                                     </div>
                                 )}
                             </div>
 
                             <div className="form-group">
-                                <label>Tiêu đề <span style={{color:'#ef4444'}}>*</span></label>
-                                <input 
-                                    className="form-control" 
-                                    type="text" 
-                                    value={newBlog.title} 
-                                    onChange={e => setNewBlog({...newBlog, title: e.target.value})} 
-                                    placeholder="Nhập tiêu đề..." 
+                                <label>Tiêu đề <span style={{ color: '#ef4444' }}>*</span></label>
+                                <input
+                                    className="form-control"
+                                    type="text"
+                                    value={newBlog.title}
+                                    onChange={e => setNewBlog({ ...newBlog, title: e.target.value })}
+                                    placeholder="Nhập tiêu đề..."
                                 />
                             </div>
 
                             <div className="form-group">
                                 <label>Danh mục</label>
-                                <select 
-                                    className="form-control" 
-                                    value={newBlog.categories} 
-                                    onChange={e => setNewBlog({...newBlog, categories: e.target.value})}
+                                <select
+                                    className="form-control"
+                                    value={newBlog.categories}
+                                    onChange={e => setNewBlog({ ...newBlog, categories: e.target.value })}
                                 >
                                     <option value="Strategy">Chiến thuật (Strategy)</option>
                                     <option value="News">Tin tức (News)</option>
@@ -518,24 +670,74 @@ const StaffBlog = () => {
 
                             <div className="form-group">
                                 <label>Tóm tắt</label>
-                                <textarea 
-                                    className="form-control" 
-                                    value={newBlog.summary} 
-                                    onChange={e => setNewBlog({...newBlog, summary: e.target.value})} 
-                                    style={{minHeight:'80px'}} 
+                                <textarea
+                                    className="form-control"
+                                    value={newBlog.summary}
+                                    onChange={e => setNewBlog({ ...newBlog, summary: e.target.value })}
+                                    style={{ minHeight: '80px' }}
                                     placeholder="Mô tả ngắn về bài viết..."
                                 />
                             </div>
 
                             <div className="form-group">
-                                <label>Nội dung</label>
-                                <textarea 
-                                    className="form-control" 
-                                    value={newBlog.content} 
-                                    onChange={e => setNewBlog({...newBlog, content: e.target.value})} 
-                                    style={{minHeight:'150px'}} 
-                                    placeholder="Nội dung bài viết..."
-                                />
+                                <label>Nội dung bài viết (Khối nội dung)</label>
+                                {newBlog.contentBlocks && newBlog.contentBlocks.map((block, idx) => (
+                                    <div key={idx} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '16px', background: '#f8fafc' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                            <span style={{ fontWeight: '600', color: '#475569' }}>
+                                                {block.type === 'text' ? 'Đoạn văn bản' : 'Hình ảnh đính kèm'}
+                                            </span>
+                                            <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px', color: '#ef4444' }} onClick={() => {
+                                                const newBlocks = [...newBlog.contentBlocks];
+                                                newBlocks.splice(idx, 1);
+                                                setNewBlog({ ...newBlog, contentBlocks: newBlocks });
+                                            }}>Xóa khối này</button>
+                                        </div>
+                                        {block.type === 'text' ? (
+                                            <textarea
+                                                className="form-control"
+                                                value={block.value}
+                                                onChange={e => {
+                                                    const newBlocks = [...newBlog.contentBlocks];
+                                                    newBlocks[idx].value = e.target.value;
+                                                    setNewBlog({ ...newBlog, contentBlocks: newBlocks });
+                                                }}
+                                                style={{ minHeight: '100px', marginBottom: 0 }}
+                                                placeholder="Nhập nội dung văn bản..."
+                                            />
+                                        ) : (
+                                            <div>
+                                                <input
+                                                    className="form-control"
+                                                    type="text"
+                                                    value={block.value && !block.value.startsWith('data:') ? block.value : ''}
+                                                    onChange={e => {
+                                                        const newBlocks = [...newBlog.contentBlocks];
+                                                        newBlocks[idx].value = e.target.value;
+                                                        setNewBlog({ ...newBlog, contentBlocks: newBlocks });
+                                                    }}
+                                                    placeholder="URL Hình ảnh..."
+                                                    style={{ marginBottom: '8px' }}
+                                                />
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', border: '1px dashed #cbd5e1', borderRadius: '6px', cursor: 'pointer', color: '#475569', fontSize: '13px' }}>
+                                                    <Upload size={14} /> Hoặc chọn ảnh từ máy tính
+                                                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleImageBlockFileCreate(e, idx)} />
+                                                </label>
+                                                {block.value && (
+                                                    <img src={block.value} alt="preview" style={{ marginTop: '8px', width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '6px' }} onError={e => e.target.style.display = 'none'} />
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                                    <button className="btn-secondary" onClick={() => setNewBlog({ ...newBlog, contentBlocks: [...(newBlog.contentBlocks || []), { type: 'text', value: '' }] })}>
+                                        + Thêm văn bản
+                                    </button>
+                                    <button className="btn-secondary" onClick={() => setNewBlog({ ...newBlog, contentBlocks: [...(newBlog.contentBlocks || []), { type: 'image', value: '' }] })}>
+                                        + Thêm hình ảnh
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div className="modal-footer">
