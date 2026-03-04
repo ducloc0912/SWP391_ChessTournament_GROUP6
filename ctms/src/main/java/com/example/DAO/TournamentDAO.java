@@ -4,12 +4,14 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.example.model.entity.*;
+import com.example.model.dto.PlayerTournamentDTO;
+import com.example.model.dto.TournamentDTO;
 import com.example.util.DBContext;
 
 public class TournamentDAO extends DBContext {
@@ -67,7 +69,7 @@ public class TournamentDAO extends DBContext {
     // =========================
     // CREATE TOURNAMENT
     // =========================
-    public boolean createTournament(Tournament t) {
+    public boolean createTournament(TournamentDTO t) {
         String sql = """
                     INSERT INTO Tournaments
                     (tournament_name, description, location, format, categories,
@@ -106,7 +108,7 @@ public class TournamentDAO extends DBContext {
     // =========================
     // GET TOURNAMENT BY ID
     // =========================
-    public Tournament getTournamentById(int id) {
+    public TournamentDTO getTournamentById(int id) {
         String sql = "SELECT * FROM Tournaments WHERE tournament_id = ?";
 
         try (Connection conn = DBContext.getConnection();
@@ -128,8 +130,8 @@ public class TournamentDAO extends DBContext {
     // =========================
     // GET ALL TOURNAMENTS
     // =========================
-    public List<Tournaments> getAllTournaments() {
-        List<Tournaments> list = new ArrayList<>();
+    public List<TournamentDTO> getAllTournaments() {
+        List<TournamentDTO> list = new ArrayList<>();
         String sql = "SELECT * FROM Tournaments";
 
         try (Connection conn = DBContext.getConnection();
@@ -149,7 +151,7 @@ public class TournamentDAO extends DBContext {
     // =========================
     // UPDATE TOURNAMENT
     // =========================
-    public boolean updateTournament(Tournaments t) {
+    public boolean updateTournament(TournamentDTO t) {
         String sql = """
                     UPDATE Tournaments SET
                         tournament_name = ?,
@@ -217,8 +219,8 @@ public class TournamentDAO extends DBContext {
         return false;
     }
 
-    private Tournaments mapResultSetToTournament(ResultSet rs) throws SQLException {
-        Tournament t = new Tournament();
+    private TournamentDTO mapResultSetToTournament(ResultSet rs) throws SQLException {
+        TournamentDTO t = new TournamentDTO();
 
         t.setTournamentId(rs.getInt("tournament_id"));
         t.setTournamentName(rs.getString("tournament_name"));
@@ -344,4 +346,307 @@ public class TournamentDAO extends DBContext {
         return list;
     }
 
+    // =========================
+    // PLAYER TOURNAMENT CARDS (HOME / BROWSER)
+    // =========================
+    public List<PlayerTournamentDTO> getPlayerTournamentCards(
+            Integer userId,
+            String keyword,
+            String format,
+            String dbStatus,
+            String entryType,
+            boolean registeredOnly,
+            String sortBy
+    ) {
+        List<PlayerTournamentDTO> list = new ArrayList<>();
+
+        StringBuilder sql = new StringBuilder();
+        sql.append("""
+                SELECT
+                    t.tournament_id,
+                    t.tournament_name,
+                    t.tournament_image,
+                    t.location,
+                    t.format,
+                    t.status,
+                    t.entry_fee,
+                    t.prize_pool,
+                    t.start_date,
+                    t.registration_deadline,
+                    t.max_player,
+                    (SELECT COUNT(*) FROM Participants p WHERE p.tournament_id = t.tournament_id) AS current_players,
+                    CASE
+                        WHEN ? IS NOT NULL AND EXISTS (
+                            SELECT 1 FROM Participants p2
+                            WHERE p2.tournament_id = t.tournament_id AND p2.user_id = ?
+                        )
+                        THEN 1 ELSE 0
+                    END AS registered
+                FROM Tournaments t
+                WHERE 1 = 1
+                """);
+
+        List<Object> params = new ArrayList<>();
+        // for registered flag
+        params.add(userId);
+        params.add(userId);
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            sql.append(" AND (t.tournament_name LIKE ? OR t.location LIKE ?) ");
+            String like = "%" + keyword.trim() + "%";
+            params.add(like);
+            params.add(like);
+        }
+
+        if (format != null && !format.trim().isEmpty()) {
+            sql.append(" AND t.format = ? ");
+            params.add(format.trim());
+        }
+
+        if (dbStatus != null && !dbStatus.trim().isEmpty()) {
+            sql.append(" AND t.status = ? ");
+            params.add(dbStatus.trim());
+        }
+
+        if (entryType != null) {
+            String et = entryType.trim().toLowerCase();
+            if ("free".equals(et)) {
+                sql.append(" AND (t.entry_fee IS NULL OR t.entry_fee <= 0) ");
+            } else if ("paid".equals(et)) {
+                sql.append(" AND t.entry_fee IS NOT NULL AND t.entry_fee > 0 ");
+            }
+        }
+
+        if (registeredOnly && userId != null) {
+            sql.append("""
+                    AND EXISTS (
+                        SELECT 1 FROM Participants px
+                        WHERE px.tournament_id = t.tournament_id AND px.user_id = ?
+                    )
+                    """);
+            params.add(userId);
+        }
+
+        if ("latest".equalsIgnoreCase(sortBy)) {
+            sql.append(" ORDER BY t.start_date DESC, t.tournament_id DESC ");
+        } else if ("feeAsc".equalsIgnoreCase(sortBy)) {
+            sql.append(" ORDER BY t.entry_fee ASC, t.start_date ASC ");
+        } else if ("feeDesc".equalsIgnoreCase(sortBy)) {
+            sql.append(" ORDER BY t.entry_fee DESC, t.start_date ASC ");
+        } else {
+            sql.append(" ORDER BY t.start_date ASC, t.tournament_id ASC ");
+        }
+
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            int idx = 1;
+            for (Object p : params) {
+                if (p instanceof Integer) {
+                    ps.setInt(idx++, (Integer) p);
+                } else if (p instanceof String) {
+                    ps.setString(idx++, (String) p);
+                } else {
+                    ps.setObject(idx++, p);
+                }
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    PlayerTournamentDTO dto = new PlayerTournamentDTO();
+                    dto.setTournamentId(rs.getInt("tournament_id"));
+                    dto.setTournamentName(rs.getString("tournament_name"));
+                    dto.setTournamentImage(rs.getString("tournament_image"));
+                    dto.setLocation(rs.getString("location"));
+                    dto.setFormat(rs.getString("format"));
+                    dto.setStatus(rs.getString("status"));
+                    dto.setEntryFee(rs.getBigDecimal("entry_fee"));
+                    dto.setPrizePool(rs.getBigDecimal("prize_pool"));
+                    dto.setStartDate(rs.getTimestamp("start_date"));
+                    dto.setRegistrationDeadline(rs.getTimestamp("registration_deadline"));
+                    dto.setMaxPlayer((Integer) rs.getObject("max_player"));
+                    dto.setCurrentPlayers((Integer) rs.getObject("current_players"));
+                    dto.setRegistered(rs.getInt("registered") == 1);
+                    list.add(dto);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+    // =========================
+    // TOURNAMENT IMAGES
+    // =========================
+
+    public List<String> getTournamentImages(int tournamentId) {
+        List<String> images = new ArrayList<>();
+        String sql = "SELECT image_url FROM Tournament_Images WHERE tournament_id = ? ORDER BY display_order ASC, image_id ASC";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    images.add(rs.getString("image_url"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return images;
+    }
+
+    public boolean updateTournamentCoverImage(int tournamentId, String imageUrl) {
+        String sql = """
+                UPDATE Tournaments
+                SET tournament_image = ?
+                WHERE tournament_id = ?
+                """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, imageUrl);
+            ps.setInt(2, tournamentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean addTournamentDetailImage(int tournamentId, String imageUrl) {
+        String sql = """
+                INSERT INTO Tournament_Images (tournament_id, image_url, display_order)
+                VALUES (?, ?, COALESCE((
+                    SELECT MAX(display_order) + 1 FROM Tournament_Images WHERE tournament_id = ?
+                ), 1))
+                """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            ps.setString(2, imageUrl);
+            ps.setInt(3, tournamentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean deleteTournamentDetailImage(int tournamentId, String imageUrl) {
+        String sql = "DELETE FROM Tournament_Images WHERE tournament_id = ? AND image_url = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            ps.setString(2, imageUrl);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean saveTournamentImages(int tournamentId, String coverImageUrl, List<String> detailImages) {
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+
+            if (coverImageUrl != null) {
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE Tournaments SET tournament_image = ? WHERE tournament_id = ?")) {
+                    ps.setString(1, coverImageUrl);
+                    ps.setInt(2, tournamentId);
+                    ps.executeUpdate();
+                }
+            }
+
+            try (PreparedStatement del = conn.prepareStatement(
+                    "DELETE FROM Tournament_Images WHERE tournament_id = ?")) {
+                del.setInt(1, tournamentId);
+                del.executeUpdate();
+            }
+
+            if (detailImages != null && !detailImages.isEmpty()) {
+                String insertSql = "INSERT INTO Tournament_Images (tournament_id, image_url, display_order) VALUES (?, ?, ?)";
+                try (PreparedStatement ins = conn.prepareStatement(insertSql)) {
+                    int order = 1;
+                    for (String url : detailImages) {
+                        ins.setInt(1, tournamentId);
+                        ins.setString(2, url);
+                        ins.setInt(3, order++);
+                        ins.addBatch();
+                    }
+                    ins.executeBatch();
+                }
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    // =========================
+    // TOURNAMENT PODIUM (CHAMPION / RUNNER-UP)
+    // =========================
+    public Map<String, Object> getTournamentPodium(int tournamentId) {
+        Map<String, Object> podium = new HashMap<>();
+        podium.put("championName", null);
+        podium.put("runnerUpName", null);
+
+        String sql = """
+                SELECT TOP 2 u.first_name, u.last_name, s.current_rank
+                FROM Standing s
+                JOIN Users u ON s.user_id = u.user_id
+                WHERE s.tournament_id = ?
+                ORDER BY s.current_rank ASC
+                """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                String champion = null;
+                String runnerUp = null;
+                if (rs.next()) {
+                    champion = (rs.getString("first_name") + " " + rs.getString("last_name")).trim();
+                }
+                if (rs.next()) {
+                    runnerUp = (rs.getString("first_name") + " " + rs.getString("last_name")).trim();
+                }
+                podium.put("championName", champion);
+                podium.put("runnerUpName", runnerUp);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return podium;
+    }
+
+    // =========================
+    // CANCEL TOURNAMENT (SOFT)
+    // =========================
+    public boolean cancelTournament(int tournamentId, String reason) {
+        String sql = """
+                UPDATE Tournaments
+                SET status = 'Cancelled',
+                    notes = CASE
+                        WHEN notes IS NULL OR notes = '' THEN ?
+                        ELSE notes + CHAR(13) + CHAR(10) + ?
+                    END
+                WHERE tournament_id = ?
+                """;
+        String note = "Cancelled: " + (reason == null ? "" : reason.trim());
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, note);
+            ps.setString(2, note);
+            ps.setInt(3, tournamentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }
