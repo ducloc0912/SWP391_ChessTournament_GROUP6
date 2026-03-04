@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MainHeader from '../../component/common/MainHeader';
 import StaffTournament from './StaffTournament';
-import StaffBlog from './StaffBlog';
-import { Trophy, FileText } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import '../../assets/css/StaffDashboard.css';
 
 const StaffDashboard = () => {
-    const [activeTab, setActiveTab] = useState('tournaments');
+    const [activeTab] = useState('tournaments');
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -35,33 +34,12 @@ const StaffDashboard = () => {
                 {/* Page Header */}
                 <div className="staff-page-header">
                     <h1 className="staff-page-title">Staff Dashboard</h1>
-                    <p className="staff-page-subtitle">Quản lý giải đấu và bài viết cho hệ thống</p>
-                </div>
-
-                {/* Tab Navigation */}
-                <div className="staff-tab-nav">
-                    <button 
-                        className={`staff-tab-btn ${activeTab === 'tournaments' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('tournaments')}
-                    >
-                        <Trophy size={18} />
-                        Quản lý giải đấu
-                    </button>
-                    <button 
-                        className={`staff-tab-btn ${activeTab === 'blog' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('blog')}
-                    >
-                        <FileText size={18} />
-                        Quản lý bài viết
-                    </button>
+                    <p className="staff-page-subtitle">Quản lý giải đấu cho hệ thống</p>
                 </div>
 
                 {/* Content Area */}
                 <div className="staff-content-area">
-                    {activeTab === 'tournaments' 
-                        ? <StaffTournament currentUser={currentUser} /> 
-                        : <StaffBlog currentUser={currentUser} />
-                    }
+                    <StaffTournament currentUser={currentUser} />
                 </div>
             </div>
         </div>

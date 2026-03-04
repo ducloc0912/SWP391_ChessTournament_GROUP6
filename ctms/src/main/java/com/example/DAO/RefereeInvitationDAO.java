@@ -125,6 +125,7 @@ public class RefereeInvitationDAO extends DBContext {
         return false;
     }
 
+    /** Chỉ kiểm tra pending cho cùng một giải; trọng tài có pending từ giải khác vẫn được TL khác mời. */
     public boolean hasPendingForEmail(int tournamentId, String email) {
         String sql = "SELECT 1 FROM Referee_Invitation WHERE tournament_id = ? AND LOWER(invited_email) = LOWER(?) AND status = 'Pending'";
         try (Connection conn = getConnection();

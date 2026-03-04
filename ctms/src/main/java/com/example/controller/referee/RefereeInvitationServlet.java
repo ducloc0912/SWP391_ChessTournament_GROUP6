@@ -2,7 +2,9 @@ package com.example.controller.referee;
 
 import com.example.DAO.ParticipantDAO;
 import com.example.DAO.RefereeInvitationDAO;
+import com.example.DAO.TournamentDAO;
 import com.example.DAO.TournamentRefereeDAO;
+import com.example.model.dto.TournamentDTO;
 import com.example.model.entity.User;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -14,7 +16,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @WebServlet("/api/referee/invitations")
@@ -23,6 +27,7 @@ public class RefereeInvitationServlet extends HttpServlet {
     private RefereeInvitationDAO invitationDAO;
     private TournamentRefereeDAO tournamentRefereeDAO;
     private ParticipantDAO participantDAO;
+    private TournamentDAO tournamentDAO;
     private Gson gson;
 
     @Override
@@ -30,6 +35,7 @@ public class RefereeInvitationServlet extends HttpServlet {
         invitationDAO = new RefereeInvitationDAO();
         tournamentRefereeDAO = new TournamentRefereeDAO();
         participantDAO = new ParticipantDAO();
+        tournamentDAO = new TournamentDAO();
         gson = new GsonBuilder().setDateFormat("yyyy-MM-dd HH:mm:ss").create();
     }
 
@@ -140,6 +146,22 @@ public class RefereeInvitationServlet extends HttpServlet {
             result.put("message", "Bạn đang là người chơi trong giải này, không thể nhận lời mời trọng tài.");
             response.getWriter().write(gson.toJson(result));
             return;
+        }
+
+        // Chỉ được accept khi: không tham gia giải nào khác, hoặc mọi giải đang làm trọng tài có end_date trước start_date của giải này
+        TournamentDTO inviteTournament = tournamentDAO.getTournamentById(tournamentId);
+        Timestamp inviteStart = inviteTournament != null ? inviteTournament.getStartDate() : null;
+        if (inviteStart != null) {
+            List<Timestamp> otherEndDates = tournamentRefereeDAO.getOtherTournamentEndDatesByReferee(userId, tournamentId);
+            for (Timestamp otherEnd : otherEndDates) {
+                if (otherEnd != null && !otherEnd.before(inviteStart)) {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    result.put("success", false);
+                    result.put("message", "Bạn đang làm trọng tài giải khác trùng thời gian. Chỉ có thể chấp nhận khi không tham gia giải nào hoặc giải kia kết thúc trước khi giải này bắt đầu.");
+                    response.getWriter().write(gson.toJson(result));
+                    return;
+                }
+            }
         }
 
         boolean accepted = invitationDAO.markAccepted(invitationId, userId);

@@ -63,7 +63,6 @@ export default function HomePage() {
   const [latestBlogs, setLatestBlogs] = useState([]);
   const [loadingHome, setLoadingHome] = useState(true);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [refereeInvites, setRefereeInvites] = useState([]);
   const [sessionChecked, setSessionChecked] = useState(false);
 
   useEffect(() => {
@@ -107,22 +106,6 @@ export default function HomePage() {
 
     syncFromSession();
   }, []);
-
-  useEffect(() => {
-    const role = (localStorage.getItem("role") || "").toUpperCase();
-    if (!sessionChecked || !user || role !== "REFEREE") return;
-    const fetchInvites = async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/api/referee/invitations`, {
-          withCredentials: true,
-        });
-        setRefereeInvites(Array.isArray(res?.data) ? res.data : []);
-      } catch {
-        setRefereeInvites([]);
-      }
-    };
-    fetchInvites();
-  }, [user?.userId]);
 
   useEffect(() => {
     const fetchHomeData = async () => {
@@ -259,6 +242,48 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section id="hpv-latest" className="hpv-section hpv-light">
+        <div className="hpv-container">
+          <div className="hpv-section-head hpv-row-head">
+            <h2>THE LATEST</h2>
+            <button className="hpv-link-btn" onClick={() => navigate("/blog")}>
+              GO TO BLOG PAGE
+            </button>
+          </div>
+
+          <div className="hpv-latest-grid">
+            {loadingHome ? (
+              <div className="hpv-empty-card">Đang tải bài viết mới...</div>
+            ) : latestBlogs.length > 0 ? (
+              latestBlogs.slice(0, 3).map((blog, idx) => (
+                <article
+                  key={blog.blogPostId || `blog-${idx}`}
+                  className="hpv-latest-card"
+                >
+                  <img
+                    src={
+                      blog.thumbnailUrl ||
+                      FALLBACK_BANNERS[idx % FALLBACK_BANNERS.length]
+                    }
+                    alt={blog.title}
+                  />
+                  <div className="hpv-latest-body">
+                    <div className="hpv-meta-line">
+                      <span>{String(blog.categories || "NEWS")}</span>
+                      <span>{formatDate(blog.publishAt || blog.createAt)}</span>
+                    </div>
+                    <h3>{blog.title}</h3>
+                    <p>{blog.summary || "No summary provided."}</p>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="hpv-empty-card">Chưa có blog public.</div>
+            )}
+          </div>
+        </div>
+      </section>
+
       <section id="hpv-season" className="hpv-section">
         <div className="hpv-container">
           <div className="hpv-section-head">
@@ -349,48 +374,6 @@ export default function HomePage() {
               <span className="label">Hạn đăng ký</span>
               <strong>{formatDate(activeSlide?.registrationDeadline)}</strong>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="hpv-latest" className="hpv-section hpv-light">
-        <div className="hpv-container">
-          <div className="hpv-section-head hpv-row-head">
-            <h2>THE LATEST</h2>
-            <button className="hpv-link-btn" onClick={() => navigate("/blog")}>
-              GO TO BLOG PAGE
-            </button>
-          </div>
-
-          <div className="hpv-latest-grid">
-            {loadingHome ? (
-              <div className="hpv-empty-card">Đang tải bài viết mới...</div>
-            ) : latestBlogs.length > 0 ? (
-              latestBlogs.map((blog, idx) => (
-                <article
-                  key={blog.blogPostId || `blog-${idx}`}
-                  className="hpv-latest-card"
-                >
-                  <img
-                    src={
-                      blog.thumbnailUrl ||
-                      FALLBACK_BANNERS[idx % FALLBACK_BANNERS.length]
-                    }
-                    alt={blog.title}
-                  />
-                  <div className="hpv-latest-body">
-                    <div className="hpv-meta-line">
-                      <span>{String(blog.categories || "NEWS")}</span>
-                      <span>{formatDate(blog.publishAt || blog.createAt)}</span>
-                    </div>
-                    <h3>{blog.title}</h3>
-                    <p>{blog.summary || "No summary provided."}</p>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="hpv-empty-card">Chưa có blog public.</div>
-            )}
           </div>
         </div>
       </section>
@@ -491,77 +474,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {user && (localStorage.getItem("role") || "").toUpperCase() === "REFEREE" && (
-        <section className="hpv-section">
-          <div className="hpv-container">
-            <div className="hpv-section-head">
-              <h2>REFEREE INVITATIONS</h2>
-              <p>Các lời mời làm trọng tài đang chờ bạn xác nhận.</p>
-            </div>
-            {refereeInvites.length === 0 ? (
-              <div className="hpv-empty-card">Hiện bạn không có lời mời trọng tài nào.</div>
-            ) : (
-              <div className="hpv-latest-grid">
-                {refereeInvites.map((inv) => (
-                  <article key={inv.invitationId} className="hpv-latest-card">
-                    <div className="hpv-latest-body">
-                      <div className="hpv-meta-line">
-                        <span>{inv.refereeRole || "Assistant"}</span>
-                        <span>{inv.tournamentName || "Tournament"}</span>
-                      </div>
-                      <h3>Lời mời trọng tài</h3>
-                      <p>
-                        Bạn được mời làm trọng tài cho giải "{inv.tournamentName}". Nhấn chấp nhận để tham gia với vai trò{" "}
-                        {inv.refereeRole || "Assistant"}.
-                      </p>
-                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                        <button
-                          className="hpv-btn hpv-btn-primary"
-                          onClick={async () => {
-                            try {
-                              await axios.post(
-                                `${API_BASE}/api/referee/invitations?action=accept&invitationId=${inv.invitationId}`,
-                                null,
-                                { withCredentials: true },
-                              );
-                              setRefereeInvites((prev) => prev.filter((x) => x.invitationId !== inv.invitationId));
-                              alert("Đã chấp nhận lời mời trọng tài.");
-                            } catch (err) {
-                              alert(err?.response?.data?.message || "Không thể chấp nhận lời mời.");
-                            }
-                          }}
-                        >
-                          Chấp nhận
-                        </button>
-                        <button
-                          className="hpv-btn hpv-btn-primary"
-                          onClick={async () => {
-                            if (!window.confirm("Bạn chắc chắn muốn từ chối lời mời này?")) return;
-                            try {
-                              await axios.post(
-                                `${API_BASE}/api/referee/invitations?action=reject&invitationId=${inv.invitationId}`,
-                                null,
-                                { withCredentials: true },
-                              );
-                              setRefereeInvites((prev) => prev.filter((x) => x.invitationId !== inv.invitationId));
-                              alert("Bạn đã từ chối lời mời.");
-                            } catch (err) {
-                              alert(err?.response?.data?.message || "Không thể từ chối lời mời.");
-                            }
-                          }}
-                        >
-                          Từ chối
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-      )}
 
       <footer className="hpv-footer">
         <div className="hpv-container hpv-footer-inner">

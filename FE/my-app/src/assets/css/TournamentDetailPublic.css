@@ -156,8 +156,19 @@
   opacity: 0.9;
 }
 
-.tdp-register-btn {
+/* Wrapper: chỉ chứa hoặc nút hoặc text, tránh đè */
+.tdp-register-cta {
+  display: block;
   margin-top: 18px;
+  min-height: 48px;
+}
+
+.tdp-register-cta .tdp-register-btn,
+.tdp-register-cta .tdp-register-text-joined {
+  margin-top: 0;
+}
+
+.tdp-register-btn {
   border: none;
   border-radius: 0;
   padding: 14px 24px;
@@ -175,6 +186,15 @@
 
 .tdp-register-btn:hover {
   background: #f73748;
+}
+
+.tdp-register-text-joined {
+  display: block;
+  padding: 14px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.02em;
 }
 
 /* Tab navigation - match hpv style */

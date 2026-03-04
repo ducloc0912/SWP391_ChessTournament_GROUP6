@@ -7,10 +7,10 @@ import StatsCard from '../../component/staff/StatsCard';
 
 import {
     FileText, Search, CheckCircle, Eye, Filter,
-    ChevronDown, ChevronUp, XCircle, Save, Plus, RotateCcw, Edit3
+    ChevronDown, ChevronUp, XCircle, Save, Plus, RotateCcw, Edit3, Upload, Trash2
 } from 'lucide-react';
 
-const StaffBlog = () => {
+const StaffBlog = ({ user, role }) => {
     const [blogs, setBlogs] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -32,6 +32,8 @@ const StaffBlog = () => {
         status: 'Draft' 
     };
     const [newBlog, setNewBlog] = useState(initialBlogState);
+    // Khối nội dung: [{ id, type: 'text'|'image', value }] — ảnh lưu vào Blog_Image qua API
+    const [contentBlocks, setContentBlocks] = useState([{ id: 1, type: 'text', value: '' }]);
 
     // --- Filter States ---
     const [showFilters, setShowFilters] = useState(false);
@@ -43,6 +45,12 @@ const StaffBlog = () => {
     useEffect(() => {
         fetchBlogs();
     }, []);
+
+    useEffect(() => {
+        if (showCreateModal) {
+            setContentBlocks([{ id: Date.now(), type: 'text', value: '' }]);
+        }
+    }, [showCreateModal]);
 
     // Reset states khi mở modal xem chi tiết
     useEffect(() => {
@@ -154,15 +162,31 @@ const StaffBlog = () => {
         }
     };
 
-    // --- Xử lý Tạo bài viết mới ---
+    // --- Khối nội dung: Thêm văn bản / Thêm hình ảnh ---
+    const addTextBlock = () => {
+        setContentBlocks(prev => [...prev, { id: Date.now(), type: 'text', value: '' }]);
+    };
+    const addImageBlock = () => {
+        setContentBlocks(prev => [...prev, { id: Date.now(), type: 'image', value: '' }]);
+    };
+    const removeBlock = (id) => {
+        setContentBlocks(prev => prev.filter(b => b.id !== id));
+    };
+    const updateBlock = (id, value) => {
+        setContentBlocks(prev => prev.map(b => b.id === id ? { ...b, value } : b));
+    };
+
+    // --- Xử lý Tạo bài viết mới (content = JSON blocks, ảnh trong block lưu vào Blog_Image ở backend) ---
     const handleCreateBlog = async () => {
         if (!newBlog.title) {
             alert("Vui lòng nhập tiêu đề.");
             return;
         }
+        const contentJson = JSON.stringify(contentBlocks);
 
         const payload = {
             ...newBlog,
+            content: contentJson,
             status: 'Draft'
         };
 
@@ -171,10 +195,41 @@ const StaffBlog = () => {
             alert("Tạo bài viết thành công!");
             setShowCreateModal(false);
             setNewBlog(initialBlogState);
+            setContentBlocks([{ id: Date.now(), type: 'text', value: '' }]);
             fetchBlogs();
         } catch(e) { 
             console.error(e);
             alert("Lỗi tạo bài viết. Vui lòng thử lại."); 
+        }
+    };
+
+    // Staff: xóa bất kỳ bài. Tournament Leader: chỉ xóa bài do mình viết
+    const canDelete = (item) => {
+        if (!item) return false;
+        if (role === 'STAFF' || role === 'ADMIN') return true;
+        if (role === 'TOURNAMENTLEADER' && user?.userId != null) return item.authorId === user.userId;
+        return false;
+    };
+
+    const handleDeleteBlog = async (item) => {
+        if (!canDelete(item)) return;
+        if (!window.confirm(`Xóa bài "${item.title}"? Hành động không thể hoàn tác.`)) return;
+        try {
+            const res = await axios.post(
+                `${API_BASE}/api/staff/blogs?action=delete`,
+                { blogPostId: item.blogPostId },
+                { withCredentials: true }
+            );
+            if (res.data?.success) {
+                if (selectedBlog?.blogPostId === item.blogPostId) setSelectedBlog(null);
+                fetchBlogs();
+                alert("Đã xóa bài viết.");
+            } else {
+                alert(res.data?.message || "Không thể xóa bài viết.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert(e.response?.data?.message || "Lỗi xóa bài viết.");
         }
     };
 
@@ -183,13 +238,6 @@ const StaffBlog = () => {
 
     return (
         <div className="staff-container">
-            {/* Stats Cards */}
-            <div className="stats-grid">
-                <StatsCard title="Tổng bài viết" value={blogs.length} icon={<FileText size={22} />} type="total" />
-                <StatsCard title="Công khai (Public)" value={publicCount} icon={<CheckCircle size={22} />} type="active" />
-                <StatsCard title="Lượt xem" value={blogs.reduce((a, b) => a + (b.views || 0), 0)} icon={<Eye size={22} />} type="pending" />
-            </div>
-
             {/* Controls */}
             <div className="controls-section">
                 <div className="controls-top-bar">
@@ -279,6 +327,16 @@ const StaffBlog = () => {
                                         <button className="view-btn" onClick={() => setSelectedBlog(item)} title="Xem & Cập nhật">
                                             <Eye size={16} />
                                         </button>
+                                        {canDelete(item) && (
+                                            <button
+                                                type="button"
+                                                className="view-btn delete-btn"
+                                                onClick={() => handleDeleteBlog(item)}
+                                                title="Xóa bài viết"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))
@@ -332,6 +390,18 @@ const StaffBlog = () => {
                                             onClick={() => setIsEditing(true)}
                                         >
                                             <Edit3 size={18} /> Chỉnh sửa bài viết
+                                        </button>
+                                    )}
+
+                                    {/* Nút xóa: Staff xóa bất kỳ, TL chỉ bài của mình */}
+                                    {canDelete(selectedBlog) && (
+                                        <button
+                                            type="button"
+                                            className="btn-secondary blog-delete-btn"
+                                            style={{width: '100%', marginBottom: '16px', color: '#b91c1c', borderColor: '#b91c1c'}}
+                                            onClick={() => handleDeleteBlog(selectedBlog)}
+                                        >
+                                            <Trash2 size={18} /> Xóa bài viết
                                         </button>
                                     )}
 
@@ -461,53 +531,68 @@ const StaffBlog = () => {
                 </div>
             )}
 
-            {/* --- MODAL CREATE --- */}
+            {/* --- MODAL CREATE (mẫu: nền homepage, không bo góc, nút đỏ) --- */}
             {showCreateModal && (
                 <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
+                    <div className="modal-content modal-create-blog" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header modal-create-blog-header">
                             <h2>Viết bài mới</h2>
-                            <button className="close-btn" onClick={() => setShowCreateModal(false)}><XCircle size={24} /></button>
+                            <button type="button" className="close-btn modal-create-blog-close" onClick={() => setShowCreateModal(false)}><XCircle size={24} /></button>
                         </div>
-                        <div className="modal-body" style={{maxHeight: '65vh', overflowY: 'auto'}}>
-                            
+                        <div className="modal-body modal-create-blog-body" style={{maxHeight: '65vh', overflowY: 'auto'}}>
+
                             <div className="form-group">
-                                <label>Ảnh bìa (URL)</label>
-                                <input 
-                                    className="form-control" 
-                                    type="text" 
-                                    value={newBlog.thumbnailUrl} 
-                                    onChange={e => setNewBlog({...newBlog, thumbnailUrl: e.target.value})} 
+                                <label>Ảnh bìa</label>
+                                <input
+                                    className="form-control"
+                                    type="text"
+                                    value={newBlog.thumbnailUrl}
+                                    onChange={e => setNewBlog({...newBlog, thumbnailUrl: e.target.value})}
                                     placeholder="https://example.com/image.jpg"
                                 />
+                                <label className="blog-create-upload-btn">
+                                    <Upload size={16} />
+                                    Chọn ảnh bìa từ máy tính
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        style={{ display: 'none' }}
+                                        onChange={(e) => {
+                                            const f = e.target.files?.[0];
+                                            if (!f) return;
+                                            const r = new FileReader();
+                                            r.onload = () => setNewBlog(prev => ({ ...prev, thumbnailUrl: r.result }));
+                                            r.readAsDataURL(f);
+                                        }}
+                                    />
+                                </label>
                                 {newBlog.thumbnailUrl && (
-                                    <div style={{marginTop: '10px'}}>
-                                        <img 
-                                            src={newBlog.thumbnailUrl} 
-                                            alt="Preview" 
-                                            style={{width: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '8px'}} 
-                                            onError={(e) => e.target.style.display='none'} 
+                                    <div className="blog-create-thumb-preview">
+                                        <img
+                                            src={newBlog.thumbnailUrl}
+                                            alt="Preview"
+                                            onError={(e) => { e.target.style.display = 'none'; }}
                                         />
                                     </div>
                                 )}
                             </div>
 
                             <div className="form-group">
-                                <label>Tiêu đề <span style={{color:'#ef4444'}}>*</span></label>
-                                <input 
-                                    className="form-control" 
-                                    type="text" 
-                                    value={newBlog.title} 
-                                    onChange={e => setNewBlog({...newBlog, title: e.target.value})} 
-                                    placeholder="Nhập tiêu đề..." 
+                                <label>Tiêu đề <span className="required">*</span></label>
+                                <input
+                                    className="form-control"
+                                    type="text"
+                                    value={newBlog.title}
+                                    onChange={e => setNewBlog({...newBlog, title: e.target.value})}
+                                    placeholder="Nhập tiêu đề..."
                                 />
                             </div>
 
                             <div className="form-group">
                                 <label>Danh mục</label>
-                                <select 
-                                    className="form-control" 
-                                    value={newBlog.categories} 
+                                <select
+                                    className="form-control"
+                                    value={newBlog.categories}
                                     onChange={e => setNewBlog({...newBlog, categories: e.target.value})}
                                 >
                                     <option value="Strategy">Chiến thuật (Strategy)</option>
@@ -518,29 +603,75 @@ const StaffBlog = () => {
 
                             <div className="form-group">
                                 <label>Tóm tắt</label>
-                                <textarea 
-                                    className="form-control" 
-                                    value={newBlog.summary} 
-                                    onChange={e => setNewBlog({...newBlog, summary: e.target.value})} 
-                                    style={{minHeight:'80px'}} 
+                                <textarea
+                                    className="form-control"
+                                    value={newBlog.summary}
+                                    onChange={e => setNewBlog({...newBlog, summary: e.target.value})}
+                                    style={{minHeight: '80px'}}
                                     placeholder="Mô tả ngắn về bài viết..."
                                 />
                             </div>
 
-                            <div className="form-group">
-                                <label>Nội dung</label>
-                                <textarea 
-                                    className="form-control" 
-                                    value={newBlog.content} 
-                                    onChange={e => setNewBlog({...newBlog, content: e.target.value})} 
-                                    style={{minHeight:'150px'}} 
-                                    placeholder="Nội dung bài viết..."
-                                />
+                            <div className="form-group blog-create-content-blocks">
+                                <label>Nội dung bài viết (Khối nội dung)</label>
+                                {contentBlocks.map((block) => (
+                                    <div key={block.id} className="blog-create-block">
+                                        <div className="blog-create-block-head">
+                                            <span className="blog-create-block-title">
+                                                {block.type === 'text' ? 'Đoạn văn bản' : 'Hình ảnh'}
+                                            </span>
+                                            <button type="button" className="blog-create-block-remove" onClick={() => removeBlock(block.id)}>
+                                                Xóa khối này
+                                            </button>
+                                        </div>
+                                        {block.type === 'text' ? (
+                                            <textarea
+                                                className="form-control"
+                                                value={block.value}
+                                                onChange={e => updateBlock(block.id, e.target.value)}
+                                                placeholder="Nhập nội dung văn bản..."
+                                                rows={4}
+                                            />
+                                        ) : (
+                                            <div className="blog-create-block-image">
+                                                <label className="blog-create-upload-btn">
+                                                    <Upload size={16} />
+                                                    Chọn ảnh
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        style={{ display: 'none' }}
+                                                        onChange={(e) => {
+                                                            const f = e.target.files?.[0];
+                                                            if (!f) return;
+                                                            const r = new FileReader();
+                                                            r.onload = () => updateBlock(block.id, r.result);
+                                                            r.readAsDataURL(f);
+                                                        }}
+                                                    />
+                                                </label>
+                                                {block.value && (
+                                                    <div className="blog-create-thumb-preview">
+                                                        <img src={block.value} alt="" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                <div className="blog-create-block-actions">
+                                    <button type="button" className="blog-create-add-btn" onClick={addTextBlock}>
+                                        <Plus size={16} /> Thêm văn bản
+                                    </button>
+                                    <button type="button" className="blog-create-add-btn" onClick={addImageBlock}>
+                                        <Plus size={16} /> Thêm hình ảnh
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div className="modal-footer">
-                            <button className="btn-secondary" onClick={() => setShowCreateModal(false)}>Hủy</button>
-                            <button className="btn-primary" onClick={handleCreateBlog}>
+                        <div className="modal-footer modal-create-blog-footer">
+                            <button type="button" className="btn-secondary modal-create-blog-btn-cancel" onClick={() => setShowCreateModal(false)}>Hủy</button>
+                            <button type="button" className="btn-primary modal-create-blog-btn-save" onClick={handleCreateBlog}>
                                 <Save size={18} /> Lưu bài viết (Draft)
                             </button>
                         </div>

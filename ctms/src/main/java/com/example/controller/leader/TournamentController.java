@@ -97,8 +97,19 @@ public class TournamentController extends HttpServlet {
         }
 
         if ("allReferees".equals(action)) {
-            List<TournamentRefereeDTO> all = tournamentService.getAllRefereeUsers();
-            response.getWriter().write(gson.toJson(all));
+            String tid = request.getParameter("id");
+            List<TournamentRefereeDTO> list;
+            if (tid != null && !tid.isBlank()) {
+                try {
+                    int tournamentId = Integer.parseInt(tid.trim());
+                    list = tournamentService.getAvailableRefereesForTournament(tournamentId);
+                } catch (NumberFormatException e) {
+                    list = tournamentService.getAllRefereeUsers();
+                }
+            } else {
+                list = tournamentService.getAllRefereeUsers();
+            }
+            response.getWriter().write(gson.toJson(list));
             return;
         }
 
@@ -443,7 +454,7 @@ public class TournamentController extends HttpServlet {
                 result.put("message", "Đã gửi lời mời đến " + email);
                 response.getWriter().write(gson.toJson(result));
             } else if (invId == -1) {
-                response.getWriter().write("{\"success\": false, \"message\": \"Email này đã có lời mời đang chờ\"}");
+                response.getWriter().write("{\"success\": false, \"message\": \"Email này đã có lời mời đang chờ cho giải này\"}");
             } else {
                 response.getWriter().write("{\"success\": false, \"message\": \"Gửi lời mời thất bại\"}");
             }

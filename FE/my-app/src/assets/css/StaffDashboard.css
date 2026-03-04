@@ -189,7 +189,7 @@
 .controls-section {
   background: var(--bg-light);
   border: 1px solid var(--border-light);
-  border-radius: 16px;
+  border-radius: 0;
   padding: 16px 20px;
   margin-bottom: 20px;
 }
@@ -220,7 +220,7 @@
   width: 100%;
   padding: 12px 14px 12px 44px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   outline: none;
   font-size: 14px;
   transition: all 0.2s;
@@ -249,20 +249,20 @@
   justify-content: center;
   gap: 8px;
   padding: 12px 20px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  background: var(--primary);
   color: white;
   border: none;
-  border-radius: 12px;
+  border-radius: 0;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
 }
 
 .btn-secondary {
@@ -274,7 +274,7 @@
   background: var(--bg-white);
   color: var(--text-main);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
@@ -294,7 +294,7 @@
   justify-content: center;
   background: var(--bg-white);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
@@ -313,7 +313,7 @@
   padding: 12px 16px;
   background: var(--bg-white);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   font-weight: 600;
   font-size: 14px;
   color: var(--text-muted);
@@ -377,7 +377,7 @@
 .table-wrapper {
   background: var(--bg-white);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 0;
   overflow: hidden;
   overflow-x: auto;
 }
@@ -527,6 +527,17 @@
   color: var(--primary);
   background: #fffbeb;
   transform: scale(1.05);
+}
+
+.view-btn.delete-btn:hover {
+  border-color: #b91c1c;
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+/* Nút trong cột Hành động: xem + xóa */
+.custom-table td .view-btn + .view-btn {
+  margin-left: 8px;
 }
 
 /* ===== MODAL ===== */
@@ -750,4 +761,196 @@ textarea.form-control {
 .modal-body::-webkit-scrollbar-thumb:hover,
 .table-wrapper::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* ===== MODAL CREATE BLOG (nền homepage, không bo góc, nút đỏ) ===== */
+.modal-create-blog {
+  max-width: 640px;
+  width: 100%;
+  background: #ece8e1 !important;
+  border-radius: 0 !important;
+  overflow: hidden;
+}
+
+.modal-create-blog .modal-create-blog-header {
+  background: #ff4655 !important;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  border-radius: 0;
+}
+
+.modal-create-blog .modal-create-blog-header h2 {
+  color: #fff;
+}
+
+.modal-create-blog .modal-create-blog-close {
+  background: rgba(255,255,255,0.2);
+  border-radius: 0;
+  color: #fff;
+}
+
+.modal-create-blog .modal-create-blog-close:hover {
+  background: rgba(255,255,255,0.35);
+}
+
+.modal-create-blog .modal-create-blog-body {
+  background: #ece8e1 !important;
+}
+
+.modal-create-blog .form-group label {
+  color: var(--text-dark);
+}
+
+.modal-create-blog .form-control,
+.modal-create-blog input.form-control,
+.modal-create-blog textarea.form-control,
+.modal-create-blog select.form-control {
+  border-radius: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.modal-create-blog .form-control:focus {
+  border-color: #ff4655;
+  box-shadow: 0 0 0 2px rgba(255, 70, 85, 0.2);
+}
+
+.modal-create-blog .required {
+  color: #ff4655;
+}
+
+.modal-create-blog .blog-create-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  color: #ff4655;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.modal-create-blog .blog-create-upload-btn:hover {
+  background: #fff5f5;
+  border-color: #ff4655;
+}
+
+.modal-create-blog .blog-create-thumb-preview {
+  margin-top: 10px;
+}
+
+.modal-create-blog .blog-create-thumb-preview img {
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 0;
+  border: 1px solid var(--border);
+}
+
+.modal-create-blog .modal-create-blog-footer {
+  background: #ece8e1 !important;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  border-radius: 0;
+}
+
+.modal-create-blog .modal-create-blog-btn-cancel {
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  border-radius: 0;
+}
+
+.modal-create-blog .modal-create-blog-btn-cancel:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.modal-create-blog .modal-create-blog-btn-save {
+  background: #ff4655 !important;
+  border: none;
+  color: #fff;
+  border-radius: 0;
+}
+
+.modal-create-blog .modal-create-blog-btn-save:hover {
+  background: #e62d3d !important;
+  color: #fff;
+}
+
+/* Khối nội dung: Thêm văn bản / Thêm hình ảnh */
+.modal-create-blog .blog-create-content-blocks {
+  margin-top: 20px;
+}
+
+.modal-create-blog .blog-create-block {
+  margin-bottom: 20px;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.modal-create-blog .blog-create-block-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.modal-create-blog .blog-create-block-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.modal-create-blog .blog-create-block-remove {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ff4655;
+  background: transparent;
+  border: 1px solid #ff4655;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.modal-create-blog .blog-create-block-remove:hover {
+  background: #fff5f5;
+}
+
+.modal-create-blog .blog-create-block-image .blog-create-thumb-preview {
+  margin-top: 10px;
+}
+
+.modal-create-blog .blog-create-block-image .blog-create-thumb-preview img {
+  max-height: 180px;
+}
+
+.modal-create-blog .blog-create-block-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.modal-create-blog .blog-create-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #ff4655;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modal-create-blog .blog-create-add-btn:hover {
+  background: #e62d3d;
 }

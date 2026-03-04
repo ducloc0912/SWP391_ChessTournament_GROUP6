@@ -95,6 +95,15 @@ public class TournamentService {
         return refereeDAO.getAllRefereeUsers();
     }
 
+    /**
+     * Referees available to invite for this tournament: exclude those already assigned
+     * to any tournament whose period overlaps with this one (start_date..end_date).
+     */
+    public List<TournamentRefereeDTO> getAvailableRefereesForTournament(int tournamentId) {
+        if (tournamentId <= 0) return List.of();
+        return refereeDAO.getAvailableRefereesForTournament(tournamentId);
+    }
+
     public boolean assignRefereeToTournament(
             int tournamentId,
             int refereeId,
@@ -144,9 +153,14 @@ public class TournamentService {
         }
     }
 
+    /**
+     * Gửi lời mời trọng tài theo email.
+     * Chỉ chặn khi cùng một giải đã có lời mời pending cho email đó (-1).
+     * Trọng tài chưa accept lời mời từ giải khác thì tournament leader giải khác vẫn được mời (tạo invitation mới).
+     */
     public int inviteRefereeByEmail(int tournamentId, String email, String refereeRole, int invitedBy) {
         if (tournamentId <= 0 || isBlank(email) || invitedBy <= 0) return 0;
-        if (invitationDAO.hasPendingForEmail(tournamentId, email)) return -1;
+        if (invitationDAO.hasPendingForEmail(tournamentId, email)) return -1; // chỉ trùng cùng giải
         return invitationDAO.createInvitation(tournamentId, email, refereeRole, invitedBy);
     }
 

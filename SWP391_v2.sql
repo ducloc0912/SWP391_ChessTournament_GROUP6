@@ -967,7 +967,26 @@ INSERT INTO Tournaments (tournament_id, tournament_name, description, tournament
    N'Khách sạn Sài Gòn Nha Trang, Khánh Hòa',
    'RoundRobin', 'Rapid', 20, 10, 250000, 20000000,
    'Pending', '2026-07-15 23:59:00', '2026-07-20 08:00:00', '2026-07-25 18:00:00',
-   4, '2026-03-15 11:00:00', N'Đang nhận đăng ký');
+   4, '2026-03-15 11:00:00', N'Đang nhận đăng ký'),
+
+-- 2 giải Upcoming: giải 10 kết thúc sau thời gian bắt đầu của giải 9 (trùng lịch để test referee overlap)
+(9, N'Giải Cờ Vua Upcoming A – Tháng 8',
+   N'Giải cờ vua sắp diễn ra A. Thời gian: 01/08 – 05/08/2026.',
+   '/tournaments/upcoming-a.jpg',
+   N'Time control: 90+30. Swiss 5 vòng.',
+   N'Hà Nội',
+   'RoundRobin', 'Open', 16, 8, 100000, 5000000,
+   'Upcoming', '2026-07-25 23:59:00', '2026-08-01 08:00:00', '2026-08-05 18:00:00',
+   4, GETDATE(), N'Giải Upcoming A'),
+
+(10, N'Giải Cờ Vua Upcoming B – Tháng 8',
+   N'Giải cờ vua sắp diễn ra B. Bắt đầu 04/08, kết thúc 10/08 (trùng với giải A).',
+   '/tournaments/upcoming-b.jpg',
+   N'Time control: 60+15. KnockOut.',
+   N'TP. Hồ Chí Minh',
+   'KnockOut', 'Rapid', 12, 6, 150000, 6000000,
+   'Upcoming', '2026-07-28 23:59:00', '2026-08-04 08:00:00', '2026-08-10 18:00:00',
+   4, GETDATE(), N'Giải Upcoming B – end sau start của giải A');
 
 SET IDENTITY_INSERT Tournaments OFF;
 GO
@@ -988,7 +1007,9 @@ INSERT INTO Tournament_Images (tournament_id, image_url, display_order) VALUES
 (5, '/tournaments/cantho-open.jpg', 1),
 (6, '/tournaments/haiphong-blitz.jpg', 1),
 (7, '/tournaments/binhduong-hybrid.jpg', 1),
-(8, '/tournaments/nhatrang-summer.jpg', 1);
+(8, '/tournaments/nhatrang-summer.jpg', 1),
+(9, '/tournaments/upcoming-a.jpg', 1),
+(10, '/tournaments/upcoming-b.jpg', 1);
 GO
 
 /* =========================

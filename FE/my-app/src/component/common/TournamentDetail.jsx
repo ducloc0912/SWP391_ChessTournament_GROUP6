@@ -156,7 +156,7 @@ export default function TournamentDetail() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, user?.userId]);
 
   useEffect(() => {
     if (!id || id === "all" || isNaN(Number(id))) {
@@ -164,7 +164,7 @@ export default function TournamentDetail() {
       return;
     }
     fetchDetail();
-  }, [id, navigate, fetchDetail]);
+  }, [id, navigate, fetchDetail, user?.userId]);
 
   useEffect(() => {
     if (!id || id === "all" || isNaN(Number(id))) return;
@@ -266,16 +266,16 @@ export default function TournamentDetail() {
                     {tournament.location || "Online"}
                   </span>
                 </div>
-                {canRegisterByStatus && !isJoined && (
-                  <button type="button" className="tdp-register-btn" onClick={handleRegisterTournament}>
-                    Đăng ký giải
-                  </button>
-                )}
-                {isJoined && (
-                  <button type="button" className="tdp-register-btn tdp-register-btn-disabled" disabled>
-                    Đã đăng ký
-                  </button>
-                )}
+                <div className="tdp-register-cta">
+                  {canRegisterByStatus && !isJoined && (
+                    <button type="button" className="tdp-register-btn" onClick={handleRegisterTournament}>
+                      Đăng ký giải
+                    </button>
+                  )}
+                  {canRegisterByStatus && isJoined && (
+                    <span className="tdp-register-text-joined">Bạn đã đăng ký giải này</span>
+                  )}
+                </div>
               </div>
               <div className="tdp-hero-fee">
                 {Number(tournament?.entryFee ?? 0) > 0 ? (
@@ -372,7 +372,7 @@ export default function TournamentDetail() {
                       <div className="tdp-participants-info">
                         <p><MapPin size={14} /> {tournament.location || "Online"}</p>
                         <p><Calendar size={14} /> {dateRangeStr}</p>
-                        {canRegister && (
+                        {canRegisterByStatus && (
                           <p><Clock3 size={14} /> Hạn đăng ký: {formatDateTime(tournament.registrationDeadline)}</p>
                         )}
                         <p><Trophy size={14} /> Quỹ thưởng: {formatMoney(tournament.prizePool)} VND</p>

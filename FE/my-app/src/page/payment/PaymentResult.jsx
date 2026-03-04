@@ -56,105 +56,58 @@ const PaymentResult = () => {
             <div className="hpv-hero payment-result-hero">
                 <div className="hpv-hero-overlay" />
                 <div className="hpv-container flex-center">
-                    <div className="payment-result-card glass-card slide-up">
+                    <div className="payment-result-card payment-result-card-new glass-card slide-up">
 
                         {status === 'processing' && (
-                            <div className="space-y-6 flex flex-col items-center fade-in">
+                            <div className="payment-result-body payment-result-processing">
                                 <div className="loading-spinner" />
-                                <div>
-                                    <h2 className="text-2xl font-black text-gray-50 mb-2">
-                                        Đang xử lý giao dịch
-                                    </h2>
-                                    <p className="text-gray-200 font-medium text-sm px-4 leading-relaxed">
-                                        {message}
-                                    </p>
-                                </div>
-                                <div className="w-full bg-slate-800/60 rounded-full h-1.5 mt-4 overflow-hidden">
-                                    <div className="bg-gradient-to-r from-blue-400 to-cyan-400 h-1.5 rounded-full w-24 animate-pulse" />
+                                <h2 className="payment-result-title">Đang xử lý giao dịch</h2>
+                                <p className="payment-result-desc">{message}</p>
+                                <div className="payment-result-progress">
+                                    <div className="payment-result-progress-bar" />
                                 </div>
                             </div>
                         )}
 
                         {status === 'success' && (
-                            <div className="space-y-6 fade-in">
-                                <div className="status-icon-container success mx-auto">
-                                    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="payment-result-body payment-result-success fade-in">
+                                <div className="payment-result-icon payment-result-icon-success">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
                                     </svg>
                                 </div>
-                                <div>
-                                    <h2 className="text-3xl font-black text-white mb-2">
-                                        Thanh toán thành công
-                                    </h2>
-                                    <p className="text-slate-200 font-medium">
-                                        {message}
-                                    </p>
-                                </div>
-
-                                <div className="payment-result-summary">
-                                    <div className="summary-row">
-                                        <span>Mã giao dịch</span>
-                                        <strong>{searchParams.get('vnp_TxnRef') || 'N/A'}</strong>
-                                    </div>
-                                    <div className="summary-row">
-                                        <span>Số tiền</span>
-                                        <strong className="text-emerald-400">
-                                            {searchParams.get('vnp_Amount')
-                                                ? (parseInt(searchParams.get('vnp_Amount')) / 100).toLocaleString('vi-VN') + 'đ'
-                                                : 'N/A'}
-                                        </strong>
-                                    </div>
-                                    <div className="summary-row">
-                                        <span>Ngân hàng</span>
-                                        <strong>{searchParams.get('vnp_BankCode') || 'N/A'}</strong>
-                                    </div>
-                                </div>
-
-                                <div className="pt-2 flex flex-col gap-3">
-                                    {tournamentId && (
-                                        <button
-                                            onClick={() => navigate(`/tournaments/public/${tournamentId}`)}
-                                            className="hpv-btn hpv-btn-primary w-full"
-                                        >
-                                            Xem chi tiết giải đấu
-                                        </button>
-                                    )}
+                                <h2 className="payment-result-title">Thanh toán thành công</h2>
+                                <p className="payment-result-desc">{message}</p>
+                                <div className="payment-result-accent payment-result-accent-success" />
+                                <div className="payment-result-actions">
                                     <button
-                                        onClick={() => navigate('/home')}
-                                        className="hpv-btn hpv-btn-outline w-full"
+                                        type="button"
+                                        onClick={() => navigate(tournamentId ? `/tournaments/public/${tournamentId}` : '/tournaments/public')}
+                                        className="payment-result-btn payment-result-btn-red"
                                     >
-                                        Về Trang Chủ Giải Đấu
+                                        Trở về trang chi tiết giải
                                     </button>
                                 </div>
                             </div>
                         )}
 
                         {status === 'error' && (
-                            <div className="space-y-6 fade-in">
-                                <div className="status-icon-container error mx-auto">
-                                    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="payment-result-body payment-result-error fade-in">
+                                <div className="payment-result-icon payment-result-icon-error">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </div>
-                                <div>
-                                    <h2 className="text-3xl font-black text-white mb-2">
-                                        Thanh toán thất bại
-                                    </h2>
-                                    <p className="text-slate-200 font-medium">{message}</p>
-                                </div>
-
-                                <div className="pt-6 flex gap-4 flex-col sm:flex-row">
+                                <h2 className="payment-result-title">Thanh toán thất bại</h2>
+                                <p className="payment-result-desc">{message}</p>
+                                <div className="payment-result-accent payment-result-accent-error" />
+                                <div className="payment-result-actions">
                                     <button
+                                        type="button"
                                         onClick={() => navigate(-1)}
-                                        className="hpv-btn hpv-btn-outline flex-1"
+                                        className="payment-result-btn payment-result-btn-red"
                                     >
                                         Thử lại
-                                    </button>
-                                    <button
-                                        onClick={() => navigate('/home')}
-                                        className="hpv-btn hpv-btn-primary flex-1"
-                                    >
-                                        Trang chủ
                                     </button>
                                 </div>
                             </div>

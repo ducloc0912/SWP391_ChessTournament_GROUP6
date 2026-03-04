@@ -90,6 +90,83 @@ public class TournamentRefereeDAO extends DBContext {
         return list;
     }
 
+    /**
+     * Referees that can be invited for the given tournament: exclude those who are
+     * already assigned to any tournament whose period overlaps with this one
+     * (other.start_date <= my.end_date AND other.end_date >= my.start_date).
+     */
+    public List<TournamentRefereeDTO> getAvailableRefereesForTournament(int tournamentId) {
+        List<TournamentRefereeDTO> list = new ArrayList<>();
+        String sql = """
+            SELECT u.user_id, u.first_name, u.last_name, u.email, u.avatar
+            FROM Users u
+            JOIN User_Role ur ON u.user_id = ur.user_id
+            JOIN Roles r ON ur.role_id = r.role_id
+            WHERE r.role_name = 'Referee'
+              AND u.user_id NOT IN (
+                    SELECT tr.referee_id
+                    FROM Tournament_Referee tr
+                    JOIN Tournaments other ON other.tournament_id = tr.tournament_id
+                    CROSS JOIN Tournaments my ON my.tournament_id = ?
+                    WHERE other.tournament_id <> my.tournament_id
+                      AND other.start_date IS NOT NULL
+                      AND other.end_date IS NOT NULL
+                      AND my.start_date IS NOT NULL
+                      AND my.end_date IS NOT NULL
+                      AND other.end_date >= my.start_date
+                      AND other.start_date <= my.end_date
+              )
+            ORDER BY u.first_name
+        """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    TournamentRefereeDTO dto = new TournamentRefereeDTO();
+                    dto.setRefereeId(rs.getInt("user_id"));
+                    dto.setFirstName(rs.getString("first_name"));
+                    dto.setLastName(rs.getString("last_name"));
+                    dto.setEmail(rs.getString("email"));
+                    dto.setAvatar(rs.getString("avatar"));
+                    list.add(dto);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    /**
+     * End dates of tournaments the referee is assigned to, excluding one tournament.
+     * Used to validate accept: all must be before the new tournament's start_date.
+     */
+    public List<java.sql.Timestamp> getOtherTournamentEndDatesByReferee(int refereeId, int excludeTournamentId) {
+        List<java.sql.Timestamp> list = new ArrayList<>();
+        String sql = """
+            SELECT t.end_date
+            FROM Tournament_Referee tr
+            JOIN Tournaments t ON t.tournament_id = tr.tournament_id
+            WHERE tr.referee_id = ? AND tr.tournament_id <> ?
+            ORDER BY t.end_date
+        """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, refereeId);
+            ps.setInt(2, excludeTournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    java.sql.Timestamp end = rs.getTimestamp("end_date");
+                    if (end != null) list.add(end);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
     public boolean assignReferee(int tournamentId, int refereeId, String refereeRole, Integer assignedBy, String note) {
         String checkSql = "SELECT 1 FROM Tournament_Referee WHERE tournament_id = ? AND referee_id = ?";
         String insertSql = """

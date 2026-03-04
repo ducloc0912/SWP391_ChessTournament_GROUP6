@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,31 +67,54 @@ public class BlogPostDAO extends DBContext {
         return list;
     }
 
+    public List<BlogPost> getPublicBlogPosts() {
+        List<BlogPost> list = new ArrayList<>();
+        String sql = "SELECT * FROM Blog_Post WHERE status = 'Public' ORDER BY publish_at DESC, create_at DESC";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(mapResultSetToBlogPost(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
     // =========================================================================
     // CREATE OPERATION
     // =========================================================================
 
     public boolean createBlogPost(BlogPost blog) {
+        return createBlogPostReturningId(blog) != null;
+    }
+
+    /** Creates blog and returns the new blog_post_id; null on failure. */
+    public Integer createBlogPostReturningId(BlogPost blog) {
         String sql = """
             INSERT INTO Blog_Post (title, summary, content, thumbnail_url, author_id, categories, status, views, publish_at, create_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
         """;
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, blog.getTitle());
             ps.setString(2, blog.getSummary());
             ps.setString(3, blog.getContent());
             ps.setString(4, blog.getThumbnailUrl());
             ps.setInt(5, blog.getAuthorId());
             ps.setString(6, blog.getCategories().name());
-            ps.setString(7, blog.getStatus().name()); // Default usually Draft
+            ps.setString(7, blog.getStatus().name());
             ps.setInt(8, blog.getViews() != null ? blog.getViews() : 0);
             ps.setTimestamp(9, blog.getPublishAt());
-            return ps.executeUpdate() > 0;
+            if (ps.executeUpdate() <= 0) return null;
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) return rs.getInt(1);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return false;
+        return null;
     }
 
     // =========================================================================
@@ -125,6 +149,18 @@ public class BlogPostDAO extends DBContext {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, status.name());
             ps.setInt(2, blogId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean incrementBlogViews(int blogId) {
+        String sql = "UPDATE Blog_Post SET views = ISNULL(views, 0) + 1 WHERE blog_post_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, blogId);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
