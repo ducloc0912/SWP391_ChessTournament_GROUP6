@@ -2962,20 +2962,19 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
 
 const RefereeTab = ({ tournamentId }) => {
   const [assignedReferees, setAssignedReferees] = useState([]);
-  const [pendingInvites, setPendingInvites] = useState([]);
   const [allReferees, setAllReferees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [showReplaceModal, setShowReplaceModal] = useState(null);
   const [assigning, setAssigning] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [inviting, setInviting] = useState(false);
   const [assignRole, setAssignRole] = useState("Assistant");
   const [assignRefereeId, setAssignRefereeId] = useState(null);
+  const [showInviteModal] = useState(false);
+  const [showReplaceModal] = useState(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("Assistant");
+  const [inviting] = useState(false);
   const [createForm, setCreateForm] = useState({
     firstName: "",
     lastName: "",
@@ -2984,6 +2983,15 @@ const RefereeTab = ({ tournamentId }) => {
     address: "",
   });
 
+  // Tính năng mời trọng tài qua email hiện tạm thời tắt – các handler chỉ hiển thị thông báo.
+  const handleInviteByEmail = () => {
+    alert("Tính năng mời trọng tài qua email hiện không được sử dụng. Hãy chọn trọng tài trong danh sách để gán trực tiếp.");
+  };
+
+  const handleReplaceInvite = () => {
+    alert("Tính năng thay thế lời mời trọng tài hiện không được sử dụng.");
+  };
+
   const fetchReferees = async () => {
     if (!tournamentId) {
       setLoading(false);
@@ -2991,19 +2999,16 @@ const RefereeTab = ({ tournamentId }) => {
     }
     setLoading(true);
     try {
-      const [assignedRes, allRes, invitesRes] = await Promise.all([
+      const [assignedRes, allRes] = await Promise.all([
         axios.get(`${API_BASE}/api/tournaments?action=referees&id=${tournamentId}`, { withCredentials: true }),
         axios.get(`${API_BASE}/api/tournaments?action=allReferees`, { withCredentials: true }),
-        axios.get(`${API_BASE}/api/tournaments?action=refereeInvitations&id=${tournamentId}`, { withCredentials: true }).catch(() => ({ data: [] })),
       ]);
       setAssignedReferees(Array.isArray(assignedRes?.data) ? assignedRes.data : []);
       setAllReferees(Array.isArray(allRes?.data) ? allRes.data : []);
-      setPendingInvites(Array.isArray(invitesRes?.data) ? invitesRes.data : []);
     } catch (err) {
       console.error("Load referees error:", err);
       setAssignedReferees([]);
       setAllReferees([]);
-      setPendingInvites([]);
     } finally {
       setLoading(false);
     }
@@ -3015,18 +3020,33 @@ const RefereeTab = ({ tournamentId }) => {
 
   const handleAssign = async () => {
     if (!tournamentId || !assignRefereeId) return;
+
+    const selected = allReferees.find((r) => r.refereeId === assignRefereeId);
+    if (!selected || !selected.email) {
+      alert("Không tìm thấy email của trọng tài đã chọn.");
+      return;
+    }
+
     setAssigning(true);
     try {
-      await axios.post(
-        `${API_BASE}/api/tournaments?action=assignReferee&id=${tournamentId}`,
-        { refereeId: assignRefereeId, refereeRole: assignRole },
+      const payload = {
+        email: String(selected.email).trim(),
+        refereeRole: assignRole,
+      };
+      const res = await axios.post(
+        `${API_BASE}/api/tournaments?action=inviteReferee&id=${tournamentId}`,
+        payload,
         { withCredentials: true }
       );
+      const message =
+        res?.data?.message ||
+        "Đã gửi lời mời cho trọng tài. Hệ thống sẽ gán vào giải sau khi họ chấp nhận.";
+      alert(message);
       setShowAssignModal(false);
       setAssignRefereeId(null);
-      await fetchReferees();
+      // Assigned referees chỉ thay đổi sau khi trọng tài accept lời mời.
     } catch (err) {
-      alert(err?.response?.data?.message || "Gán trọng tài thất bại.");
+      alert(err?.response?.data?.message || "Gửi lời mời trọng tài thất bại.");
     } finally {
       setAssigning(false);
     }
@@ -3068,13 +3088,21 @@ const RefereeTab = ({ tournamentId }) => {
       setShowCreateModal(false);
       setCreateForm({ firstName: "", lastName: "", email: "", phoneNumber: "", address: "" });
       await fetchReferees();
-      if (created?.refereeId && tournamentId && confirm("Tạo trọng tài thành công. Bạn có muốn gán ngay vào giải này không?")) {
-        await axios.post(
-          `${API_BASE}/api/tournaments?action=assignReferee&id=${tournamentId}`,
-          { refereeId: created.refereeId, refereeRole: assignRole },
-          { withCredentials: true }
-        );
-        await fetchReferees();
+      if (created?.email && tournamentId && confirm("Tạo trọng tài thành công. Bạn có muốn gửi lời mời tham gia giải này không?")) {
+        try {
+          const invitePayload = {
+            email: String(created.email).trim(),
+            refereeRole: assignRole,
+          };
+          const inviteRes = await axios.post(
+            `${API_BASE}/api/tournaments?action=inviteReferee&id=${tournamentId}`,
+            invitePayload,
+            { withCredentials: true }
+          );
+          alert(inviteRes?.data?.message || "Đã gửi lời mời cho trọng tài.");
+        } catch (inviteErr) {
+          alert(inviteErr?.response?.data?.message || "Gửi lời mời trọng tài thất bại.");
+        }
       }
     } catch (err) {
       alert(err?.response?.data?.message || "Tạo trọng tài thất bại.");
@@ -3083,64 +3111,6 @@ const RefereeTab = ({ tournamentId }) => {
     }
   };
 
-  const handleInviteByEmail = async () => {
-    if (!tournamentId || !inviteEmail?.trim() || inviting) return;
-    setInviting(true);
-    try {
-      await axios.post(
-        `${API_BASE}/api/tournaments?action=inviteReferee&id=${tournamentId}`,
-        { email: inviteEmail.trim().toLowerCase(), refereeRole: inviteRole },
-        { withCredentials: true }
-      );
-      setShowInviteModal(false);
-      setInviteEmail("");
-      fetchReferees();
-    } catch (err) {
-      alert(err?.response?.data?.message || "Mời trọng tài thất bại.");
-    } finally {
-      setInviting(false);
-    }
-  };
-
-  const handleResendInvite = async (invitationId) => {
-    try {
-      await axios.post(
-        `${API_BASE}/api/tournaments?action=resendInvite`,
-        { invitationId },
-        { withCredentials: true }
-      );
-      fetchReferees();
-    } catch (err) {
-      alert(err?.response?.data?.message || "Gửi lại thư mời thất bại.");
-    }
-  };
-
-  const handleReplaceInvite = async (invitationId, newEmail, refereeRole = "Assistant") => {
-    try {
-      await axios.post(
-        `${API_BASE}/api/tournaments?action=replaceInvite&invitationId=${invitationId}`,
-        { email: newEmail.trim().toLowerCase(), refereeRole },
-        { withCredentials: true }
-      );
-      setShowReplaceModal(null);
-      fetchReferees();
-    } catch (err) {
-      alert(err?.response?.data?.message || "Thay thế trọng tài thất bại.");
-    }
-  };
-
-  const handleRemovePending = async (invitationId) => {
-    if (!confirm("Bạn có chắc muốn xóa lượt mời đang chờ?")) return;
-    try {
-      await axios.delete(
-        `${API_BASE}/api/tournaments?action=removePendingInvite&invitationId=${invitationId}`,
-        { withCredentials: true }
-      );
-      fetchReferees();
-    } catch (err) {
-      alert(err?.response?.data?.message || "Xóa lượt mời thất bại.");
-    }
-  };
 
   const assignedIds = new Set(assignedReferees.map((r) => r.refereeId));
   const availableToAssign = allReferees.filter((r) => !assignedIds.has(r.refereeId));
@@ -3205,10 +3175,10 @@ const RefereeTab = ({ tournamentId }) => {
             }}
           >
             <div className="td-add-icon">
-          <UserPlus size={32} />
-        </div>
+              <UserPlus size={32} />
+            </div>
             <h4>Thêm trọng tài</h4>
-            <p>Gán trọng tài có sẵn vào giải</p>
+            <p>Chọn trọng tài đang rảnh để gán vào giải</p>
           </div>
 
           <div
@@ -3224,80 +3194,16 @@ const RefereeTab = ({ tournamentId }) => {
             <h4>Tạo trọng tài mới</h4>
             <p>Đăng ký trọng tài mới vào hệ thống</p>
           </div>
-
-          <div
-            className="td-referee-add td-referee-invite"
-            onClick={() => {
-              setInviteEmail("");
-              setShowInviteModal(true);
-            }}
-          >
-            <div className="td-add-icon">
-              <Mail size={32} />
-            </div>
-            <h4>Mời trọng tài</h4>
-            <p>Gửi thư mời qua email</p>
-          </div>
-        </div>
-      )}
-
-      {!loading && pendingInvites.length > 0 && (
-        <div className="td-pending-invites">
-          <h4>Lời mời đang chờ</h4>
-          <div className="td-pending-list">
-            {pendingInvites.map((inv) => (
-              <div key={inv.invitationId} className="td-pending-item">
-                <div className="td-pending-info">
-                  <span className="td-pending-email">{inv.invitedEmail}</span>
-                  <span className="td-pending-role">{inv.refereeRole || "Assistant"}</span>
-                  <span className="td-pending-date">
-                    Mời lúc: {inv.invitedAt ? new Date(inv.invitedAt).toLocaleString("vi-VN") : "—"}
-                  </span>
-                  {inv.expiresAt && (
-                    <span className="td-pending-expiry">
-                      Hết hạn: {new Date(inv.expiresAt).toLocaleDateString("vi-VN")}
-                    </span>
-                  )}
-                </div>
-                <div className="td-pending-actions">
-                  <button
-                    type="button"
-                    className="ui-btn ui-btn-secondary td-pending-btn"
-                    onClick={() => handleResendInvite(inv.invitationId)}
-                    title="Gửi lại thư mời"
-                  >
-                    <RefreshCw size={16} />
-                    Gửi lại
-                  </button>
-                  <button
-                    type="button"
-                    className="ui-btn ui-btn-secondary td-pending-btn"
-                    onClick={() => setShowReplaceModal(inv)}
-                    title="Thay trọng tài"
-                  >
-                    <UserCog size={16} />
-                    Thay thế
-                  </button>
-                  <button
-                    type="button"
-                    className="ui-btn ui-btn-danger td-pending-btn"
-                    onClick={() => handleRemovePending(inv.invitationId)}
-                    title="Xóa lượt mời"
-                  >
-                    <Trash2 size={16} />
-                    Xóa
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
       {showAssignModal && (
         <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Chọn trọng tài để gán</h3>
+            <h3>Mời trọng tài vào giải</h3>
+            <p className="td-modal-desc">
+              Chọn một trọng tài trong hệ thống và gửi lời mời. Trọng tài chỉ được gán vào giải sau khi họ chấp nhận lời mời.
+            </p>
             <div className="td-modal-body">
               <div className="td-referee-field">
                 <label>Vai trò</label>
@@ -3306,26 +3212,22 @@ const RefereeTab = ({ tournamentId }) => {
                   <option value="Assistant">Assistant</option>
                 </select>
               </div>
-              <div className="td-referee-list">
-                {availableToAssign.length === 0 ? (
-                  <p>Không còn trọng tài nào để gán.</p>
-                ) : (
-                  availableToAssign.map((r) => (
-                    <div
-                      key={r.refereeId}
-                      className={`td-referee-item ${assignRefereeId === r.refereeId ? "selected" : ""}`}
-                      onClick={() => setAssignRefereeId(r.refereeId)}
-                    >
-                      <div className="referee-avatar-placeholder small">
-                        {(r.firstName?.[0] || r.lastName?.[0] || "?")}
-                      </div>
-                      <div>
-                        <strong>{[r.firstName, r.lastName].filter(Boolean).join(" ") || "—"}</strong>
-                        <span>{r.email}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
+              <div className="td-referee-field">
+                <label>Trọng tài</label>
+                <select
+                  value={assignRefereeId || ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setAssignRefereeId(val ? Number(val) : null);
+                  }}
+                >
+                  <option value="">Chọn trọng tài</option>
+                  {availableToAssign.map((r) => (
+                    <option key={r.refereeId} value={r.refereeId}>
+                      {[r.firstName, r.lastName].filter(Boolean).join(" ") || "—"} - {r.email}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="modal-actions">
@@ -3337,7 +3239,7 @@ const RefereeTab = ({ tournamentId }) => {
                 onClick={handleAssign}
                 disabled={!assignRefereeId || assigning}
               >
-                {assigning ? "Đang gán..." : "Gán trọng tài"}
+                {assigning ? "Đang gửi..." : "Gửi lời mời"}
               </button>
             </div>
           </div>

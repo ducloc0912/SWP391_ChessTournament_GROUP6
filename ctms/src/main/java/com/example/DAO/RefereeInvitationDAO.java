@@ -225,4 +225,103 @@ public class RefereeInvitationDAO extends DBContext {
         }
         return false;
     }
+
+    public Map<String, Object> findPendingById(int invitationId) {
+        String sql = """
+            SELECT ri.invitation_id, ri.tournament_id, ri.invited_email, ri.referee_role,
+                   ri.status, ri.expires_at, ri.token, ri.referee_id
+            FROM Referee_Invitation ri
+            WHERE ri.invitation_id = ? AND ri.status = 'Pending' AND ri.expires_at > GETDATE()
+            """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, invitationId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("invitationId", rs.getInt("invitation_id"));
+                    m.put("tournamentId", rs.getInt("tournament_id"));
+                    m.put("invitedEmail", rs.getString("invited_email"));
+                    m.put("refereeRole", rs.getString("referee_role"));
+                    m.put("status", rs.getString("status"));
+                    m.put("expiresAt", rs.getTimestamp("expires_at"));
+                    m.put("token", rs.getString("token"));
+                    m.put("refereeId", rs.getObject("referee_id"));
+                    return m;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public List<Map<String, Object>> getPendingForEmail(String email) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        if (email == null || email.isBlank()) return list;
+        String sql = """
+            SELECT ri.invitation_id, ri.tournament_id, ri.invited_email, ri.referee_role,
+                   ri.status, ri.invited_at, ri.expires_at,
+                   t.tournament_name
+            FROM Referee_Invitation ri
+            JOIN Tournaments t ON t.tournament_id = ri.tournament_id
+            WHERE ri.status = 'Pending'
+              AND LOWER(ri.invited_email) = LOWER(?)
+              AND ri.expires_at > GETDATE()
+            """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("invitationId", rs.getInt("invitation_id"));
+                    m.put("tournamentId", rs.getInt("tournament_id"));
+                    m.put("invitedEmail", rs.getString("invited_email"));
+                    m.put("refereeRole", rs.getString("referee_role"));
+                    m.put("status", rs.getString("status"));
+                    m.put("invitedAt", rs.getTimestamp("invited_at"));
+                    m.put("expiresAt", rs.getTimestamp("expires_at"));
+                    m.put("tournamentName", rs.getString("tournament_name"));
+                    list.add(m);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public boolean markAccepted(int invitationId, int refereeId) {
+        String sql = """
+            UPDATE Referee_Invitation
+            SET status = 'Accepted', accepted_at = GETDATE(), referee_id = ?
+            WHERE invitation_id = ? AND status = 'Pending'
+            """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, refereeId);
+            ps.setInt(2, invitationId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean markRejected(int invitationId) {
+        String sql = """
+            UPDATE Referee_Invitation
+            SET status = 'Rejected'
+            WHERE invitation_id = ? AND status = 'Pending'
+            """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, invitationId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }

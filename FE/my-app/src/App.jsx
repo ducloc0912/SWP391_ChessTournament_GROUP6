@@ -5,6 +5,7 @@ import ForgotPassword from "./page/user/ForgotPassword";
 import Verify from "./page/user/Verify";
 import ResetPassword from "./page/user/ResetPassword";
 import HomePage from "./page/home/HomePage";
+import RefereeInvitationsPage from "./page/referee/RefereeInvitationsPage";
 import Profile from "./page/user/UserProfile";
 import PlayerTournamentList from "./page/user/PlayerTournamentList";
 import PendingTournamentRegistrations from "./page/user/PendingTournamentRegistrations";
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/payment-result" element={<PaymentResult />} />
+        <Route path="/referee/invitations" element={<RefereeInvitationsPage />} />
       </Routes>
     </BrowserRouter>
   );

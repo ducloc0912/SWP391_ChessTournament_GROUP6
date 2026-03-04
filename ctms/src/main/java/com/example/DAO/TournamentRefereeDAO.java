@@ -61,6 +61,13 @@ public class TournamentRefereeDAO extends DBContext {
             JOIN User_Role ur ON u.user_id = ur.user_id
             JOIN Roles r ON ur.role_id = r.role_id
             WHERE r.role_name = 'Referee'
+              AND NOT EXISTS (
+                    SELECT 1
+                    FROM Tournament_Referee tr
+                    JOIN Tournaments t ON t.tournament_id = tr.tournament_id
+                    WHERE tr.referee_id = u.user_id
+                      AND t.status = 'Ongoing'
+              )
             ORDER BY u.first_name
         """;
 

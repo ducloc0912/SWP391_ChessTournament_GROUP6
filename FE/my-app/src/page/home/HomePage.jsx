@@ -63,21 +63,22 @@ export default function HomePage() {
   const [latestBlogs, setLatestBlogs] = useState([]);
   const [loadingHome, setLoadingHome] = useState(true);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [refereeInvites, setRefereeInvites] = useState([]);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   useEffect(() => {
+    // Đọc nhanh từ localStorage để tránh nháy UI
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
-        return;
-      } catch (error) {
+      } catch {
         localStorage.removeItem("user");
       }
     }
 
-    // Nếu FE đang ở domain khác (vd: ngrok) và mất localStorage,
-    // thử hỏi backend xem session còn không để sync lại user.
-    const restoreFromSession = async () => {
+    // Luôn xác thực lại với backend để tránh trường hợp FE còn localStorage nhưng session đã hết hạn
+    const syncFromSession = async () => {
       try {
         const res = await axios.get(`${API_BASE}/api/session/me`, {
           withCredentials: true,
@@ -87,16 +88,41 @@ export default function HomePage() {
           localStorage.setItem("user", JSON.stringify(res.data.user));
           if (role) {
             localStorage.setItem("role", role);
+          } else {
+            localStorage.removeItem("role");
           }
           setUser(res.data.user);
+        } else {
+          localStorage.removeItem("user");
+          localStorage.removeItem("role");
+          setUser(null);
         }
       } catch {
-        // ignore: user simply not logged in
+        localStorage.removeItem("user");
+        localStorage.removeItem("role");
+        setUser(null);
       }
+      setSessionChecked(true);
     };
 
-    restoreFromSession();
+    syncFromSession();
   }, []);
+
+  useEffect(() => {
+    const role = (localStorage.getItem("role") || "").toUpperCase();
+    if (!sessionChecked || !user || role !== "REFEREE") return;
+    const fetchInvites = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/referee/invitations`, {
+          withCredentials: true,
+        });
+        setRefereeInvites(Array.isArray(res?.data) ? res.data : []);
+      } catch {
+        setRefereeInvites([]);
+      }
+    };
+    fetchInvites();
+  }, [user?.userId]);
 
   useEffect(() => {
     const fetchHomeData = async () => {
@@ -465,6 +491,77 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {user && (localStorage.getItem("role") || "").toUpperCase() === "REFEREE" && (
+        <section className="hpv-section">
+          <div className="hpv-container">
+            <div className="hpv-section-head">
+              <h2>REFEREE INVITATIONS</h2>
+              <p>Các lời mời làm trọng tài đang chờ bạn xác nhận.</p>
+            </div>
+            {refereeInvites.length === 0 ? (
+              <div className="hpv-empty-card">Hiện bạn không có lời mời trọng tài nào.</div>
+            ) : (
+              <div className="hpv-latest-grid">
+                {refereeInvites.map((inv) => (
+                  <article key={inv.invitationId} className="hpv-latest-card">
+                    <div className="hpv-latest-body">
+                      <div className="hpv-meta-line">
+                        <span>{inv.refereeRole || "Assistant"}</span>
+                        <span>{inv.tournamentName || "Tournament"}</span>
+                      </div>
+                      <h3>Lời mời trọng tài</h3>
+                      <p>
+                        Bạn được mời làm trọng tài cho giải "{inv.tournamentName}". Nhấn chấp nhận để tham gia với vai trò{" "}
+                        {inv.refereeRole || "Assistant"}.
+                      </p>
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <button
+                          className="hpv-btn hpv-btn-primary"
+                          onClick={async () => {
+                            try {
+                              await axios.post(
+                                `${API_BASE}/api/referee/invitations?action=accept&invitationId=${inv.invitationId}`,
+                                null,
+                                { withCredentials: true },
+                              );
+                              setRefereeInvites((prev) => prev.filter((x) => x.invitationId !== inv.invitationId));
+                              alert("Đã chấp nhận lời mời trọng tài.");
+                            } catch (err) {
+                              alert(err?.response?.data?.message || "Không thể chấp nhận lời mời.");
+                            }
+                          }}
+                        >
+                          Chấp nhận
+                        </button>
+                        <button
+                          className="hpv-btn hpv-btn-primary"
+                          onClick={async () => {
+                            if (!window.confirm("Bạn chắc chắn muốn từ chối lời mời này?")) return;
+                            try {
+                              await axios.post(
+                                `${API_BASE}/api/referee/invitations?action=reject&invitationId=${inv.invitationId}`,
+                                null,
+                                { withCredentials: true },
+                              );
+                              setRefereeInvites((prev) => prev.filter((x) => x.invitationId !== inv.invitationId));
+                              alert("Bạn đã từ chối lời mời.");
+                            } catch (err) {
+                              alert(err?.response?.data?.message || "Không thể từ chối lời mời.");
+                            }
+                          }}
+                        >
+                          Từ chối
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <footer className="hpv-footer">
         <div className="hpv-container hpv-footer-inner">

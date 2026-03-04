@@ -80,6 +80,7 @@ export default function TournamentDetail() {
 
   const [user, setUser] = useState(null);
   const [tournament, setTournament] = useState(null);
+  const [isJoined, setIsJoined] = useState(false);
   const [upcomingMatches, setUpcomingMatches] = useState([]);
   const [completedMatches, setCompletedMatches] = useState([]);
   const [podium, setPodium] = useState({ championName: null, runnerUpName: null });
@@ -111,6 +112,23 @@ export default function TournamentDetail() {
       const detailRes = await axios.get(`${API_BASE}/api/public/tournaments?action=detail&id=${id}`);
       const detailData = detailRes?.data || null;
       setTournament(detailData);
+
+      // Nếu đang đăng nhập, kiểm tra xem user đã tham gia giải này chưa
+      if (detailData?.tournamentId && user?.userId) {
+        try {
+          const res = await axios.get(
+            `${API_BASE}/api/participants?userId=me&activeOnly=true`,
+            { withCredentials: true },
+          );
+          const list = Array.isArray(res?.data) ? res.data : [];
+          const joined = list.some((p) => p.tournamentId === detailData.tournamentId || p.tournament_id === detailData.tournamentId);
+          setIsJoined(joined);
+        } catch {
+          setIsJoined(false);
+        }
+      } else {
+        setIsJoined(false);
+      }
 
       const detailStatus = normalizeStatus(detailData?.status);
       if (detailStatus === "finished") {
@@ -157,7 +175,7 @@ export default function TournamentDetail() {
 
   const statusKey = useMemo(() => normalizeStatus(tournament?.status), [tournament?.status]);
   const showMatches = statusKey === "ongoing" || statusKey === "finished";
-  const canRegister = statusKey === "registering";
+  const canRegisterByStatus = statusKey === "registering";
 
   const statusPillLabel = useMemo(() => {
     const m = { registering: "REGISTERING", ongoing: "IN PROGRESS", finished: "FINISHED" };
@@ -193,7 +211,7 @@ export default function TournamentDetail() {
       navigate("/login");
       return;
     }
-    if (!canRegister) {
+    if (!canRegisterByStatus) {
       alert("Chỉ có thể đăng ký vào giải đang mở đăng ký (Upcoming).");
       return;
     }
@@ -248,9 +266,14 @@ export default function TournamentDetail() {
                     {tournament.location || "Online"}
                   </span>
                 </div>
-                {canRegister && (
+                {canRegisterByStatus && !isJoined && (
                   <button type="button" className="tdp-register-btn" onClick={handleRegisterTournament}>
                     Đăng ký giải
+                  </button>
+                )}
+                {isJoined && (
+                  <button type="button" className="tdp-register-btn tdp-register-btn-disabled" disabled>
+                    Đã đăng ký
                   </button>
                 )}
               </div>
