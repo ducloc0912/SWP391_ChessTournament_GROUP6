@@ -195,12 +195,12 @@ public class ParticipantDAO extends DBContext {
         return 0;
     }
 
-    /** User bị khóa 24h do hết hạn thanh toán lần trước (Participant status=Withdrawn, removed_at trong 24h) */
+    /** User bị khóa 2h do hết hạn thanh toán lần trước hoặc tự hủy (Participant status=Withdrawn, removed_at trong 2h) */
     public boolean isBlockedByUnpaidExpiry(int tournamentId, int userId) {
         String sql = """
             SELECT 1 FROM Participants
             WHERE tournament_id = ? AND user_id = ? AND status = 'Withdrawn'
-              AND removed_at IS NOT NULL AND removed_at > DATEADD(hour, -24, GETDATE())
+              AND removed_at IS NOT NULL AND removed_at > DATEADD(hour, -2, GETDATE())
             """;
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -409,6 +409,56 @@ public class ParticipantDAO extends DBContext {
                 row.put("tournamentName", rs.getString("tournament_name"));
                 row.put("format", rs.getString("format"));
                 row.put("location", rs.getString("location"));
+                list.add(row);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    /**
+     * Các đăng ký còn hiệu lực của một user (giải chưa kết thúc), kèm thông tin giải.
+     * Dùng cho màn "Giải đang đăng ký" của người chơi.
+     */
+    public List<Map<String, Object>> getActiveWithTournamentInfoByUserId(int userId) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        String sql = """
+            SELECT p.participant_id,
+                   p.tournament_id,
+                   p.title_at_registration,
+                   p.registration_date,
+                   p.is_paid,
+                   p.status,
+                   t.tournament_name,
+                   t.format,
+                   t.location,
+                   t.status AS tournament_status,
+                   t.entry_fee
+            FROM Participants p
+            JOIN Tournaments t ON p.tournament_id = t.tournament_id
+            WHERE p.user_id = ?
+              AND (p.status IS NULL OR p.status = 'Active')
+              AND t.status IN ('Pending', 'Upcoming', 'Ongoing')
+            ORDER BY p.registration_date DESC
+            """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("participantId", rs.getInt("participant_id"));
+                row.put("tournamentId", rs.getInt("tournament_id"));
+                row.put("titleAtRegistration", rs.getString("title_at_registration"));
+                row.put("registrationDate", rs.getTimestamp("registration_date"));
+                row.put("isPaid", rs.getBoolean("is_paid"));
+                row.put("status", rs.getString("status"));
+                row.put("tournamentName", rs.getString("tournament_name"));
+                row.put("format", rs.getString("format"));
+                row.put("location", rs.getString("location"));
+                row.put("tournamentStatus", rs.getString("tournament_status"));
+                row.put("entryFee", rs.getBigDecimal("entry_fee"));
                 list.add(row);
             }
         } catch (SQLException e) {

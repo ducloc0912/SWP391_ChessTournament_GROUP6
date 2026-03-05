@@ -1,4 +1,14 @@
 /* ====== PAGE WRAPPER (đồng bộ Homepage) ====== */
+#payment-result-page.payment-result-page.hpv-page {
+    --hpv-bg: #ece8e1;
+    background: var(--hpv-bg);
+    min-height: 100vh;
+}
+
+#payment-result-page .hpv-hero-overlay {
+    background: rgba(8, 13, 20, 0.4);
+}
+
 #payment-page.payment-page {
     --hpv-bg: #ece8e1;
     --hpv-accent: #ff4655;
@@ -444,6 +454,140 @@ h2 {
     max-width: 500px;
     margin: 40px auto;
     text-align: center;
+}
+
+/* ====== PAYMENT RESULT CARD (design: white card, icon, title, desc, accent line) ====== */
+.payment-result-page .payment-result-card-new {
+    max-width: 480px;
+    width: 100%;
+    padding: 48px 40px;
+    text-align: center;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.payment-result-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.payment-result-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
+.payment-result-icon svg {
+    width: 40px;
+    height: 40px;
+}
+
+.payment-result-icon-success {
+    background: #22c55e;
+    color: #ffffff;
+}
+
+.payment-result-icon-error {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.payment-result-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1f2937;
+    margin: 0 0 12px;
+    line-height: 1.3;
+}
+
+.payment-result-desc {
+    font-size: 0.9375rem;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0 0 20px;
+    max-width: 360px;
+}
+
+.payment-result-accent {
+    height: 3px;
+    width: 80px;
+    margin: 0 auto 28px;
+    border-radius: 2px;
+}
+
+.payment-result-accent-success {
+    background: #22c55e;
+}
+
+.payment-result-accent-error {
+    background: #ef4444;
+}
+
+.payment-result-actions {
+    width: 100%;
+    max-width: 320px;
+}
+
+.payment-result-btn {
+    display: block;
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.payment-result-btn:hover {
+    opacity: 0.92;
+    transform: translateY(-1px);
+}
+
+.payment-result-btn-red {
+    background: #ff4655;
+    color: #ffffff;
+}
+
+.payment-result-btn-red:hover {
+    background: #f73748;
+}
+
+.payment-result-processing .payment-result-title,
+.payment-result-processing .payment-result-desc {
+    color: #1f2937;
+}
+
+.payment-result-progress {
+    width: 100%;
+    max-width: 200px;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 16px;
+}
+
+.payment-result-progress-bar {
+    height: 100%;
+    width: 40%;
+    background: linear-gradient(90deg, #3b82f6, #06b6d4);
+    border-radius: 3px;
+    animation: paymentResultPulse 1s ease-in-out infinite;
+}
+
+@keyframes paymentResultPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
 }
 
 .status-icon-wrap {

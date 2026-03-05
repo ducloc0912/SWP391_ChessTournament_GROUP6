@@ -1,6 +1,7 @@
 package com.example.controller.leader;
 
 import com.example.model.dto.TournamentDTO;
+import com.example.model.dto.TournamentPlayerDTO;
 import com.example.model.enums.TournamentFormat;
 import com.example.model.enums.TournamentStatus;
 import com.example.service.leader.TournamentService;
@@ -135,6 +136,24 @@ public class PublicTournamentController extends HttpServlet {
 
         if ("allMatches".equals(action)) {
             response.getWriter().write(gson.toJson(tournamentService.getAllPublicMatches()));
+            return;
+        }
+
+        if ("participants".equals(action)) {
+            String idParam = request.getParameter("id");
+            if (idParam == null || idParam.isBlank()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Missing tournament id\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(idParam);
+                List<TournamentPlayerDTO> list = tournamentService.getPlayersByTournament(tournamentId);
+                response.getWriter().write(gson.toJson(list));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Invalid tournament id\"}");
+            }
             return;
         }
 

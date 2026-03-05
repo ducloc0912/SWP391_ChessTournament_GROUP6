@@ -80,9 +80,11 @@ export default function TournamentDetail() {
 
   const [user, setUser] = useState(null);
   const [tournament, setTournament] = useState(null);
+  const [isJoined, setIsJoined] = useState(false);
   const [upcomingMatches, setUpcomingMatches] = useState([]);
   const [completedMatches, setCompletedMatches] = useState([]);
   const [podium, setPodium] = useState({ championName: null, runnerUpName: null });
+  const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -112,6 +114,23 @@ export default function TournamentDetail() {
       const detailData = detailRes?.data || null;
       setTournament(detailData);
 
+      // Nếu đang đăng nhập, kiểm tra xem user đã tham gia giải này chưa
+      if (detailData?.tournamentId && user?.userId) {
+        try {
+          const res = await axios.get(
+            `${API_BASE}/api/participants?userId=me&activeOnly=true`,
+            { withCredentials: true },
+          );
+          const list = Array.isArray(res?.data) ? res.data : [];
+          const joined = list.some((p) => p.tournamentId === detailData.tournamentId || p.tournament_id === detailData.tournamentId);
+          setIsJoined(joined);
+        } catch {
+          setIsJoined(false);
+        }
+      } else {
+        setIsJoined(false);
+      }
+
       const detailStatus = normalizeStatus(detailData?.status);
       if (detailStatus === "finished") {
         const podiumRes = await axios
@@ -132,13 +151,18 @@ export default function TournamentDetail() {
       setCompletedMatches(
         Array.isArray(matchesRes?.data?.completedMatches) ? matchesRes.data.completedMatches : [],
       );
+
+      const participantsRes = await axios
+        .get(`${API_BASE}/api/public/tournaments?action=participants&id=${id}`)
+        .catch(() => null);
+      setParticipants(Array.isArray(participantsRes?.data) ? participantsRes.data : []);
     } catch (err) {
       console.error("Load tournament detail failed:", err);
       setError("Không thể tải chi tiết giải đấu.");
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, user?.userId]);
 
   useEffect(() => {
     if (!id || id === "all" || isNaN(Number(id))) {
@@ -146,7 +170,7 @@ export default function TournamentDetail() {
       return;
     }
     fetchDetail();
-  }, [id, navigate, fetchDetail]);
+  }, [id, navigate, fetchDetail, user?.userId]);
 
   useEffect(() => {
     if (!id || id === "all" || isNaN(Number(id))) return;
@@ -157,7 +181,7 @@ export default function TournamentDetail() {
 
   const statusKey = useMemo(() => normalizeStatus(tournament?.status), [tournament?.status]);
   const showMatches = statusKey === "ongoing" || statusKey === "finished";
-  const canRegister = statusKey === "registering";
+  const canRegisterByStatus = statusKey === "registering";
 
   const statusPillLabel = useMemo(() => {
     const m = { registering: "REGISTERING", ongoing: "IN PROGRESS", finished: "FINISHED" };
@@ -165,6 +189,20 @@ export default function TournamentDetail() {
   }, [statusKey]);
 
   const [activeTab, setActiveTab] = useState("overview");
+
+  const participantFullName = (p) => {
+    const first = p.firstName ?? p.first_name;
+    const last = p.lastName ?? p.last_name;
+    const full = [first, last].filter(Boolean).join(" ").trim();
+    return full || (p.titleAtRegistration ?? p.title_at_registration ?? "—");
+  };
+
+  const PARTICIPANTS_PREVIEW_LIMIT = 10;
+  const participantsPreview = useMemo(
+    () => participants.slice(0, PARTICIPANTS_PREVIEW_LIMIT),
+    [participants],
+  );
+  const hasMoreParticipants = participants.length > PARTICIPANTS_PREVIEW_LIMIT;
 
   const dateRangeStr = useMemo(() => {
     const s = formatDate(tournament?.startDate);
@@ -193,7 +231,7 @@ export default function TournamentDetail() {
       navigate("/login");
       return;
     }
-    if (!canRegister) {
+    if (!canRegisterByStatus) {
       alert("Chỉ có thể đăng ký vào giải đang mở đăng ký (Upcoming).");
       return;
     }
@@ -248,11 +286,16 @@ export default function TournamentDetail() {
                     {tournament.location || "Online"}
                   </span>
                 </div>
-                {canRegister && (
-                  <button type="button" className="tdp-register-btn" onClick={handleRegisterTournament}>
-                    Đăng ký giải
-                  </button>
-                )}
+                <div className="tdp-register-cta">
+                  {canRegisterByStatus && !isJoined && (
+                    <button type="button" className="tdp-register-btn" onClick={handleRegisterTournament}>
+                      Đăng ký giải
+                    </button>
+                  )}
+                  {canRegisterByStatus && isJoined && (
+                    <span className="tdp-register-text-joined">Bạn đã đăng ký giải này</span>
+                  )}
+                </div>
               </div>
               <div className="tdp-hero-fee">
                 {Number(tournament?.entryFee ?? 0) > 0 ? (
@@ -276,12 +319,61 @@ export default function TournamentDetail() {
               </button>
               <button
                 type="button"
+                className={`tdp-tab ${activeTab === "participant" ? "active" : ""}`}
+                onClick={() => setActiveTab("participant")}
+              >
+                PARTICIPANT
+              </button>
+              <button
+                type="button"
                 className={`tdp-tab ${activeTab === "bracket" ? "active" : ""}`}
                 onClick={() => setActiveTab("bracket")}
               >
                 BRACKET
               </button>
             </nav>
+
+            {activeTab === "participant" && (
+              <section className="tdp-participants-section">
+                <div className="tdp-players-tab">
+                  <div className="tdp-players-table-wrapper">
+                    <table className="tdp-players-table">
+                      <thead>
+                        <tr>
+                          <th>HỌ VÀ TÊN</th>
+                          <th>TÊN IN-GAME</th>
+                          <th>EMAIL</th>
+                          <th>RANK</th>
+                          <th>THỜI ĐIỂM ĐĂNG KÝ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {participants.length === 0 ? (
+                          <tr>
+                            <td colSpan={5}>Chưa có người tham gia.</td>
+                          </tr>
+                        ) : (
+                          participants.map((row) => {
+                            const regDate = row.registrationDate ?? row.registration_date;
+                            return (
+                              <tr key={row.participantId ?? row.participant_id ?? row.userId ?? row.user_id}>
+                                <td>{participantFullName(row)}</td>
+                                <td>{row.titleAtRegistration ?? row.title_at_registration ?? "—"}</td>
+                                <td>{row.email ?? "—"}</td>
+                                <td>{row.rank ?? "—"}</td>
+                                <td>
+                                  {regDate ? new Date(regDate).toLocaleString("vi-VN") : "—"}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
+            )}
 
             {activeTab === "overview" && (
               <section className="tdp-overview">
@@ -346,10 +438,33 @@ export default function TournamentDetail() {
                       <p className="tdp-participants-intro">
                         {Number(tournament.currentPlayers ?? tournament.current_players ?? 0)}/{Number(tournament.maxPlayer ?? tournament.max_player ?? 0)} người đã đăng ký
                       </p>
+                      <ul className="tdp-participants-list">
+                        {participantsPreview.length === 0 ? (
+                          <li key="empty" className="tdp-participant-item tdp-participant-empty">Chưa có người tham gia.</li>
+                        ) : (
+                          participantsPreview.map((p, index) => (
+                            <li key={p.participantId ?? p.participant_id ?? p.userId ?? p.user_id ?? `p-${index}`} className="tdp-participant-item">
+                              <span className="tdp-player-avatar" />
+                              <span>{participantFullName(p)}</span>
+                            </li>
+                          ))
+                        )}
+                        {hasMoreParticipants && (
+                          <li key="show-all" className="tdp-participant-item tdp-participants-show-all-wrap">
+                            <button
+                              type="button"
+                              className="tdp-participants-show-all"
+                              onClick={() => setActiveTab("participant")}
+                            >
+                              Xem tất cả ({participants.length} người)
+                            </button>
+                          </li>
+                        )}
+                      </ul>
                       <div className="tdp-participants-info">
                         <p><MapPin size={14} /> {tournament.location || "Online"}</p>
                         <p><Calendar size={14} /> {dateRangeStr}</p>
-                        {canRegister && (
+                        {canRegisterByStatus && (
                           <p><Clock3 size={14} /> Hạn đăng ký: {formatDateTime(tournament.registrationDeadline)}</p>
                         )}
                         <p><Trophy size={14} /> Quỹ thưởng: {formatMoney(tournament.prizePool)} VND</p>

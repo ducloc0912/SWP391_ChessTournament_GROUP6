@@ -79,6 +79,13 @@ public class RegisterServlet extends HttpServlet {
                 return;
             }
 
+            String status = tournament.getStatus() == null ? "" : tournament.getStatus().trim();
+            if (!status.equalsIgnoreCase("Upcoming")) {
+                write(resp, HttpServletResponse.SC_BAD_REQUEST, false,
+                        "Chỉ giải ở trạng thái Upcoming mới cho phép đăng ký.", null);
+                return;
+            }
+
             Timestamp registrationDeadline = tournament.getRegistrationDeadline();
             if (registrationDeadline != null && registrationDeadline.before(new Timestamp(System.currentTimeMillis()))) {
                 write(resp, HttpServletResponse.SC_CONFLICT, false, "Đã quá hạn đăng ký", null);
@@ -87,6 +94,11 @@ public class RegisterServlet extends HttpServlet {
 
             int uid = currentUser.getUserId() != null ? currentUser.getUserId() : 0;
             Participant existingAny = participantDAO.getByTournamentAndUser(tournamentId, uid);
+            if (existingAny != null && existingAny.getStatus() == ParticipantStatus.Disqualified) {
+                write(resp, HttpServletResponse.SC_FORBIDDEN, false,
+                        "Bạn đã bị ban khỏi giải đấu này và không thể đăng ký lại. Vui lòng liên hệ BTC nếu cần hỗ trợ.", null);
+                return;
+            }
             if (existingAny != null && existingAny.getStatus() == ParticipantStatus.Active && Boolean.TRUE.equals(existingAny.getIsPaid())) {
                 write(resp, HttpServletResponse.SC_CONFLICT, false, "Bạn đã đăng ký giải này rồi.", null);
                 return;
@@ -105,8 +117,17 @@ public class RegisterServlet extends HttpServlet {
             }
             if (participantDAO.isBlockedByUnpaidExpiry(tournamentId, currentUser.getUserId())) {
                 write(resp, HttpServletResponse.SC_FORBIDDEN, false,
-                        "Bạn đã hết hạn thanh toán lần trước. Vui lòng thử lại sau 24 giờ.", null);
+                        "Bạn đã hủy hoặc hết hạn thanh toán lần trước. Vui lòng thử lại sau 2 giờ.", null);
                 return;
+            }
+
+            Integer maxPlayer = tournament.getMaxPlayer();
+            if (maxPlayer != null && maxPlayer > 0) {
+                int currentPlayers = participantDAO.countParticipantsByTournament(tournamentId);
+                if (currentPlayers >= maxPlayer) {
+                    write(resp, HttpServletResponse.SC_CONFLICT, false, "Giải đã đủ số lượng người tham gia.", null);
+                    return;
+                }
             }
 
             String fullName = getString(body, "fullName");
@@ -166,7 +187,7 @@ public class RegisterServlet extends HttpServlet {
             Integer participantId;
             if (existingAny != null && existingAny.getStatus() == ParticipantStatus.Withdrawn
                     && existingAny.getRemovedAt() != null) {
-                long blockEnd = existingAny.getRemovedAt().getTime() + (24L * 3600 * 1000);
+                long blockEnd = existingAny.getRemovedAt().getTime() + (2L * 3600 * 1000);
                 if (System.currentTimeMillis() >= blockEnd) {
                     existingAny.setStatus(ParticipantStatus.PendingPayment);
                     existingAny.setIsPaid(false);
@@ -180,7 +201,7 @@ public class RegisterServlet extends HttpServlet {
                     }
                     participantId = existingAny.getParticipantId();
                 } else {
-                    write(resp, HttpServletResponse.SC_FORBIDDEN, false, "Bạn đã hết hạn thanh toán lần trước. Vui lòng thử lại sau 24 giờ.", null);
+                    write(resp, HttpServletResponse.SC_FORBIDDEN, false, "Bạn đã hủy hoặc hết hạn thanh toán lần trước. Vui lòng thử lại sau 2 giờ.", null);
                     return;
                 }
             } else {

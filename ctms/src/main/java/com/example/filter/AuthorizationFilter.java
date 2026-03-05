@@ -41,9 +41,15 @@ public class AuthorizationFilter implements Filter {
             return;
         }
 
-        if (path.contains("/staff") && !"Staff".equalsIgnoreCase(role) && !"Admin".equalsIgnoreCase(role)) {
-             res.setStatus(HttpServletResponse.SC_FORBIDDEN);
-             return;
+        // Staff & Admin: full /staff/*. TournamentLeader: chỉ /api/staff/blogs (quản lý blog)
+        if (path.contains("/staff")) {
+            boolean staffOrAdmin = "Staff".equalsIgnoreCase(role) || "Admin".equalsIgnoreCase(role);
+            boolean tlBlogs = path.contains("blogs") && "TOURNAMENTLEADER".equalsIgnoreCase(role);
+            if (!staffOrAdmin && !tlBlogs) {
+                res.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                res.getWriter().write("{\"message\": \"Access Denied\"}");
+                return;
+            }
         }
 
         // Cho qua

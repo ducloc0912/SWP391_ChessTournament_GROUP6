@@ -95,6 +95,15 @@ public class TournamentService {
         return refereeDAO.getAllRefereeUsers();
     }
 
+    /**
+     * Referees available to invite for this tournament: exclude those already assigned
+     * to any tournament whose period overlaps with this one (start_date..end_date).
+     */
+    public List<TournamentRefereeDTO> getAvailableRefereesForTournament(int tournamentId) {
+        if (tournamentId <= 0) return List.of();
+        return refereeDAO.getAvailableRefereesForTournament(tournamentId);
+    }
+
     public boolean assignRefereeToTournament(
             int tournamentId,
             int refereeId,
@@ -144,9 +153,14 @@ public class TournamentService {
         }
     }
 
+    /**
+     * Gửi lời mời trọng tài theo email.
+     * Chỉ chặn khi cùng một giải đã có lời mời pending cho email đó (-1).
+     * Trọng tài chưa accept lời mời từ giải khác thì tournament leader giải khác vẫn được mời (tạo invitation mới).
+     */
     public int inviteRefereeByEmail(int tournamentId, String email, String refereeRole, int invitedBy) {
         if (tournamentId <= 0 || isBlank(email) || invitedBy <= 0) return 0;
-        if (invitationDAO.hasPendingForEmail(tournamentId, email)) return -1;
+        if (invitationDAO.hasPendingForEmail(tournamentId, email)) return -1; // chỉ trùng cùng giải
         return invitationDAO.createInvitation(tournamentId, email, refereeRole, invitedBy);
     }
 
@@ -513,6 +527,27 @@ if (isBlank(t.getTournamentName())) return false;
                 return SetupValidationResult.invalid("Hybrid phải xếp Round Robin trước rồi mới Knock Out.");
             }
         }
+
+        // Giới hạn số round: Round Robin (cả thuần và Hybrid) đủ full vòng theo luật quốc tế, tối đa 10 round.
+        // KO tối đa 4 round.
+        final int maxRoundRobinRounds = 10;
+        final int maxKnockOutRounds = 4;
+        java.util.Set<Integer> rrRounds = new java.util.HashSet<>();
+        java.util.Set<Integer> koRounds = new java.util.HashSet<>();
+        for (TournamentSetupMatchDTO m : matches) {
+            String stage = normalizeStage(m.getStage(), format);
+            Integer ri = m.getRoundIndex();
+            if (ri == null) continue;
+            if ("RoundRobin".equals(stage)) rrRounds.add(ri);
+            if ("KnockOut".equals(stage)) koRounds.add(ri);
+        }
+        if (rrRounds.size() > maxRoundRobinRounds) {
+            return SetupValidationResult.invalid("Round Robin chỉ được tối đa " + maxRoundRobinRounds + " round. Hiện có " + rrRounds.size() + " round.");
+        }
+        if (koRounds.size() > maxKnockOutRounds) {
+            return SetupValidationResult.invalid("Knock Out chỉ được tối đa " + maxKnockOutRounds + " round. Hiện có " + koRounds.size() + " round.");
+        }
+
         return SetupValidationResult.valid("Structure hợp lệ.");
     }
 
@@ -535,11 +570,11 @@ if (isBlank(t.getTournamentName())) return false;
             Integer black = m.getBlackPlayerId();
             int roundIndex = m.getRoundIndex() == null ? 1 : m.getRoundIndex();
 
-            // Hybrid rule: at \"Add Players\" step, Knock Out bracket MUST NOT have players yet.
-            // KO sẽ nhận top N sau khi kết thúc Round Robin.
+            // Hybrid: Ở bước Add Players, toàn bộ Knock Out không bắt buộc (và không được) gán player;
+            // KO sẽ nhận top N từ Round Robin sau khi kết thúc, nên chưa xác định được ai vào.
             if ("Hybrid".equals(format) && "KnockOut".equals(stage)) {
                 if (white != null || black != null) {
-                    return SetupValidationResult.invalid("Hybrid: Ở bước Add Players, không được gán người chơi cho Knock Out bracket. KO sẽ nhận top N từ Round Robin sau khi kết thúc.");
+                    return SetupValidationResult.invalid("Hybrid: Ở bước Add Players, không gán người chơi cho Knock Out. KO sẽ nhận top N từ Round Robin sau khi kết thúc.");
                 }
                 continue;
             }

@@ -34,9 +34,16 @@ function fmtDate(dateValue) {
 }
 
 function getUiStatus(t) {
+  const rawStatus = (t.status || "").toString();
+  const normalized = rawStatus.trim().toLowerCase();
+
   if (t.currentPlayers >= t.maxPlayer) return "Full";
-  if (t.status === "Ongoing") return "Ongoing";
-  if (t.status === "Completed") return "Finished";
+  if (normalized === "pending") return "Pending";
+  if (normalized === "upcoming") return "Upcoming";
+  if (normalized === "ongoing") return "Ongoing";
+  if (normalized === "completed") return "Finished";
+  if (normalized === "cancelled") return "Cancelled";
+  if (normalized === "delayed") return "Delayed";
   return "Upcoming";
 }
 
@@ -58,6 +65,7 @@ function normalizeTournament(raw) {
     maxPlayers: Number(raw.maxPlayer || 0),
     currentPlayers: Number(raw.currentPlayers || 0),
     isRegistered: Boolean(raw.registered),
+    isBanned: Boolean(raw.banned),
   };
 }
 
@@ -406,19 +414,61 @@ export default function PlayerTournamentList() {
                           </div>
                         </div>
 
-                        {t.isRegistered ? (
-                          <button className="action secondary" onClick={() => navigate(`/tournaments/${t.id}`)}>
-                            View Details
-                          </button>
-                        ) : isFull ? (
-                          <button className="action ghost" disabled>
-                            Full
-                          </button>
-                        ) : (
-                          <button className="action primary" onClick={() => onRegister(t)}>
-                            Register Now
-                          </button>
-                        )}
+                        {(() => {
+                          const statusNorm = (t.status || "").toString().trim().toLowerCase();
+                          const canRegister =
+                            !t.isRegistered && !t.isBanned && !isFull && statusNorm === "upcoming";
+
+                          if (t.isBanned) {
+                            return (
+                              <button className="action ghost" disabled title="Liên hệ Ban tổ chức để được hỗ trợ">
+                                Bị ban khỏi giải, liên hệ BTC
+                              </button>
+                            );
+                          }
+
+                          if (t.isRegistered) {
+                            return (
+                              <button
+                                className="action secondary"
+                                onClick={() => navigate(`/tournaments/${t.id}`)}
+                              >
+                                Đã đăng ký
+                              </button>
+                            );
+                          }
+
+                          if (isFull) {
+                            return (
+                              <button className="action ghost" disabled>
+                                Đã đủ người
+                              </button>
+                            );
+                          }
+
+                          if (!canRegister) {
+                            if (statusNorm === "pending") {
+                              return (
+                                <button className="action ghost" disabled>
+                                  Đang chờ duyệt
+                                </button>
+                              );
+                            }
+                            if (statusNorm === "ongoing" || statusNorm === "completed") {
+                              return (
+                                <button className="action ghost" disabled>
+                                  Đã đóng đăng ký
+                                </button>
+                              );
+                            }
+                          }
+
+                          return (
+                            <button className="action primary" onClick={() => onRegister(t)}>
+                              Đăng ký ngay
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
                   );

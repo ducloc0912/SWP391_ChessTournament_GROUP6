@@ -5,7 +5,6 @@ import com.example.DAO.BlogPostDAO;
 import com.example.model.entity.BlogPost;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -17,6 +16,7 @@ import java.util.List;
 
 @WebServlet("/api/public/blogs")
 public class PublicBlogController extends HttpServlet {
+
     private final BlogPostDAO blogPostDAO = new BlogPostDAO();
     private final BlogImageDAO blogImageDAO = new BlogImageDAO();
     private final Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd HH:mm:ss").create();
@@ -32,11 +32,9 @@ public class PublicBlogController extends HttpServlet {
                 String idStr = req.getParameter("id");
                 if (idStr != null) {
                     int id = Integer.parseInt(idStr);
-                    // increment views
                     blogPostDAO.incrementBlogViews(id);
-                    // retrieve post
                     BlogPost blog = blogPostDAO.getBlogPostById(id);
-                    if (blog != null && "Public".equals(blog.getStatus().name())) {
+                    if (blog != null && blog.getStatus() != null && "Public".equalsIgnoreCase(blog.getStatus().name())) {
                         blog.setImages(blogImageDAO.getImagesByBlogPostId(id));
                         resp.getWriter().write(gson.toJson(blog));
                     } else {
@@ -45,6 +43,7 @@ public class PublicBlogController extends HttpServlet {
                     }
                 } else {
                     resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    resp.getWriter().write("{\"success\":false,\"message\":\"Missing id\"}");
                 }
             } else {
                 List<BlogPost> list = blogPostDAO.getPublicBlogPosts();
@@ -57,3 +56,4 @@ public class PublicBlogController extends HttpServlet {
         }
     }
 }
+
