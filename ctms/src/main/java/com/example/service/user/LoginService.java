@@ -15,7 +15,7 @@ public class LoginService {
             result.put("success", false);
             result.put("message", "Email is required");
             return result;
-            }
+        }
 
         if (password == null || password.trim().isEmpty()) {
             result.put("success", false);

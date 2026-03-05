@@ -26,8 +26,8 @@ public class BlogPost {
     }
 
     public BlogPost(Integer blogPostId, String title, String summary, String content, String thumbnailUrl,
-                    Integer authorId, BlogCategory categories, BlogStatus status, Integer views,
-                    Timestamp publishAt, Timestamp createAt, Timestamp updateAt) {
+            Integer authorId, BlogCategory categories, BlogStatus status, Integer views,
+            Timestamp publishAt, Timestamp createAt, Timestamp updateAt) {
         this.blogPostId = blogPostId;
         this.title = title;
         this.summary = summary;

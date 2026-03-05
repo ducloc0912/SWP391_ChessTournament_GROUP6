@@ -4,6 +4,7 @@ import com.example.DAO.BlogImageDAO;
 import com.example.DAO.BlogPostDAO;
 import com.example.model.entity.BlogImage;
 import com.example.model.entity.BlogPost;
+import com.example.model.entity.BlogImage;
 import com.example.model.enums.BlogStatus;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -32,7 +33,11 @@ public class BlogPostStaffService {
     }
 
     public BlogPost getBlogPostById(int id) {
-        return blogPostDAO.getBlogPostById(id);
+        BlogPost blog = blogPostDAO.getBlogPostById(id);
+        if (blog != null) {
+            blog.setImages(blogImageDAO.getImagesByBlogPostId(id));
+        }
+        return blog;
     }
 
     public boolean createBlogPost(BlogPost blog) {

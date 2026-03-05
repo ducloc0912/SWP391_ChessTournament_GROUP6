@@ -23,8 +23,8 @@ public class BlogPostDAO extends DBContext {
         List<BlogPost> list = new ArrayList<>();
         String sql = "SELECT * FROM Blog_Post ORDER BY create_at DESC";
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 list.add(mapResultSetToBlogPost(rs));
             }
@@ -37,7 +37,7 @@ public class BlogPostDAO extends DBContext {
     public BlogPost getBlogPostById(int id) {
         String sql = "SELECT * FROM Blog_Post WHERE blog_post_id = ?";
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -54,7 +54,7 @@ public class BlogPostDAO extends DBContext {
         List<BlogPost> list = new ArrayList<>();
         String sql = "SELECT * FROM Blog_Post WHERE author_id = ? ORDER BY create_at DESC";
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, authorId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -93,9 +93,9 @@ public class BlogPostDAO extends DBContext {
     /** Creates blog and returns the new blog_post_id; null on failure. */
     public Integer createBlogPostReturningId(BlogPost blog) {
         String sql = """
-            INSERT INTO Blog_Post (title, summary, content, thumbnail_url, author_id, categories, status, views, publish_at, create_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
-        """;
+                    INSERT INTO Blog_Post (title, summary, content, thumbnail_url, author_id, categories, status, views, publish_at, create_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
+                """;
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, blog.getTitle());
@@ -113,6 +113,7 @@ public class BlogPostDAO extends DBContext {
             }
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new RuntimeException("Database error: " + e.getMessage(), e);
         }
         return null;
     }
@@ -123,30 +124,34 @@ public class BlogPostDAO extends DBContext {
 
     public boolean updateBlogPost(BlogPost blog) {
         String sql = """
-            UPDATE Blog_Post SET title = ?, summary = ?, content = ?, thumbnail_url = ?, categories = ?, status = ?, publish_at = ?, update_at = GETDATE()
-            WHERE blog_post_id = ?
-        """;
+                    UPDATE Blog_Post SET title = ?, summary = ?, content = ?, thumbnail_url = ?, categories = ?, status = ?, publish_at = ?, update_at = GETDATE()
+                    WHERE blog_post_id = ?
+                """;
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, blog.getTitle());
             ps.setString(2, blog.getSummary());
             ps.setString(3, blog.getContent());
             ps.setString(4, blog.getThumbnailUrl());
-            ps.setString(5, blog.getCategories().name());
-            ps.setString(6, blog.getStatus().name());
-            ps.setTimestamp(7, blog.getPublishAt());
+            ps.setString(5, blog.getCategories() != null ? blog.getCategories().name() : null);
+            ps.setString(6, blog.getStatus() != null ? blog.getStatus().name() : "Draft");
+            if (blog.getPublishAt() != null) {
+                ps.setTimestamp(7, blog.getPublishAt());
+            } else {
+                ps.setNull(7, java.sql.Types.TIMESTAMP);
+            }
             ps.setInt(8, blog.getBlogPostId());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new RuntimeException("Database error: " + e.getMessage(), e);
         }
-        return false;
     }
 
     public boolean updateBlogPostStatus(int blogId, BlogStatus status) {
         String sql = "UPDATE Blog_Post SET status = ?, update_at = GETDATE() WHERE blog_post_id = ?";
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, status.name());
             ps.setInt(2, blogId);
             return ps.executeUpdate() > 0;
@@ -175,7 +180,7 @@ public class BlogPostDAO extends DBContext {
     public boolean deleteBlogPost(int id) {
         String sql = "DELETE FROM Blog_Post WHERE blog_post_id = ?";
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -210,7 +215,8 @@ public class BlogPostDAO extends DBContext {
     // =========================================================================
 
     private BlogCategory parseCategory(String value) {
-        if (value == null) return null;
+        if (value == null)
+            return null;
         for (BlogCategory category : BlogCategory.values()) {
             if (category.name().equalsIgnoreCase(value)) {
                 return category;
@@ -220,7 +226,8 @@ public class BlogPostDAO extends DBContext {
     }
 
     private BlogStatus parseStatus(String value) {
-        if (value == null) return null;
+        if (value == null)
+            return null;
         for (BlogStatus status : BlogStatus.values()) {
             if (status.name().equalsIgnoreCase(value)) {
                 return status;
