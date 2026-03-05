@@ -11,11 +11,14 @@ public class VNPayConfig {
     public static String vnp_PayUrl =
             "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
 
+    // Return URL: FE local (Vite) tại http://localhost:5173
+    // Khi thanh toán xong, VNPay sẽ redirect về trang này
     public static String vnp_ReturnUrl =
             "http://localhost:5173/payment-result";
 
-    public static String vnp_TmnCode = "ODV4RAU8";
-    public static String secretKey = "9Z1DY4KEWZWYY1QIYEGI8DKC0261BBJR";
+    // Thông tin sandbox mới từ email VNPay
+    public static String vnp_TmnCode = "ZJKWGRX8";
+    public static String secretKey = "XAUM9PJRWUAMGON9WTCSNHGBJ1YTHFU6";
 
     /* ================= HASH ================= */
 
@@ -25,17 +28,25 @@ public class VNPayConfig {
         Collections.sort(fieldNames);
 
         StringBuilder sb = new StringBuilder();
+        boolean first = true;
 
         Iterator<String> itr = fieldNames.iterator();
         while (itr.hasNext()) {
             String fieldName = itr.next();
             String fieldValue = fields.get(fieldName);
 
-            if (fieldValue != null) {
-                sb.append(fieldName);
+            if (fieldValue != null && !fieldValue.isEmpty()
+                    && !"vnp_SecureHash".equals(fieldName)
+                    && !"vnp_SecureHashType".equals(fieldName)) {
+                if (!first) {
+                    sb.append("&");
+                }
+                first = false;
+                String encodedName = java.net.URLEncoder.encode(fieldName, StandardCharsets.US_ASCII);
+                String encodedValue = java.net.URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII);
+                sb.append(encodedName);
                 sb.append("=");
-                sb.append(fieldValue);
-                if (itr.hasNext()) sb.append("&");
+                sb.append(encodedValue);
             }
         }
 

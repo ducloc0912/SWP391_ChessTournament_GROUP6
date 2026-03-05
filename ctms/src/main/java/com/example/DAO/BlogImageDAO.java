@@ -16,7 +16,7 @@ public class BlogImageDAO extends DBContext {
         List<BlogImage> list = new ArrayList<>();
         String sql = "SELECT * FROM Blog_Image WHERE blog_post_id = ? ORDER BY sort_order ASC, create_at ASC";
         try (Connection conn = getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, blogPostId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -38,7 +38,7 @@ public class BlogImageDAO extends DBContext {
     public boolean createBlogImage(BlogImage image) {
         String sql = "INSERT INTO Blog_Image (blog_post_id, image_url, caption, sort_order, create_at) VALUES (?, ?, ?, ?, GETDATE())";
         try (Connection conn = getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, image.getBlogPostId());
             ps.setString(2, image.getImageUrl());
             ps.setString(3, image.getCaption());
@@ -53,12 +53,13 @@ public class BlogImageDAO extends DBContext {
     public boolean deleteImagesByBlogPostId(int blogPostId) {
         String sql = "DELETE FROM Blog_Image WHERE blog_post_id = ?";
         try (Connection conn = getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, blogPostId);
-            return ps.executeUpdate() >= 0; // return true even if 0 rows deleted
+            return ps.executeUpdate() >= 0;
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return false;
     }
 }
+

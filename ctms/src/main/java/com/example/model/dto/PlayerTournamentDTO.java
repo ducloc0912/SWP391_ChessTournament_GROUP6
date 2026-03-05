@@ -17,6 +17,8 @@ public class PlayerTournamentDTO {
     private Integer maxPlayer;
     private Integer currentPlayers;
     private boolean registered;
+    /** True nếu user hiện tại có bản ghi Participant status = Disqualified cho giải này. */
+    private boolean banned;
 
     public Integer getTournamentId() {
         return tournamentId;
@@ -120,5 +122,13 @@ public class PlayerTournamentDTO {
 
     public void setRegistered(boolean registered) {
         this.registered = registered;
+    }
+
+    public boolean isBanned() {
+        return banned;
+    }
+
+    public void setBanned(boolean banned) {
+        this.banned = banned;
     }
 }

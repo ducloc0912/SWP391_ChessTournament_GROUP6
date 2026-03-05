@@ -5,6 +5,7 @@ import ForgotPassword from "./page/user/ForgotPassword";
 import Verify from "./page/user/Verify";
 import ResetPassword from "./page/user/ResetPassword";
 import HomePage from "./page/home/HomePage";
+import RefereeInvitationsPage from "./page/referee/RefereeInvitationsPage";
 import Profile from "./page/user/UserProfile";
 import PlayerTournamentList from "./page/user/PlayerTournamentList";
 import PendingTournamentRegistrations from "./page/user/PendingTournamentRegistrations";
@@ -18,6 +19,7 @@ import UpdateTournament from "./page/tournamentleader/UpdateTournament";
 import StaffDashboard from "./page/staff/StaffDashboard";
 import BlogPage from "./page/blog/BlogPage";
 import BlogDetails from "./page/blog/BlogDetails";
+import BlogManagePage from "./page/blog/BlogManagePage";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PaymentPage from "./page/payment/PaymentPage";
 import PaymentResult from "./page/payment/PaymentResult";
@@ -48,10 +50,12 @@ export default function App() {
         <Route path="/tournaments/edit/:id" element={<UpdateTournament />} />
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/blog/:id" element={<BlogDetails />} />
+        <Route path="/blog/manage" element={<BlogManagePage />} />
         <Route path="/staff" element={<Navigate to="/staff/dashboard" />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/payment-result" element={<PaymentResult />} />
+        <Route path="/referee/invitations" element={<RefereeInvitationsPage />} />
       </Routes>
     </BrowserRouter>
   );

@@ -63,6 +63,33 @@ export default function MainHeader({
     }
   };
 
+  let extraItems = [];
+  try {
+    const rawRole = localStorage.getItem("role");
+    const normalizedRole = (rawRole || "").toString().toUpperCase().replace(/[\s_]/g, "");
+    if (normalizedRole === "REFEREE") {
+      extraItems = [{ to: "/referee/invitations", label: "Invitations" }];
+    }
+  } catch {
+    extraItems = [];
+  }
+
+  const fullNavItems = React.useMemo(() => {
+    const seen = new Set();
+    const add = (list, acc) => {
+      list.forEach((item) => {
+        const key = item.to || item.sectionId || item.label;
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        acc.push(item);
+      });
+    };
+    const merged = [];
+    add(navItems, merged);
+    add(extraItems, merged);
+    return merged;
+  }, [navItems, extraItems]);
+
   return (
     <header className="header main-header">
       <div className="container">
@@ -86,7 +113,7 @@ export default function MainHeader({
           </div>
 
           <nav className="nav">
-            {navItems.map((item, idx) => {
+            {fullNavItems.map((item, idx) => {
               const key = item.to || item.sectionId || `${item.label}-${idx}`;
               if (item.to) {
                 return (
@@ -115,6 +142,32 @@ export default function MainHeader({
           <div className="header-actions">
             {user ? (
               <>
+                {(() => {
+                  // Đọc role lưu trong localStorage để hiện nút Dashboard cho các role có trang dashboard
+                  let rawRole = null;
+                  try {
+                    rawRole = localStorage.getItem("role");
+                  } catch {
+                    rawRole = null;
+                  }
+                  const normalizedRole = (rawRole || "").toString().toUpperCase().replace(/[\s_]/g, "");
+                  let dashboardPath = null;
+                  if (normalizedRole === "ADMIN") dashboardPath = "/admin/dashboard";
+                  if (normalizedRole === "STAFF") dashboardPath = "/staff/dashboard";
+                  if (normalizedRole === "TOURNAMENTLEADER") dashboardPath = "/tournaments";
+                  if (normalizedRole === "REFEREE") dashboardPath = "/home"; // TODO: nếu có dashboard riêng cho referee, đổi path tại đây
+
+                  return dashboardPath ? (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-primary"
+                      style={{ marginRight: 8 }}
+                      onClick={() => navigate(dashboardPath)}
+                    >
+                      Dashboard
+                    </button>
+                  ) : null;
+                })()}
                 <button type="button" className="icon-btn" aria-label="Thông báo">
                   <Bell size={18} />
                   <span className="notification-dot" />
@@ -173,7 +226,7 @@ export default function MainHeader({
 
         {mobileOpen && (
           <div className="mobile-nav">
-            {navItems.map((item, idx) => {
+            {fullNavItems.map((item, idx) => {
               const key = item.to || item.sectionId || `${item.label}-${idx}`;
               if (item.to) {
                 return (

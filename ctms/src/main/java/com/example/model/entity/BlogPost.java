@@ -2,9 +2,10 @@ package com.example.model.entity;
 
 import com.example.model.enums.BlogCategory;
 import com.example.model.enums.BlogStatus;
+
 import java.sql.Timestamp;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 public class BlogPost {
     private Integer blogPostId;
@@ -41,7 +42,6 @@ public class BlogPost {
         this.updateAt = updateAt;
     }
 
-    // Getters and Setters
     public Integer getBlogPostId() {
         return blogPostId;
     }

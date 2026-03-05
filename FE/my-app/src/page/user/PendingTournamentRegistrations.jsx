@@ -51,7 +51,7 @@ export default function PendingTournamentRegistrations() {
       setError("");
       try {
         const res = await axios.get(`${API_BASE}/api/participants`, {
-          params: { userId: "me", unpaidOnly: "true" },
+          params: { userId: "me", activeOnly: "true" },
           withCredentials: true,
         });
         const list = Array.isArray(res?.data) ? res.data : [];
@@ -358,7 +358,7 @@ export default function PendingTournamentRegistrations() {
                 ) : rows.length === 0 ? (
                   <tr>
                     <td style={tdStyle} colSpan={8}>
-                      Hiện tại bạn không có giải đấu nào đang chờ duyệt.
+                      Hiện tại bạn không có giải đấu nào đang đăng ký.
                     </td>
                   </tr>
                 ) : (
@@ -501,12 +501,17 @@ export default function PendingTournamentRegistrations() {
             }}
           >
             <h3 style={{ marginTop: 0, marginBottom: 10 }}>
-              Xác nhận xóa đăng ký
+              Xác nhận hủy đăng ký giải đấu
             </h3>
             <p style={{ margin: 0, lineHeight: 1.6 }}>
-              Bạn có chắc muốn xóa đăng ký giải{" "}
+              Bạn có chắc muốn hủy đăng ký giải{" "}
               <b>{confirmTarget.tournamentName}</b>?
             </p>
+            {confirmTarget.entryFee > 0 && confirmTarget.isPaid && (
+              <p style={{ marginTop: 8, lineHeight: 1.6, color: "#4b5563" }}>
+                Phí tham gia sẽ được hoàn sau vài ngày làm việc kể từ khi bạn hủy đăng ký.
+              </p>
+            )}
             <div
               style={{
                 marginTop: 16,
@@ -550,7 +555,7 @@ export default function PendingTournamentRegistrations() {
               >
                 {cancellingId === confirmTarget.participantId
                   ? "Đang xóa..."
-                  : "Xóa đăng ký"}
+                  : "Hủy đăng ký"}
               </button>
             </div>
           </div>

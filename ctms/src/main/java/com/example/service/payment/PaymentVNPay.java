@@ -25,6 +25,7 @@ public class PaymentVNPay {
         vnp_Params.put("vnp_TmnCode", VNPayConfig.vnp_TmnCode);
         vnp_Params.put("vnp_Amount", String.valueOf(amountVal));
         vnp_Params.put("vnp_CurrCode", "VND");
+        vnp_Params.put("vnp_SecureHashType", "HMACSHA512");
 
         String txnRef = VNPayConfig.getRandomNumber(8);
         vnp_Params.put("vnp_TxnRef", txnRef);
@@ -48,7 +49,6 @@ public class PaymentVNPay {
         List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
         Collections.sort(fieldNames);
 
-        StringBuilder hashData = new StringBuilder();
         StringBuilder query = new StringBuilder();
 
         Iterator<String> itr = fieldNames.iterator();
@@ -56,30 +56,30 @@ public class PaymentVNPay {
             String fieldName = itr.next();
             String fieldValue = vnp_Params.get(fieldName);
 
-            if (fieldValue != null) {
+            if (fieldValue != null && !fieldValue.isEmpty()) {
 
-                // 🔥 HASH DATA (RAW – không encode)
-                hashData.append(fieldName).append("=").append(fieldValue);
-
-                // 🔥 QUERY (encode UTF-8)
-                query.append(URLEncoder.encode(fieldName, StandardCharsets.UTF_8))
+                // QUERY STRING gửi sang VNPay
+                String encodedName = URLEncoder.encode(fieldName, StandardCharsets.US_ASCII);
+                String encodedValue = URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII);
+                query.append(encodedName)
                         .append("=")
-                        .append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8));
+                        .append(encodedValue);
 
                 if (itr.hasNext()) {
-                    hashData.append("&");
                     query.append("&");
                 }
             }
         }
 
-        String secureHash = VNPayConfig.hmacSHA512(
-                VNPayConfig.secretKey,
-                hashData.toString()
-        );
+        // HASH DATA: dùng format giống VNPayConfig.hashAllFields (fieldName=fieldValue, không encode)
+        // và loại bỏ các field vnp_SecureHash / vnp_SecureHashType theo đúng khuyến nghị VNPay
+        Map<String, String> signParams = new HashMap<>(vnp_Params);
+        signParams.remove("vnp_SecureHash");
+        signParams.remove("vnp_SecureHashType");
+        String secureHash = VNPayConfig.hashAllFields(signParams);
 
         query.append("&vnp_SecureHash=").append(secureHash);
-return VNPayConfig.vnp_PayUrl + "?" + query.toString();
+        return VNPayConfig.vnp_PayUrl + "?" + query.toString();
     }
 
     /* ================= VERIFY & SAVE ================= */
@@ -88,6 +88,7 @@ return VNPayConfig.vnp_PayUrl + "?" + query.toString();
 
         Map<String, Object> response = new HashMap<>();
 
+        // 1. Verify chữ ký
         String vnp_SecureHash = fields.get("vnp_SecureHash");
         fields.remove("vnp_SecureHash");
         fields.remove("vnp_SecureHashType");
@@ -102,6 +103,7 @@ return VNPayConfig.vnp_PayUrl + "?" + query.toString();
             return response;
         }
 
+        // 2. Kiểm tra mã kết quả giao dịch
         String vnp_ResponseCode = fields.get("vnp_ResponseCode");
         if (!"00".equals(vnp_ResponseCode)) {
             response.put("success", false);
@@ -111,12 +113,81 @@ return VNPayConfig.vnp_PayUrl + "?" + query.toString();
             return response;
         }
 
-        // TODO: Update DB tại đây nếu cần (insert transaction, update participant,...)
+        // 3. Parse thông tin nghiệp vụ từ vnp_OrderInfo
+        // Format đã tạo ở createPaymentUrl:
+        // "Thanh toan phi tham gia giai dau_CTMS_" + userId + "_" + tournamentId + "_" + participantId
+        String orderInfo = fields.get("vnp_OrderInfo");
+        String amountStr = fields.get("vnp_Amount");
+        String txnRef = fields.get("vnp_TxnRef");
 
-        response.put("success", true);
-        response.put("message", "Thanh toán thành công");
-        response.put("RspCode", "00");
-        response.put("Message", "Confirm Success");
-        return response;
+        if (orderInfo == null || amountStr == null) {
+            response.put("success", false);
+            response.put("message", "Thiếu dữ liệu đơn hàng từ VNPay");
+            response.put("RspCode", "99");
+            response.put("Message", "Missing order data");
+            return response;
+        }
+
+        try {
+            int userId = 0;
+            int tournamentId = 0;
+            int participantId = 0;
+
+            int idx = orderInfo.indexOf("_CTMS_");
+            if (idx >= 0) {
+                String meta = orderInfo.substring(idx + "_CTMS_".length());
+                String[] parts = meta.split("_");
+                if (parts.length >= 3) {
+                    userId = Integer.parseInt(parts[0]);
+                    tournamentId = Integer.parseInt(parts[1]);
+                    participantId = Integer.parseInt(parts[2]);
+                }
+            }
+
+            if (userId <= 0 || tournamentId <= 0 || participantId <= 0) {
+                response.put("success", false);
+                response.put("message", "Không đọc được thông tin user/tournament/participant từ OrderInfo");
+                response.put("RspCode", "99");
+                response.put("Message", "Invalid OrderInfo");
+                return response;
+            }
+
+            // vnp_Amount là số *100, convert về VND thực tế
+            BigDecimal amount = new BigDecimal(amountStr).divide(BigDecimal.valueOf(100));
+
+            // 4. Tạo bản ghi PaymentTransaction và cập nhật Participant (is_paid = 1)
+            PaymentTransaction tx = new PaymentTransaction();
+            tx.setUserId(userId);
+            tx.setTournamentId(tournamentId);
+            tx.setType("EntryFee");
+            tx.setAmount(amount);
+            tx.setBalanceAfter(null); // Nếu sau này có ví/balance thì set sau
+            tx.setDescription("VNPay entry fee, participantId=" + participantId + ", txnRef=" + txnRef);
+            tx.setReferenceId(participantId);
+
+            boolean saved = paymentDAO.insertTransactionAndUpdateParticipant(tx, participantId);
+            if (!saved) {
+                response.put("success", false);
+                response.put("message", "Không lưu được giao dịch thanh toán");
+                response.put("RspCode", "99");
+                response.put("Message", "Cannot save transaction");
+                return response;
+            }
+
+            // 5. Thành công
+            response.put("success", true);
+            response.put("message", "Thanh toán thành công");
+            response.put("RspCode", "00");
+            response.put("Message", "Confirm Success");
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("success", false);
+            response.put("message", "Lỗi xử lý dữ liệu thanh toán: " + e.getMessage());
+            response.put("RspCode", "99");
+            response.put("Message", "Exception when saving payment");
+            return response;
+        }
     }
 }

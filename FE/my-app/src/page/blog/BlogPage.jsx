@@ -1,77 +1,131 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API_BASE } from "../../config/api";
 import MainHeader from "../../component/common/MainHeader";
-import "./BlogPage.css"; // Optional, can define simple css here or reuse
+import "../../assets/css/BlogPage.css";
+
+const formatDate = (raw) => {
+  if (!raw) return "";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("vi-VN");
+};
 
 export default function BlogPage() {
-    const navigate = useNavigate();
-    const [blogs, setBlogs] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    useEffect(() => {
-        // Fetch user context if available (you might have a global state, but parsing from session via an API or checking localStorage)
-        // We can just fetch user if needed. Passing user to MainHeader. For simplicity, might just send what we know or let MainHeader handle.
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-            try {
-                setUser(JSON.parse(storedUser));
-            } catch (e) { }
-        }
-        fetchPublicBlogs();
-    }, []);
+  const [blogs, setBlogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const role = (localStorage.getItem("role") || "").toUpperCase();
+  const canManageBlog = role === "STAFF" || role === "TOURNAMENTLEADER";
 
-    const fetchPublicBlogs = async () => {
-        setLoading(true);
-        try {
-            const res = await axios.get(`${API_BASE}/api/public/blogs`, { withCredentials: true });
-            setBlogs(Array.isArray(res.data) ? res.data : []);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleLogout = () => {
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
         localStorage.removeItem("user");
-        setUser(null);
-        navigate("/login");
-    };
+      }
+    }
+    fetchPublicBlogs();
+  }, []);
 
-    return (
-        <div className="blog-page-container" style={{ minHeight: '100vh', backgroundColor: '#f1f5f9' }}>
-            <MainHeader user={user} onLogout={handleLogout} currentPath="/blog" />
-            <div className="container" style={{ paddingTop: '100px', paddingBottom: '40px' }}>
-                <h1 style={{ textAlign: 'center', marginBottom: '30px', color: '#1e293b' }}>Tin Tức & Chiến Thuật</h1>
-                {loading ? (
-                    <div style={{ textAlign: 'center' }}>Đang tải...</div>
-                ) : blogs.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: '#64748b' }}>Chưa có bài viết nào được công khai.</div>
-                ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
-                        {blogs.map(blog => (
-                            <div key={blog.blogPostId} style={{ backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s' }} onClick={() => navigate(`/blog/${blog.blogPostId}`)} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-                                {blog.thumbnailUrl ? (
-                                    <img src={blog.thumbnailUrl} alt={blog.title} style={{ width: '100%', height: '180px', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
-                                ) : (
-                                    <div style={{ width: '100%', height: '180px', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>No Image</div>
-                                )}
-                                <div style={{ padding: '16px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#4f46e5', backgroundColor: '#e0e7ff', padding: '4px 8px', borderRadius: '4px' }}>{blog.categories}</span>
-                                        <span style={{ fontSize: '12px', color: '#64748b' }}>{blog.views || 0} views</span>
-                                    </div>
-                                    <h3 style={{ fontSize: '18px', margin: '0 0 8px 0', color: '#0f172a' }}>{blog.title}</h3>
-                                    <p style={{ fontSize: '14px', color: '#475569', margin: 0, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{blog.summary}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+  const fetchPublicBlogs = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API_BASE}/api/public/blogs`, { withCredentials: true });
+      setBlogs(Array.isArray(res.data) ? res.data : []);
+    } catch (error) {
+      console.error(error);
+      setBlogs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    setUser(null);
+    navigate("/login");
+  };
+
+  return (
+    <div className="blog-page">
+      <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
+
+      <main className="blog-main">
+        <section className="blog-hero">
+          <div className="blog-hero-inner">
+            <div>
+              <h1 className="blog-hero-title">NEWS</h1>
+              <p className="blog-hero-subtitle">
+                Tin tức, chiến thuật và cập nhật mới nhất từ nền tảng giải đấu cờ vua.
+              </p>
             </div>
-        </div>
-    );
+            {canManageBlog && (
+              <button
+                className="blog-hero-manage-btn"
+                type="button"
+                onClick={() => navigate("/blog/manage")}
+              >
+                Quản lý bài viết
+              </button>
+            )}
+          </div>
+        </section>
+
+        <section className="blog-section">
+          <div className="blog-container">
+            {loading ? (
+              <div className="blog-empty">Đang tải bài viết...</div>
+            ) : blogs.length === 0 ? (
+              <div className="blog-empty">Chưa có bài viết public.</div>
+            ) : (
+              <div className="blog-grid">
+                {blogs.map((blog) => {
+                  const dateLabel = formatDate(blog.publishAt || blog.createAt);
+                  return (
+                    <article
+                      key={blog.blogPostId}
+                      className="blog-card"
+                      onClick={() => navigate(`/blog/${blog.blogPostId}`)}
+                    >
+                      <div className="blog-card-media">
+                        {blog.thumbnailUrl ? (
+                          <img
+                            src={blog.thumbnailUrl}
+                            alt={blog.title}
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <div className="blog-card-placeholder">NO IMAGE</div>
+                        )}
+                      </div>
+                      <div className="blog-card-body">
+                        <div className="blog-card-meta">
+                          <span className="blog-card-category">{blog.categories}</span>
+                          <span className="blog-card-date">{dateLabel}</span>
+                        </div>
+                        <h2 className="blog-card-title">{blog.title}</h2>
+                        <p className="blog-card-summary">{blog.summary}</p>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
 }
+
+

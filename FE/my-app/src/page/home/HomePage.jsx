@@ -19,8 +19,14 @@ import imgSlide2 from "../../assets/image/96ef486bfb872c9ed5624c7763e55ea4.jpg";
 import imgSlide3 from "../../assets/image/487c55215d12b2b7275d13526ab0c844.jpg";
 import imgSlide4 from "../../assets/image/09ab0a288e7cf90b3e94f8e5f4c8921d.jpg";
 
-import { API_BASE } from "../../config/api";
+import { API_BASE, resolveAssetUrl } from "../../config/api";
+
+// Ảnh trong source: banner/slider giải đấu
 const FALLBACK_BANNERS = [imgSlide1, imgSlide2, imgSlide3, imgSlide4];
+// Thumbnail mặc định cho bài viết (blog) khi chưa có thumbnailUrl
+const DEFAULT_POST_THUMBNAIL = imgSlide1;
+// Avatar mặc định cho player khi chưa có avatar
+const DEFAULT_AVATAR = imgSlide2;
 
 const normalizeList = (data) => (Array.isArray(data) ? data : []);
 
@@ -63,16 +69,48 @@ export default function HomePage() {
   const [latestBlogs, setLatestBlogs] = useState([]);
   const [loadingHome, setLoadingHome] = useState(true);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   useEffect(() => {
+    // Đọc nhanh từ localStorage để tránh nháy UI
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
-      } catch (error) {
+      } catch {
         localStorage.removeItem("user");
       }
     }
+
+    // Luôn xác thực lại với backend để tránh trường hợp FE còn localStorage nhưng session đã hết hạn
+    const syncFromSession = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/session/me`, {
+          withCredentials: true,
+        });
+        if (res?.data?.authenticated && res.data.user) {
+          const role = (res.data.role || "").toString().toUpperCase();
+          localStorage.setItem("user", JSON.stringify(res.data.user));
+          if (role) {
+            localStorage.setItem("role", role);
+          } else {
+            localStorage.removeItem("role");
+          }
+          setUser(res.data.user);
+        } else {
+          localStorage.removeItem("user");
+          localStorage.removeItem("role");
+          setUser(null);
+        }
+      } catch {
+        localStorage.removeItem("user");
+        localStorage.removeItem("role");
+        setUser(null);
+      }
+      setSessionChecked(true);
+    };
+
+    syncFromSession();
   }, []);
 
   useEffect(() => {
@@ -210,6 +248,47 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section id="hpv-latest" className="hpv-section hpv-light">
+        <div className="hpv-container">
+          <div className="hpv-section-head hpv-row-head">
+            <h2>THE LATEST</h2>
+            <button className="hpv-link-btn" onClick={() => navigate("/blog")}>
+              GO TO BLOG PAGE
+            </button>
+          </div>
+
+          <div className="hpv-latest-grid">
+            {loadingHome ? (
+              <div className="hpv-empty-card">Đang tải bài viết mới...</div>
+            ) : latestBlogs.length > 0 ? (
+              latestBlogs.slice(0, 3).map((blog, idx) => (
+                <article
+                  key={blog.blogPostId || `blog-${idx}`}
+                  className="hpv-latest-card"
+                >
+                  <img
+                    src={
+                      resolveAssetUrl(blog.thumbnailUrl) || DEFAULT_POST_THUMBNAIL
+                    }
+                    alt={blog.title}
+                  />
+                  <div className="hpv-latest-body">
+                    <div className="hpv-meta-line">
+                      <span>{String(blog.categories || "NEWS")}</span>
+                      <span>{formatDate(blog.publishAt || blog.createAt)}</span>
+                    </div>
+                    <h3>{blog.title}</h3>
+                    <p>{blog.summary || "No summary provided."}</p>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="hpv-empty-card">Chưa có blog public.</div>
+            )}
+          </div>
+        </div>
+      </section>
+
       <section id="hpv-season" className="hpv-section">
         <div className="hpv-container">
           <div className="hpv-section-head">
@@ -304,48 +383,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="hpv-latest" className="hpv-section hpv-light">
-        <div className="hpv-container">
-          <div className="hpv-section-head hpv-row-head">
-            <h2>THE LATEST</h2>
-            <button className="hpv-link-btn" onClick={() => navigate("/blog")}>
-              GO TO BLOG PAGE
-            </button>
-          </div>
-
-          <div className="hpv-latest-grid">
-            {loadingHome ? (
-              <div className="hpv-empty-card">Đang tải bài viết mới...</div>
-            ) : latestBlogs.length > 0 ? (
-              latestBlogs.map((blog, idx) => (
-                <article
-                  key={blog.blogPostId || `blog-${idx}`}
-                  className="hpv-latest-card"
-                >
-                  <img
-                    src={
-                      blog.thumbnailUrl ||
-                      FALLBACK_BANNERS[idx % FALLBACK_BANNERS.length]
-                    }
-                    alt={blog.title}
-                  />
-                  <div className="hpv-latest-body">
-                    <div className="hpv-meta-line">
-                      <span>{String(blog.categories || "NEWS")}</span>
-                      <span>{formatDate(blog.publishAt || blog.createAt)}</span>
-                    </div>
-                    <h3>{blog.title}</h3>
-                    <p>{blog.summary || "No summary provided."}</p>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="hpv-empty-card">Chưa có blog public.</div>
-            )}
-          </div>
-        </div>
-      </section>
-
       <section id="hpv-players" className="hpv-section">
         <div className="hpv-container hpv-split-layout">
           <div>
@@ -372,10 +409,7 @@ export default function HomePage() {
                     <span className="hpv-player-rank">#{idx + 1}</span>
                     <div className="hpv-player-avatar">
                       <img
-                        src={
-                          p.avatar ||
-                          FALLBACK_BANNERS[idx % FALLBACK_BANNERS.length]
-                        }
+                        src={resolveAssetUrl(p.avatar) || DEFAULT_AVATAR}
                         alt={p.firstName}
                       />
                     </div>

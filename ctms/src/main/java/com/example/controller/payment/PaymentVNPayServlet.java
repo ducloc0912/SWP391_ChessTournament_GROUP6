@@ -26,10 +26,24 @@ public class PaymentVNPayServlet extends HttpServlet {
     private final PaymentVNPay paymentService = new PaymentVNPay();
     private final Gson gson = new Gson();
 
+    private void addCorsHeaders(HttpServletRequest req, HttpServletResponse resp) {
+        String origin = req.getHeader("Origin");
+        if (origin == null || origin.isBlank()) {
+            resp.setHeader("Access-Control-Allow-Origin", "*");
+        } else {
+            resp.setHeader("Access-Control-Allow-Origin", origin);
+            resp.setHeader("Vary", "Origin");
+        }
+        resp.setHeader("Access-Control-Allow-Credentials", "true");
+        resp.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        resp.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+    }
+
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
+        addCorsHeaders(req, resp);
         String path = req.getPathInfo();
         Map<String, Object> result = new HashMap<>();
 
@@ -82,6 +96,7 @@ public class PaymentVNPayServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
+        addCorsHeaders(req, resp);
         String path = req.getPathInfo();
         Map<String, String> params = new HashMap<>();
         for (Enumeration<String> names = req.getParameterNames(); names.hasMoreElements(); ) {
@@ -119,6 +134,7 @@ public class PaymentVNPayServlet extends HttpServlet {
 
     @Override
     protected void doOptions(HttpServletRequest req, HttpServletResponse resp) {
+        addCorsHeaders(req, resp);
         resp.setStatus(HttpServletResponse.SC_OK);
     }
 

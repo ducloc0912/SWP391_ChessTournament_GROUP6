@@ -1382,7 +1382,7 @@ export default function UserProfile() {
                     onClick={() => navigate("/player/pending-registrations")}
                     style={{ marginLeft: 12 }}
                   >
-                    Xem danh sách chờ duyệt
+                    Giải đang đăng ký
                   </button>
                 )}
               </div>
