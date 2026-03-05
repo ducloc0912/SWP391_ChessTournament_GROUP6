@@ -57,7 +57,7 @@ public class HomeDAO extends DBContext {
     // 2. Lấy Top 5 người chơi có Rank cao nhất
     public List<User> getTopPlayers() {
         List<User> list = new ArrayList<>();
-        String sql = "SELECT TOP 5 user_id, first_name, last_name, avarta, rank FROM Users ORDER BY rank DESC";
+        String sql = "SELECT TOP 5 user_id, first_name, last_name, avatar, rank FROM Users ORDER BY rank DESC";
 
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -68,7 +68,7 @@ public class HomeDAO extends DBContext {
                 u.setUserId(rs.getInt("user_id"));
                 u.setFirstName(rs.getString("first_name"));
                 u.setLastName(rs.getString("last_name"));
-                u.setAvatar(rs.getString("avarta"));
+                u.setAvatar(rs.getString("avatar"));
                 u.setRank((Integer) rs.getObject("rank"));
 
                 list.add(u);

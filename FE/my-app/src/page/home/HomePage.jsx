@@ -19,8 +19,14 @@ import imgSlide2 from "../../assets/image/96ef486bfb872c9ed5624c7763e55ea4.jpg";
 import imgSlide3 from "../../assets/image/487c55215d12b2b7275d13526ab0c844.jpg";
 import imgSlide4 from "../../assets/image/09ab0a288e7cf90b3e94f8e5f4c8921d.jpg";
 
-import { API_BASE } from "../../config/api";
+import { API_BASE, resolveAssetUrl } from "../../config/api";
+
+// Ảnh trong source: banner/slider giải đấu
 const FALLBACK_BANNERS = [imgSlide1, imgSlide2, imgSlide3, imgSlide4];
+// Thumbnail mặc định cho bài viết (blog) khi chưa có thumbnailUrl
+const DEFAULT_POST_THUMBNAIL = imgSlide1;
+// Avatar mặc định cho player khi chưa có avatar
+const DEFAULT_AVATAR = imgSlide2;
 
 const normalizeList = (data) => (Array.isArray(data) ? data : []);
 
@@ -262,8 +268,7 @@ export default function HomePage() {
                 >
                   <img
                     src={
-                      blog.thumbnailUrl ||
-                      FALLBACK_BANNERS[idx % FALLBACK_BANNERS.length]
+                      resolveAssetUrl(blog.thumbnailUrl) || DEFAULT_POST_THUMBNAIL
                     }
                     alt={blog.title}
                   />
@@ -404,10 +409,7 @@ export default function HomePage() {
                     <span className="hpv-player-rank">#{idx + 1}</span>
                     <div className="hpv-player-avatar">
                       <img
-                        src={
-                          p.avatar ||
-                          FALLBACK_BANNERS[idx % FALLBACK_BANNERS.length]
-                        }
+                        src={resolveAssetUrl(p.avatar) || DEFAULT_AVATAR}
                         alt={p.firstName}
                       />
                     </div>

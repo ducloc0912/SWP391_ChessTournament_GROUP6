@@ -527,6 +527,27 @@ if (isBlank(t.getTournamentName())) return false;
                 return SetupValidationResult.invalid("Hybrid phải xếp Round Robin trước rồi mới Knock Out.");
             }
         }
+
+        // Giới hạn số round: Round Robin (cả thuần và Hybrid) đủ full vòng theo luật quốc tế, tối đa 10 round.
+        // KO tối đa 4 round.
+        final int maxRoundRobinRounds = 10;
+        final int maxKnockOutRounds = 4;
+        java.util.Set<Integer> rrRounds = new java.util.HashSet<>();
+        java.util.Set<Integer> koRounds = new java.util.HashSet<>();
+        for (TournamentSetupMatchDTO m : matches) {
+            String stage = normalizeStage(m.getStage(), format);
+            Integer ri = m.getRoundIndex();
+            if (ri == null) continue;
+            if ("RoundRobin".equals(stage)) rrRounds.add(ri);
+            if ("KnockOut".equals(stage)) koRounds.add(ri);
+        }
+        if (rrRounds.size() > maxRoundRobinRounds) {
+            return SetupValidationResult.invalid("Round Robin chỉ được tối đa " + maxRoundRobinRounds + " round. Hiện có " + rrRounds.size() + " round.");
+        }
+        if (koRounds.size() > maxKnockOutRounds) {
+            return SetupValidationResult.invalid("Knock Out chỉ được tối đa " + maxKnockOutRounds + " round. Hiện có " + koRounds.size() + " round.");
+        }
+
         return SetupValidationResult.valid("Structure hợp lệ.");
     }
 
@@ -549,11 +570,11 @@ if (isBlank(t.getTournamentName())) return false;
             Integer black = m.getBlackPlayerId();
             int roundIndex = m.getRoundIndex() == null ? 1 : m.getRoundIndex();
 
-            // Hybrid rule: at \"Add Players\" step, Knock Out bracket MUST NOT have players yet.
-            // KO sẽ nhận top N sau khi kết thúc Round Robin.
+            // Hybrid: Ở bước Add Players, toàn bộ Knock Out không bắt buộc (và không được) gán player;
+            // KO sẽ nhận top N từ Round Robin sau khi kết thúc, nên chưa xác định được ai vào.
             if ("Hybrid".equals(format) && "KnockOut".equals(stage)) {
                 if (white != null || black != null) {
-                    return SetupValidationResult.invalid("Hybrid: Ở bước Add Players, không được gán người chơi cho Knock Out bracket. KO sẽ nhận top N từ Round Robin sau khi kết thúc.");
+                    return SetupValidationResult.invalid("Hybrid: Ở bước Add Players, không gán người chơi cho Knock Out. KO sẽ nhận top N từ Round Robin sau khi kết thúc.");
                 }
                 continue;
             }

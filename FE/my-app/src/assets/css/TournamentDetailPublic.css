@@ -391,6 +391,107 @@
   font-size: 13px;
 }
 
+/* Danh sách người chơi trong card (tối đa 10 + Show all) */
+.tdp-participants-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tdp-participant-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 13px;
+  color: #334155;
+  font-weight: 500;
+}
+
+.tdp-participant-item.tdp-participant-empty {
+  color: #64748b;
+  font-weight: 500;
+  justify-content: center;
+}
+
+.tdp-participant-item .tdp-player-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.1);
+  flex-shrink: 0;
+}
+
+.tdp-participants-show-all-wrap {
+  background: transparent;
+  border: none;
+  padding: 6px 0;
+  justify-content: center;
+}
+
+.tdp-participants-show-all {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ff4655;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px 8px;
+}
+
+.tdp-participants-show-all:hover {
+  color: #e63946;
+}
+
+/* Tab PARTICIPANT - bảng đầy đủ */
+.tdp-participants-section {
+  margin-top: 24px;
+}
+
+.tdp-players-tab {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+}
+
+.tdp-players-table-wrapper {
+  overflow-x: auto;
+}
+
+.tdp-players-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tdp-players-table thead th {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #0f172a;
+  padding: 1.25rem 2rem;
+  text-align: left;
+  background: #f4f1eb;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.tdp-players-table tbody td {
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 14px;
+  color: #334155;
+}
+
+.tdp-players-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 /* Bracket - match hpv-player-item, hpv-detail-item style */
 .tdp-bracket {
   margin-top: 24px;

@@ -23,9 +23,30 @@ import jakarta.servlet.http.HttpServletResponse;
 @WebServlet("/api/home")
 public class HomeServlet extends HttpServlet {
 
+    private void addCors(HttpServletRequest req, HttpServletResponse resp) {
+        String origin = req.getHeader("Origin");
+        if (origin == null || origin.isBlank()) {
+            resp.setHeader("Access-Control-Allow-Origin", "*");
+        } else {
+            resp.setHeader("Access-Control-Allow-Origin", origin);
+            resp.setHeader("Vary", "Origin");
+        }
+        resp.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+        resp.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        resp.setHeader("Access-Control-Max-Age", "3600");
+    }
+
+    @Override
+    protected void doOptions(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        addCors(req, resp);
+        resp.setStatus(HttpServletResponse.SC_OK);
+    }
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        addCors(req, resp);
         resp.setCharacterEncoding("UTF-8");
+        resp.setContentType("application/json");
 
         try {
             HomeDAO dao = new HomeDAO();
