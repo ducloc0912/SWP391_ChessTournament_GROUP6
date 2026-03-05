@@ -13,6 +13,7 @@ import {
 const StaffBlog = () => {
     const [blogs, setBlogs] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [userRole, setUserRole] = useState(''); // 'STAFF' | 'TOURNAMENTLEADER' | ...
 
     // --- State cho Modal "View & Update" ---
     const [selectedBlog, setSelectedBlog] = useState(null);
@@ -81,8 +82,18 @@ const StaffBlog = () => {
     const [sortOrder, setSortOrder] = useState('desc');
 
     useEffect(() => {
+        // Lấy role từ session để phân quyền hiển thị
+        axios.get(`${API_BASE}/api/profile/me`, { withCredentials: true })
+            .then(res => {
+                if (res.data && res.data.role) {
+                    setUserRole(res.data.role.toUpperCase());
+                }
+            })
+            .catch(() => { });
         fetchBlogs();
     }, []);
+
+
 
     // Reset states khi mở modal xem chi tiết
     useEffect(() => {
@@ -261,12 +272,18 @@ const StaffBlog = () => {
 
     const publicCount = blogs.filter(b => b.status === 'Public').length;
     const isDraft = selectedBlog?.status === 'Draft';
+    const isLeaderRole = userRole === 'TOURNAMENTLEADER';
 
     return (
         <div className="staff-container">
             {/* Stats Cards */}
             <div className="stats-grid">
-                <StatsCard title="Tổng bài viết" value={blogs.length} icon={<FileText size={22} />} type="total" />
+                <StatsCard
+                    title={isLeaderRole ? 'Bài viết của tôi' : 'Tổng bài viết'}
+                    value={blogs.length}
+                    icon={<FileText size={22} />}
+                    type="total"
+                />
                 <StatsCard title="Công khai (Public)" value={publicCount} icon={<CheckCircle size={22} />} type="active" />
                 <StatsCard title="Lượt xem" value={blogs.reduce((a, b) => a + (b.views || 0), 0)} icon={<Eye size={22} />} type="pending" />
             </div>

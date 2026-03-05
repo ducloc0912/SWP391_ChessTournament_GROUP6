@@ -1,0 +1,554 @@
+﻿import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import '../../assets/css/StaffDashboard.css';
+import { API_BASE } from '../../config/api';
+import StatusBadge from '../../component/staff/StatusBadge';
+import StatsCard from '../../component/staff/StatsCard';
+
+import {
+    FileText, Search, CheckCircle, Eye, Filter,
+    ChevronDown, ChevronUp, XCircle, Save, Plus, RotateCcw, Edit3
+} from 'lucide-react';
+
+const StaffBlog = () => {
+    const [blogs, setBlogs] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // --- State cho Modal "View & Update" ---
+    const [selectedBlog, setSelectedBlog] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editData, setEditData] = useState({});
+    const [updateStatus, setUpdateStatus] = useState('');
+
+    // --- State cho Modal "Create" ---
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    
+    const initialBlogState = {
+        title: '', 
+        summary: '', 
+        content: '', 
+        thumbnailUrl: '', 
+        categories: 'Strategy',
+        status: 'Draft' 
+    };
+    const [newBlog, setNewBlog] = useState(initialBlogState);
+
+    // --- Filter States ---
+    const [showFilters, setShowFilters] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('All');
+    const [categoryFilter, setCategoryFilter] = useState('All');
+    const [sortOrder, setSortOrder] = useState('desc');
+
+    useEffect(() => {
+        fetchBlogs();
+    }, []);
+
+    // Reset states khi mß╗ƒ modal xem chi tiß║┐t
+    useEffect(() => {
+        if (selectedBlog) {
+            setUpdateStatus('');
+            setIsEditing(false);
+            setEditData({
+                title: selectedBlog.title || '',
+                summary: selectedBlog.summary || '',
+                content: selectedBlog.content || '',
+                thumbnailUrl: selectedBlog.thumbnailUrl || '',
+                categories: selectedBlog.categories || 'Strategy',
+                status: selectedBlog.status || 'Draft'
+            });
+        }
+    }, [selectedBlog]);
+
+    const fetchBlogs = async () => {
+        setLoading(true);
+        try {
+            const response = await axios.get(`${API_BASE}/api/staff/blogs`, { withCredentials: true });
+            setBlogs(Array.isArray(response.data) ? response.data : []);
+        } catch (error) {
+            console.error(error);
+            setBlogs([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // --- Logic Reset Filter ---
+    const handleResetFilters = () => {
+        setSearchTerm('');
+        setStatusFilter('All');
+        setCategoryFilter('All');
+        setSortOrder('desc');
+    };
+
+    // --- Logic Filter & Sort ---
+    const filteredData = blogs.filter(item => {
+        const matchesSearch = (item.title || '').toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === 'All' ? true : item.status === statusFilter;
+        const matchesCategory = categoryFilter === 'All' ? true : item.categories === categoryFilter;
+        return matchesSearch && matchesStatus && matchesCategory;
+    }).sort((a, b) => {
+        return sortOrder === 'asc' 
+            ? (a.title || '').localeCompare(b.title || '') 
+            : (b.title || '').localeCompare(a.title || '');
+    });
+
+    // --- Xß╗¡ l├╜ Cß║¡p nhß║¡t Blog (Full Edit cho Draft) ---
+    const handleSaveEdit = async () => {
+        if (!selectedBlog || !editData.title) {
+            alert("Vui l├▓ng nhß║¡p ti├¬u ─æß╗ü.");
+            return;
+        }
+
+        const updatedBlogData = {
+            ...selectedBlog,
+            title: editData.title,
+            summary: editData.summary,
+            content: editData.content,
+            thumbnailUrl: editData.thumbnailUrl,
+            categories: editData.categories,
+            status: updateStatus || selectedBlog.status
+        };
+
+        try {
+            await axios.post(
+                `${API_BASE}/api/staff/blogs?action=update`, 
+                updatedBlogData, 
+                { withCredentials: true }
+            );
+            alert("Cß║¡p nhß║¡t b├ái viß║┐t th├ánh c├┤ng!");
+            setSelectedBlog(null);
+            setIsEditing(false);
+            fetchBlogs(); 
+        } catch (error) {
+            console.error("Update failed", error);
+            alert("Cß║¡p nhß║¡t thß║Ñt bß║íi. Vui l├▓ng kiß╗âm tra lß║íi.");
+        }
+    };
+
+    // --- Xß╗¡ l├╜ Cß║¡p nhß║¡t Status (Chß╗ë ─æß╗òi status) ---
+    const handleUpdateStatus = async () => {
+        if (!selectedBlog) return;
+        if (!updateStatus) {
+            alert("Vui l├▓ng chß╗ìn trß║íng th├íi mß╗¢i.");
+            return;
+        }
+
+        const updatedBlogData = {
+            ...selectedBlog,
+            status: updateStatus
+        };
+
+        try {
+            await axios.post(
+                `${API_BASE}/api/staff/blogs?action=update`, 
+                updatedBlogData, 
+                { withCredentials: true }
+            );
+            alert("Cß║¡p nhß║¡t trß║íng th├íi th├ánh c├┤ng!");
+            setSelectedBlog(null);
+            fetchBlogs(); 
+        } catch (error) {
+            console.error("Update failed", error);
+            alert("Cß║¡p nhß║¡t thß║Ñt bß║íi. Vui l├▓ng kiß╗âm tra lß║íi kß║┐t nß╗æi.");
+        }
+    };
+
+    // --- Xß╗¡ l├╜ Tß║ío b├ái viß║┐t mß╗¢i ---
+    const handleCreateBlog = async () => {
+        if (!newBlog.title) {
+            alert("Vui l├▓ng nhß║¡p ti├¬u ─æß╗ü.");
+            return;
+        }
+
+        const payload = {
+            ...newBlog,
+            status: 'Draft'
+        };
+
+        try {
+            await axios.post(`${API_BASE}/api/staff/blogs?action=create`, payload, { withCredentials: true });
+            alert("Tß║ío b├ái viß║┐t th├ánh c├┤ng!");
+            setShowCreateModal(false);
+            setNewBlog(initialBlogState);
+            fetchBlogs();
+        } catch(e) { 
+            console.error(e);
+            alert("Lß╗ùi tß║ío b├ái viß║┐t. Vui l├▓ng thß╗¡ lß║íi."); 
+        }
+    };
+
+    const publicCount = blogs.filter(b => b.status === 'Public').length;
+    const isDraft = selectedBlog?.status === 'Draft';
+
+    return (
+        <div className="staff-container">
+            {/* Stats Cards */}
+            <div className="stats-grid">
+                <StatsCard title="Tß╗òng b├ái viß║┐t" value={blogs.length} icon={<FileText size={22} />} type="total" />
+                <StatsCard title="C├┤ng khai (Public)" value={publicCount} icon={<CheckCircle size={22} />} type="active" />
+                <StatsCard title="L╞░ß╗út xem" value={blogs.reduce((a, b) => a + (b.views || 0), 0)} icon={<Eye size={22} />} type="pending" />
+            </div>
+
+            {/* Controls */}
+            <div className="controls-section">
+                <div className="controls-top-bar">
+                    <div className="search-box">
+                        <Search className="search-icon" size={18} />
+                        <input type="text" placeholder="T├¼m kiß║┐m b├ái viß║┐t..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    </div>
+                    <div className="action-group">
+                        <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
+                            <Plus size={18} /> Viß║┐t b├ái mß╗¢i
+                        </button>
+                        <button className="reset-btn" onClick={handleResetFilters} title="Reset Filters">
+                            <RotateCcw size={18} />
+                        </button>
+                        <button className={`filter-toggle-btn ${showFilters ? 'active' : ''}`} onClick={() => setShowFilters(!showFilters)}>
+                            <Filter size={18} /> Bß╗Ö lß╗ìc {showFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
+                    </div>
+                </div>
+                
+                {showFilters && (
+                    <div className="filters-panel">
+                        <div className="filter-group">
+                            <label>Trß║íng th├íi</label>
+                            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                                <option value="All">Tß║Ñt cß║ú</option>
+                                <option value="Public">C├┤ng khai (Public)</option>
+                                <option value="Private">Ri├¬ng t╞░ (Private)</option>
+                                <option value="Draft">Bß║ún nh├íp (Draft)</option>
+                            </select>
+                        </div>
+                        
+                        <div className="filter-group">
+                            <label>Danh mß╗Ñc</label>
+                            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+                                <option value="All">Tß║Ñt cß║ú danh mß╗Ñc</option>
+                                <option value="Strategy">Chiß║┐n thuß║¡t (Strategy)</option>
+                                <option value="News">Tin tß╗⌐c (News)</option>
+                                <option value="Guide">H╞░ß╗¢ng dß║½n (Guide)</option>
+                            </select>
+                        </div>
+
+                        <div className="filter-group">
+                            <label>Sß║»p xß║┐p ti├¬u ─æß╗ü</label>
+                            <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+                                <option value="asc">A ΓåÆ Z</option>
+                                <option value="desc">Z ΓåÆ A</option>
+                            </select>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Table */}
+            <div className="table-wrapper">
+                <table className="custom-table">
+                    <thead>
+                        <tr>
+                            <th>B├ái viß║┐t</th>
+                            <th>Danh mß╗Ñc</th>
+                            <th>Trß║íng th├íi</th>
+                            <th>L╞░ß╗út xem</th>
+                            <th>H├ánh ─æß╗Öng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading ? (
+                            <tr><td colSpan={5} style={{textAlign: 'center', padding: '40px'}}>─Éang tß║úi...</td></tr>
+                        ) : filteredData.length === 0 ? (
+                            <tr><td colSpan={5} style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>Kh├┤ng c├│ b├ái viß║┐t n├áo</td></tr>
+                        ) : (
+                            filteredData.map(item => (
+                                <tr key={item.blogPostId}>
+                                    <td>
+                                        <div className="item-meta">
+                                            <div className="item-icon"><FileText size={18} /></div>
+                                            <div className="item-info">
+                                                <span className="item-title">{item.title}</span>
+                                                <span className="item-sub">{item.summary?.substring(0, 50)}...</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td><StatusBadge status={item.categories} /></td>
+                                    <td><StatusBadge status={item.status} /></td>
+                                    <td>{item.views || 0}</td>
+                                    <td>
+                                        <button className="view-btn" onClick={() => setSelectedBlog(item)} title="Xem & Cß║¡p nhß║¡t">
+                                            <Eye size={16} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* --- MODAL VIEW & UPDATE --- */}
+            {selectedBlog && (
+                <div className="modal-overlay" onClick={() => { setSelectedBlog(null); setIsEditing(false); }}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{maxWidth: '650px'}}>
+                        <div className="modal-header">
+                            <div>
+                                <h2 className="modal-title">
+                                    {isEditing ? 'Chß╗ënh sß╗¡a b├ái viß║┐t' : selectedBlog.title}
+                                </h2>
+                                <StatusBadge status={selectedBlog.status} />
+                            </div>
+                            <button className="close-btn" onClick={() => { setSelectedBlog(null); setIsEditing(false); }}>
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+                        
+                        <div className="modal-body" style={{maxHeight: '65vh', overflowY: 'auto'}}>
+                            {/* Chß║┐ ─æß╗Ö xem hoß║╖c chß╗ënh sß╗¡a */}
+                            {!isEditing ? (
+                                <>
+                                    {/* Read-only Info */}
+                                    <div className="modal-section">
+                                        {selectedBlog.thumbnailUrl && (
+                                            <img 
+                                                src={selectedBlog.thumbnailUrl} 
+                                                alt="Thumbnail" 
+                                                style={{width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '12px', marginBottom: '16px'}} 
+                                                onError={(e) => e.target.style.display = 'none'} 
+                                            />
+                                        )}
+                                        <p><strong>Danh mß╗Ñc:</strong> {selectedBlog.categories}</p>
+                                        <p><strong>T├│m tß║»t:</strong> {selectedBlog.summary || 'Ch╞░a c├│'}</p>
+                                        <div className="content-preview" style={{marginTop: '12px', whiteSpace: 'pre-wrap'}}>
+                                            {selectedBlog.content || 'Ch╞░a c├│ nß╗Öi dung'}
+                                        </div>
+                                    </div>
+
+                                    {/* N├║t chß╗ënh sß╗¡a cho Draft */}
+                                    {isDraft && (
+                                        <button 
+                                            className="btn-primary" 
+                                            style={{width: '100%', marginBottom: '16px'}}
+                                            onClick={() => setIsEditing(true)}
+                                        >
+                                            <Edit3 size={18} /> Chß╗ënh sß╗¡a b├ái viß║┐t
+                                        </button>
+                                    )}
+
+                                    {/* Update Status Area */}
+                                    <div className="modal-section update-status-area" style={{borderTop: '1px solid #e2e8f0', paddingTop: '16px'}}>
+                                        <h4>Cß║¡p nhß║¡t trß║íng th├íi</h4>
+                                        <div className="form-group">
+                                            <label>Chß╗ìn trß║íng th├íi mß╗¢i:</label>
+                                            <select 
+                                                className="form-control"
+                                                value={updateStatus} 
+                                                onChange={(e) => setUpdateStatus(e.target.value)}
+                                            >
+                                                <option value="">-- Giß╗» nguy├¬n trß║íng th├íi hiß╗çn tß║íi --</option>
+                                                <option value="Draft">Bß║ún nh├íp (Draft)</option>
+                                                <option value="Public">C├┤ng khai (Public)</option>
+                                                <option value="Private">Ri├¬ng t╞░ (Private)</option>
+                                            </select>
+                                        </div>
+                                        <button 
+                                            className="btn-primary" 
+                                            style={{width: '100%'}}
+                                            onClick={handleUpdateStatus}
+                                        >
+                                            <Save size={18} /> L╞░u trß║íng th├íi
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    {/* Edit Mode - Full Form */}
+                                    <div className="form-group">
+                                        <label>ß║ónh b├¼a (URL) <span style={{color: '#64748b', fontWeight: 'normal'}}>(Thumbnail)</span></label>
+                                        <input 
+                                            className="form-control" 
+                                            type="text" 
+                                            value={editData.thumbnailUrl} 
+                                            onChange={e => setEditData({...editData, thumbnailUrl: e.target.value})} 
+                                            placeholder="https://example.com/image.jpg"
+                                        />
+                                        {editData.thumbnailUrl && (
+                                            <div style={{marginTop: '10px'}}>
+                                                <img 
+                                                    src={editData.thumbnailUrl} 
+                                                    alt="Preview" 
+                                                    style={{width: '100%', maxHeight: '150px', objectFit: 'cover', borderRadius: '8px'}} 
+                                                    onError={(e) => e.target.style.display='none'} 
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Ti├¬u ─æß╗ü <span style={{color:'#ef4444'}}>*</span></label>
+                                        <input 
+                                            className="form-control" 
+                                            type="text" 
+                                            value={editData.title} 
+                                            onChange={e => setEditData({...editData, title: e.target.value})} 
+                                            placeholder="Nhß║¡p ti├¬u ─æß╗ü..." 
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Danh mß╗Ñc</label>
+                                        <select 
+                                            className="form-control" 
+                                            value={editData.categories} 
+                                            onChange={e => setEditData({...editData, categories: e.target.value})}
+                                        >
+                                            <option value="Strategy">Chiß║┐n thuß║¡t (Strategy)</option>
+                                            <option value="News">Tin tß╗⌐c (News)</option>
+                                            <option value="Guide">H╞░ß╗¢ng dß║½n (Guide)</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>T├│m tß║»t</label>
+                                        <textarea 
+                                            className="form-control" 
+                                            value={editData.summary} 
+                                            onChange={e => setEditData({...editData, summary: e.target.value})} 
+                                            style={{minHeight:'80px'}} 
+                                            placeholder="M├┤ tß║ú ngß║»n vß╗ü b├ái viß║┐t..."
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Nß╗Öi dung</label>
+                                        <textarea 
+                                            className="form-control" 
+                                            value={editData.content} 
+                                            onChange={e => setEditData({...editData, content: e.target.value})} 
+                                            style={{minHeight:'150px'}} 
+                                            placeholder="Nß╗Öi dung b├ái viß║┐t..."
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Trß║íng th├íi sau khi l╞░u</label>
+                                        <select 
+                                            className="form-control"
+                                            value={updateStatus || selectedBlog.status} 
+                                            onChange={(e) => setUpdateStatus(e.target.value)}
+                                        >
+                                            <option value="Draft">Bß║ún nh├íp (Draft)</option>
+                                            <option value="Public">C├┤ng khai (Public)</option>
+                                            <option value="Private">Ri├¬ng t╞░ (Private)</option>
+                                        </select>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Footer buttons for Edit Mode */}
+                        {isEditing && (
+                            <div className="modal-footer">
+                                <button className="btn-secondary" onClick={() => setIsEditing(false)}>
+                                    Hß╗ºy
+                                </button>
+                                <button className="btn-primary" onClick={handleSaveEdit}>
+                                    <Save size={18} /> L╞░u thay ─æß╗òi
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* --- MODAL CREATE --- */}
+            {showCreateModal && (
+                <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Viß║┐t b├ái mß╗¢i</h2>
+                            <button className="close-btn" onClick={() => setShowCreateModal(false)}><XCircle size={24} /></button>
+                        </div>
+                        <div className="modal-body" style={{maxHeight: '65vh', overflowY: 'auto'}}>
+                            
+                            <div className="form-group">
+                                <label>ß║ónh b├¼a (URL)</label>
+                                <input 
+                                    className="form-control" 
+                                    type="text" 
+                                    value={newBlog.thumbnailUrl} 
+                                    onChange={e => setNewBlog({...newBlog, thumbnailUrl: e.target.value})} 
+                                    placeholder="https://example.com/image.jpg"
+                                />
+                                {newBlog.thumbnailUrl && (
+                                    <div style={{marginTop: '10px'}}>
+                                        <img 
+                                            src={newBlog.thumbnailUrl} 
+                                            alt="Preview" 
+                                            style={{width: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '8px'}} 
+                                            onError={(e) => e.target.style.display='none'} 
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="form-group">
+                                <label>Ti├¬u ─æß╗ü <span style={{color:'#ef4444'}}>*</span></label>
+                                <input 
+                                    className="form-control" 
+                                    type="text" 
+                                    value={newBlog.title} 
+                                    onChange={e => setNewBlog({...newBlog, title: e.target.value})} 
+                                    placeholder="Nhß║¡p ti├¬u ─æß╗ü..." 
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Danh mß╗Ñc</label>
+                                <select 
+                                    className="form-control" 
+                                    value={newBlog.categories} 
+                                    onChange={e => setNewBlog({...newBlog, categories: e.target.value})}
+                                >
+                                    <option value="Strategy">Chiß║┐n thuß║¡t (Strategy)</option>
+                                    <option value="News">Tin tß╗⌐c (News)</option>
+                                    <option value="Guide">H╞░ß╗¢ng dß║½n (Guide)</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label>T├│m tß║»t</label>
+                                <textarea 
+                                    className="form-control" 
+                                    value={newBlog.summary} 
+                                    onChange={e => setNewBlog({...newBlog, summary: e.target.value})} 
+                                    style={{minHeight:'80px'}} 
+                                    placeholder="M├┤ tß║ú ngß║»n vß╗ü b├ái viß║┐t..."
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Nß╗Öi dung</label>
+                                <textarea 
+                                    className="form-control" 
+                                    value={newBlog.content} 
+                                    onChange={e => setNewBlog({...newBlog, content: e.target.value})} 
+                                    style={{minHeight:'150px'}} 
+                                    placeholder="Nß╗Öi dung b├ái viß║┐t..."
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn-secondary" onClick={() => setShowCreateModal(false)}>Hß╗ºy</button>
+                            <button className="btn-primary" onClick={handleCreateBlog}>
+                                <Save size={18} /> L╞░u b├ái viß║┐t (Draft)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default StaffBlog;

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API_BASE } from "../../config/api";
 import MainHeader from "../../component/common/MainHeader";
-import "./BlogPage.css"; // Optional, can define simple css here or reuse
+import "./BlogPage.css";
 
 export default function BlogPage() {
     const navigate = useNavigate();

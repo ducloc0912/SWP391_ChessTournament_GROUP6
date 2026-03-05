@@ -21,8 +21,13 @@ import java.util.Map;
 @WebServlet("/api/staff/blogs")
 public class StaffBlogController extends HttpServlet {
     private final BlogPostStaffService service = new BlogPostStaffService();
-    // Use default Gson for Timestamp/Date handling for now
     private final Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd HH:mm:ss").create();
+
+    /** Helper: lấy role từ session (upper-case để so sánh dễ) */
+    private String getRole(HttpServletRequest req) {
+        Object roleObj = req.getSession().getAttribute("role");
+        return roleObj != null ? roleObj.toString().toUpperCase() : "";
+    }
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -37,12 +42,21 @@ public class StaffBlogController extends HttpServlet {
             return;
         }
 
+        String role = getRole(req);
+        // STAFF xem tất cả; mọi role khác (TOURNAMENTLEADER, ...) chỉ xem bài của mình
+        boolean isStaff = "STAFF".equals(role);
+
         if ("detail".equals(action)) {
             String idStr = req.getParameter("id");
             if (idStr != null) {
                 int id = Integer.parseInt(idStr);
                 BlogPost blog = service.getBlogPostById(id);
-                if (blog != null && blog.getAuthorId().equals(user.getUserId())) {
+                if (blog == null) {
+                    resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                    return;
+                }
+                // Staff xem tất cả; Leader chỉ xem bài của mình
+                if (isStaff || blog.getAuthorId().equals(user.getUserId())) {
                     resp.getWriter().write(gson.toJson(blog));
                 } else {
                     resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
@@ -51,8 +65,10 @@ public class StaffBlogController extends HttpServlet {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
         } else {
-            // Default: list all for this author
-            List<BlogPost> list = service.getBlogPostsByAuthor(user.getUserId());
+            // List: Staff → tất cả blog, Leader → chỉ blog của mình
+            List<BlogPost> list = isStaff
+                    ? service.getAllBlogPosts()
+                    : service.getBlogPostsByAuthor(user.getUserId());
             resp.getWriter().write(gson.toJson(list));
         }
     }
@@ -73,35 +89,75 @@ public class StaffBlogController extends HttpServlet {
                 return;
             }
 
+            String role = getRole(req);
+            boolean isStaff = "STAFF".equals(role);
+            boolean isLeader = "TOURNAMENTLEADER".equals(role);
+
+            // Chỉ Staff và TournamentLeader mới được quản lý blog
+            if (!isStaff && !isLeader) {
+                resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                resp.getWriter().write(
+                        "{\"success\":false,\"message\":\"Forbidden: only Staff or TournamentLeader can manage blogs\"}");
+                return;
+            }
+
             if ("create".equals(action)) {
                 BlogPost blog = gson.fromJson(req.getReader(), BlogPost.class);
                 blog.setAuthorId(user.getUserId());
                 boolean success = service.createBlogPost(blog);
                 responseMap.put("success", success);
+                if (!success)
+                    responseMap.put("message", "Không thể tạo bài viết.");
+
             } else if ("update".equals(action)) {
                 BlogPost blog = gson.fromJson(req.getReader(), BlogPost.class);
-                blog.setAuthorId(user.getUserId()); // Ensure they don't change author
+                // Leader chỉ được sửa bài của chính mình
+                if (isLeader) {
+                    BlogPost existing = service.getBlogPostById(blog.getBlogPostId());
+                    if (existing == null || !existing.getAuthorId().equals(user.getUserId())) {
+                        resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        resp.getWriter().write(
+                                "{\"success\":false,\"message\":\"Forbidden: bạn không thể sửa bài của người khác\"}");
+                        return;
+                    }
+                }
+                blog.setAuthorId(user.getUserId());
                 boolean success = service.updateBlogPost(blog);
                 responseMap.put("success", success);
+                if (!success)
+                    responseMap.put("message", "Không thể cập nhật bài viết.");
+
             } else if ("delete".equals(action)) {
                 Map<String, Object> body = gson.fromJson(req.getReader(), Map.class);
                 int id = ((Double) body.get("blogPostId")).intValue();
+                if (isLeader) {
+                    BlogPost existing = service.getBlogPostById(id);
+                    if (existing == null || !existing.getAuthorId().equals(user.getUserId())) {
+                        resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        resp.getWriter().write("{\"success\":false,\"message\":\"Forbidden\"}");
+                        return;
+                    }
+                }
                 boolean success = service.deleteBlogPost(id);
                 responseMap.put("success", success);
+
             } else if ("publish".equals(action)) {
                 Map<String, Object> body = gson.fromJson(req.getReader(), Map.class);
                 int id = ((Double) body.get("blogPostId")).intValue();
                 boolean success = service.publishBlogPost(id);
                 responseMap.put("success", success);
+
             } else if ("hide".equals(action)) {
                 Map<String, Object> body = gson.fromJson(req.getReader(), Map.class);
                 int id = ((Double) body.get("blogPostId")).intValue();
                 boolean success = service.hideBlogPost(id);
                 responseMap.put("success", success);
+
             } else {
                 responseMap.put("success", false);
                 responseMap.put("message", "Invalid action");
             }
+
         } catch (Exception e) {
             e.printStackTrace();
             responseMap.put("success", false);

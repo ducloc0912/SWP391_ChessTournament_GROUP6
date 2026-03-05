@@ -8,11 +8,9 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class VNPayConfig {
 
-    public static String vnp_PayUrl =
-            "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+    public static String vnp_PayUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
 
-    public static String vnp_ReturnUrl =
-            "http://localhost:5173/payment-result";
+    public static String vnp_ReturnUrl = "http://localhost:5173/payment-result";
 
     public static String vnp_TmnCode = "ODV4RAU8";
     public static String secretKey = "9Z1DY4KEWZWYY1QIYEGI8DKC0261BBJR";
@@ -35,7 +33,8 @@ public class VNPayConfig {
                 sb.append(fieldName);
                 sb.append("=");
                 sb.append(fieldValue);
-                if (itr.hasNext()) sb.append("&");
+                if (itr.hasNext())
+                    sb.append("&");
             }
         }
 
@@ -45,8 +44,7 @@ public class VNPayConfig {
     public static String hmacSHA512(String key, String data) {
         try {
             Mac mac = Mac.getInstance("HmacSHA512");
-            SecretKeySpec secretKeySpec =
-                    new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
             mac.init(secretKeySpec);
 
             byte[] bytes = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
@@ -62,7 +60,8 @@ public class VNPayConfig {
 
     public static String getIpAddress(HttpServletRequest request) {
         String ip = request.getHeader("X-FORWARDED-FOR");
-        if (ip == null) ip = request.getRemoteAddr();
+        if (ip == null)
+            ip = request.getRemoteAddr();
         return ip;
     }
 
