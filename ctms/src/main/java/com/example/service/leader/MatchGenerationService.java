@@ -5,6 +5,7 @@ import com.example.model.dto.TournamentSetupMatchDTO;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Generates matches for Round Robin, Knock Out, and Hybrid (RR + KO) formats.
@@ -125,6 +126,37 @@ public class MatchGenerationService {
             return matchIndex < right.length ? right[matchIndex] : matchIndex * 2 + 1;
         }
         return matchIndex * 2 + 1;
+    }
+
+    /**
+     * Hybrid with Group Stage: RR matches per group, then KO bracket (placeholders).
+     * groupPlayers: map groupName -> list of player ids in that group.
+     */
+    public static List<TournamentSetupMatchDTO> generateHybridMatchesWithGroups(
+            Map<String, List<Integer>> groupPlayers, int topNForKo) {
+        if (groupPlayers == null || groupPlayers.isEmpty()) return List.of();
+        List<TournamentSetupMatchDTO> out = new ArrayList<>();
+        for (Map.Entry<String, List<Integer>> e : groupPlayers.entrySet()) {
+            String groupName = e.getKey();
+            List<Integer> ids = e.getValue();
+            if (ids == null || ids.size() < 2) continue;
+            List<TournamentSetupMatchDTO> rr = generateRoundRobinMatches(ids, false);
+            for (TournamentSetupMatchDTO m : rr) {
+                m.setGroupName(groupName);
+                out.add(m);
+            }
+        }
+        int totalForKo = Math.min(topNForKo, 32);
+        int koSize = nextPowerOf2(totalForKo);
+        if (koSize < 2) koSize = 2;
+        List<Integer> placeholders = Collections.nCopies(koSize, (Integer) null);
+        List<TournamentSetupMatchDTO> ko = generateKnockoutMatches(placeholders, placeholders);
+        for (TournamentSetupMatchDTO m : ko) {
+            m.setWhitePlayerId(null);
+            m.setBlackPlayerId(null);
+        }
+        out.addAll(ko);
+        return out;
     }
 
     /**

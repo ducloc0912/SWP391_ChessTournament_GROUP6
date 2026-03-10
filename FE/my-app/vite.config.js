@@ -5,6 +5,13 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   server: {
+    // Proxy API sang backend để tránh CORS và đảm bảo query params (action=autoSetup) được gửi đúng
+    proxy: {
+      '/ctms': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
     // Cho phép truy cập từ domain ngrok dùng để VNPay redirect
     allowedHosts: [
       'localhost',

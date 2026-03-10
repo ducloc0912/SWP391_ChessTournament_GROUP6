@@ -57,10 +57,12 @@ public class MatchDAO extends DBContext {
         String sql = """
             SELECT m.match_id, m.tournament_id, m.round_id, m.board_number,
                    m.white_player_id, m.black_player_id, m.result, m.status,
-                   m.start_time, m.end_time
+                   m.start_time, m.end_time,
+                   r.round_index, r.name AS round_name
             FROM Matches m
+            LEFT JOIN Round r ON r.round_id = m.round_id
             WHERE m.tournament_id = ? AND m.status = ?
-            ORDER BY m.start_time
+            ORDER BY ISNULL(r.round_index, 9999), m.start_time
             """;
         try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, tournamentId);
@@ -87,6 +89,8 @@ public class MatchDAO extends DBContext {
         row.put("startTime", rs.getTimestamp("start_time"));
         row.put("endTime", rs.getTimestamp("end_time"));
         try { row.put("tournamentName", rs.getString("tournament_name")); } catch (Exception ignored) {}
+        try { row.put("roundIndex", rs.getObject("round_index")); } catch (Exception ignored) {}
+        try { row.put("roundName", rs.getString("round_name")); } catch (Exception ignored) {}
         return row;
     }
 }
