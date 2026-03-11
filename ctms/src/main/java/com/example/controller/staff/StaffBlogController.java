@@ -84,12 +84,8 @@ public class StaffBlogController extends HttpServlet {
 
             if ("create".equals(action)) {
                 BlogPost blog = gson.fromJson(req.getReader(), BlogPost.class);
-                HttpSession session = req.getSession(false);
-                if (session != null && session.getAttribute("user") instanceof User) {
-                    User user = (User) session.getAttribute("user");
-                    if (user.getUserId() != null) {
-                        blog.setAuthorId(user.getUserId());
-                    }
+                if (user.getUserId() != null) {
+                    blog.setAuthorId(user.getUserId());
                 }
                 if (blog.getAuthorId() == null) {
                     responseMap.put("success", false);
