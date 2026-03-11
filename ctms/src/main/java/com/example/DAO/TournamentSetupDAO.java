@@ -2,6 +2,7 @@ package com.example.DAO;
 
 import com.example.model.dto.TournamentSetupMatchDTO;
 import com.example.model.dto.TournamentSetupStateDTO;
+import com.example.model.entity.TournamentGroup;
 import com.example.model.enums.SetupStep;
 import com.example.util.DBContext;
 
@@ -17,6 +18,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * DAO cho Tournament Setup Wizard.
+ * Quản lý trạng thái setup (Tournament_Setup_State) và dữ liệu bracket/schedule (Bracket, Round, Matches, Match_Referee).
+ * Luồng: Structure (BRACKET) → Players → Schedule → Referee → COMPLETED.
+ */
 public class TournamentSetupDAO extends DBContext {
 
     private static final String COL_BRACKET = "bracket_status";
@@ -24,6 +30,11 @@ public class TournamentSetupDAO extends DBContext {
     private static final String COL_SCHEDULE = "schedule_status";
     private static final String COL_REFEREES = "referees_status";
 
+    // ==================== SETUP STATE ====================
+
+    /**
+     * Lấy current_step hiện tại của giải (giá trị DB: STRUCTURE, PLAYERS, SCHEDULE, REFEREE, COMPLETED).
+     */
     public String getSetupStep(int tournamentId) {
         String sql = "SELECT current_step FROM Tournament_Setup_State WHERE tournament_id = ?";
         try (Connection conn = getConnection();
@@ -40,6 +51,9 @@ public class TournamentSetupDAO extends DBContext {
         return null;
     }
 
+    /**
+     * Cập nhật hoặc chèn current_step. Khi chuyển sang REFEREE thì cập nhật schedule_status = FINALIZED.
+     */
     public boolean upsertSetupStep(int tournamentId, String step) {
         String updateSql = "UPDATE Tournament_Setup_State SET current_step = ?, updated_at = GETDATE() WHERE tournament_id = ?";
         String insertSql = "INSERT INTO Tournament_Setup_State (tournament_id, current_step, updated_at) VALUES (?, ?, GETDATE())";
@@ -49,6 +63,9 @@ public class TournamentSetupDAO extends DBContext {
                 ps.setInt(2, tournamentId);
                 int updated = ps.executeUpdate();
                 if (updated > 0) {
+                    if ("REFEREE".equalsIgnoreCase(step)) {
+                        updateScheduleStatusToFinalized(conn, tournamentId);
+                    }
                     return true;
                 }
             }
@@ -63,8 +80,25 @@ public class TournamentSetupDAO extends DBContext {
         }
     }
 
+    /** Cập nhật schedule_status = FINALIZED khi chuyển sang bước REFEREE (schema có cột status). */
+    private void updateScheduleStatusToFinalized(Connection conn, int tournamentId) {
+        if (conn == null) return;
+        try {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "UPDATE Tournament_Setup_State SET schedule_status = 'FINALIZED', updated_at = GETDATE() WHERE tournament_id = ?")) {
+                ps.setInt(1, tournamentId);
+                ps.executeUpdate();
+            }
+        } catch (SQLException e) {
+            if (e.getMessage() == null || (!e.getMessage().contains("schedule_status") && !e.getMessage().contains("Invalid column"))) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     /**
-     * Full state for wizard: current_step + per-step status (DRAFT/FINALIZED). If row missing or migration not run, returns defaults.
+     * Lấy toàn bộ trạng thái setup: current_step + status từng bước (DRAFT/FINALIZED).
+     * Trả về chuẩn hóa: BRACKET, PLAYERS, SCHEDULE, REFEREES, COMPLETED.
      */
     public TournamentSetupStateDTO getSetupStateFull(int tournamentId) {
         String sql = """
@@ -101,6 +135,7 @@ public class TournamentSetupDAO extends DBContext {
         return defaultSetupState(tournamentId);
     }
 
+    /** Fallback khi schema không có cột status: suy status từ current_step. */
     private TournamentSetupStateDTO getSetupStateFullLegacy(int tournamentId) {
         String sql = "SELECT tournament_id, current_step, updated_at FROM Tournament_Setup_State WHERE tournament_id = ?";
         try (Connection conn = getConnection();
@@ -110,9 +145,10 @@ public class TournamentSetupDAO extends DBContext {
                 if (rs.next()) {
                     TournamentSetupStateDTO dto = new TournamentSetupStateDTO();
                     dto.setTournamentId(rs.getInt("tournament_id"));
-                    dto.setCurrentStep(normalizeStepFromDb(rs.getString("current_step")));
+                    String step = normalizeStepFromDb(rs.getString("current_step"));
+                    dto.setCurrentStep(step);
                     dto.setUpdatedAt(rs.getTimestamp("updated_at"));
-                    dto.setStepStatuses(Map.of("BRACKET", "DRAFT", "PLAYERS", "DRAFT", "SCHEDULE", "DRAFT", "REFEREES", "DRAFT"));
+                    dto.setStepStatuses(deriveStatusesFromCurrentStep(step));
                     return dto;
                 }
             }
@@ -120,6 +156,21 @@ public class TournamentSetupDAO extends DBContext {
             e.printStackTrace();
         }
         return defaultSetupState(tournamentId);
+    }
+
+    /** Suy status từ current_step khi thiếu cột status (schema cũ). */
+    private Map<String, String> deriveStatusesFromCurrentStep(String currentStep) {
+        String s = (currentStep != null) ? currentStep.toUpperCase() : "";
+        boolean pastBracket = "PLAYERS".equals(s) || "SCHEDULE".equals(s) || "REFEREES".equals(s) || "REFEREE".equals(s) || "COMPLETED".equals(s);
+        boolean pastPlayers = "SCHEDULE".equals(s) || "REFEREES".equals(s) || "REFEREE".equals(s) || "COMPLETED".equals(s);
+        boolean pastSchedule = "REFEREES".equals(s) || "REFEREE".equals(s) || "COMPLETED".equals(s);
+        boolean pastReferees = "COMPLETED".equals(s);
+        Map<String, String> m = new HashMap<>();
+        m.put("BRACKET", pastBracket ? "FINALIZED" : "DRAFT");
+        m.put("PLAYERS", pastPlayers ? "FINALIZED" : "DRAFT");
+        m.put("SCHEDULE", pastSchedule ? "FINALIZED" : "DRAFT");
+        m.put("REFEREES", pastReferees ? "FINALIZED" : "DRAFT");
+        return m;
     }
 
     private TournamentSetupStateDTO defaultSetupState(int tournamentId) {
@@ -139,6 +190,7 @@ public class TournamentSetupDAO extends DBContext {
         }
     }
 
+    /** Chuẩn hóa step từ DB: STRUCTURE→BRACKET, REFEREE→REFEREES. */
     private String normalizeStepFromDb(String dbStep) {
         if (dbStep == null) return "BRACKET";
         String s = dbStep.trim().toUpperCase();
@@ -147,7 +199,9 @@ public class TournamentSetupDAO extends DBContext {
         return s;
     }
 
-    /** Ensure row exists with default DRAFT statuses (for new tournaments). If migration not run, fallback insert without new columns. */
+    /**
+     * Đảm bảo có dòng Tournament_Setup_State cho giải (mặc định DRAFT).
+     */
     public void ensureSetupStateRow(int tournamentId) {
         String sel = "SELECT 1 FROM Tournament_Setup_State WHERE tournament_id = ?";
         try (Connection conn = getConnection();
@@ -185,26 +239,92 @@ public class TournamentSetupDAO extends DBContext {
         }
     }
 
-    /** Finalize one step: set its status to FINALIZED and advance current_step to next. */
+    /**
+     * Finalize bước: set status bước đó = FINALIZED, current_step = bước tiếp theo.
+     */
     public boolean finalizeStep(int tournamentId, SetupStep step, Integer userId) {
         String statusCol = statusColumn(step);
         if (statusCol == null) return false;
         SetupStep next = step.next();
         String nextDb = next != null ? next.toDbValue() : "COMPLETED";
-        String sql = "UPDATE Tournament_Setup_State SET current_step = ?, updated_at = GETDATE(), " + statusCol + " = 'FINALIZED', updated_by = ? WHERE tournament_id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, nextDb);
-            ps.setObject(2, userId);
-            ps.setInt(3, tournamentId);
-            return ps.executeUpdate() > 0;
+        Connection conn = null;
+        try {
+            conn = getConnection();
+            if (conn == null) return false;
+            ensureSetupStateRowOnConnection(conn, tournamentId);
+            String sql = "UPDATE Tournament_Setup_State SET current_step = ?, updated_at = GETDATE(), " + statusCol + " = 'FINALIZED', updated_by = ? WHERE tournament_id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, nextDb);
+                ps.setObject(2, userId);
+                ps.setInt(3, tournamentId);
+                int updated = ps.executeUpdate();
+                if (updated > 0) return true;
+            }
+            try (PreparedStatement ps = conn.prepareStatement("UPDATE Tournament_Setup_State SET current_step = ?, updated_at = GETDATE() WHERE tournament_id = ?")) {
+                ps.setString(1, nextDb);
+                ps.setInt(2, tournamentId);
+                int legacyUpdated = ps.executeUpdate();
+                if (legacyUpdated > 0) return true;
+            }
+            ensureSetupStateRow(tournamentId);
+            try (PreparedStatement ps = conn.prepareStatement("UPDATE Tournament_Setup_State SET current_step = ?, updated_at = GETDATE() WHERE tournament_id = ?")) {
+                ps.setString(1, nextDb);
+                ps.setInt(2, tournamentId);
+                return ps.executeUpdate() > 0;
+            }
         } catch (SQLException e) {
-            e.printStackTrace();
+            String msg = e.getMessage() != null ? e.getMessage() : "";
+            boolean columnOrFk = msg.contains("schedule_status") || msg.contains("bracket_status") || msg.contains("players_status") || msg.contains("referees_status") || msg.contains("updated_by") || msg.contains("Invalid column") || msg.contains("foreign key") || msg.contains("REFERENCE");
+            if (columnOrFk) {
+                try {
+                    if (conn != null) {
+                        try (PreparedStatement ps = conn.prepareStatement("UPDATE Tournament_Setup_State SET current_step = ?, updated_at = GETDATE() WHERE tournament_id = ?")) {
+                            ps.setString(1, nextDb);
+                            ps.setInt(2, tournamentId);
+                            return ps.executeUpdate() > 0;
+                        }
+                    }
+                } catch (SQLException e2) {
+                    e2.printStackTrace();
+                }
+            } else {
+                e.printStackTrace();
+            }
             return false;
+        } finally {
+            if (conn != null) {
+                try { conn.close(); } catch (SQLException ignored) {}
+            }
         }
     }
 
-    /** Unlock step K: set step K and all later steps to DRAFT, current_step to step K. */
+    private void ensureSetupStateRowOnConnection(Connection conn, int tournamentId) {
+        if (conn == null) return;
+        try {
+            try (PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM Tournament_Setup_State WHERE tournament_id = ?")) {
+                ps.setInt(1, tournamentId);
+                if (ps.executeQuery().next()) return;
+            }
+            String insExtended = "INSERT INTO Tournament_Setup_State (tournament_id, current_step, updated_at, bracket_status, players_status, schedule_status, referees_status, updated_by) VALUES (?, 'STRUCTURE', GETDATE(), 'DRAFT', 'DRAFT', 'DRAFT', 'DRAFT', NULL)";
+            try (PreparedStatement ps = conn.prepareStatement(insExtended)) {
+                ps.setInt(1, tournamentId);
+                ps.executeUpdate();
+                return;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            try (PreparedStatement ps = conn.prepareStatement("INSERT INTO Tournament_Setup_State (tournament_id, current_step, updated_at) VALUES (?, 'STRUCTURE', GETDATE())")) {
+                ps.setInt(1, tournamentId);
+                ps.executeUpdate();
+            } catch (SQLException e2) {
+                e2.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * Unlock bước K: set bước K và các bước sau về DRAFT, current_step = bước K.
+     */
     public boolean unlockStep(int tournamentId, SetupStep step, Integer userId) {
         String stepDb = step.toDbValue();
         String sql = """
@@ -245,6 +365,7 @@ public class TournamentSetupDAO extends DBContext {
         }
     }
 
+    /** Ghi audit log cho finalize/unlock. */
     public void insertAuditLog(int tournamentId, String step, String action, String beforeJson, String afterJson, Integer createdBy) {
         String sql = "INSERT INTO Setup_Audit_Log (tournament_id, step, action, before_json, after_json, created_by) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
@@ -261,6 +382,27 @@ public class TournamentSetupDAO extends DBContext {
         }
     }
 
+    // ==================== PARTICIPANTS ====================
+
+    /** Lấy danh sách user_id của participants (để validate player assignment). */
+    public Set<Integer> getParticipantUserIds(int tournamentId) {
+        Set<Integer> ids = new HashSet<>();
+        String sql = "SELECT user_id FROM Participants WHERE tournament_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ids.add(rs.getInt("user_id"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return ids;
+    }
+
+    /** Lấy danh sách user_id, email, full_name của participants (cho setup wizard). */
     public List<Map<String, Object>> getParticipantUsers(int tournamentId) {
         List<Map<String, Object>> list = new ArrayList<>();
         String sql = """
@@ -291,23 +433,11 @@ public class TournamentSetupDAO extends DBContext {
         return list;
     }
 
-    public Set<Integer> getParticipantUserIds(int tournamentId) {
-        Set<Integer> ids = new HashSet<>();
-        String sql = "SELECT user_id FROM Participants WHERE tournament_id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, tournamentId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    ids.add(rs.getInt("user_id"));
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return ids;
-    }
+    // ==================== SCHEDULE (BRACKET, ROUND, MATCHES) ====================
 
+    /**
+     * Lấy lịch đấu (matches) cho schedule tab: round, board, players, start_time, referee.
+     */
     public List<TournamentSetupMatchDTO> getManualSetupMatches(int tournamentId) {
         List<TournamentSetupMatchDTO> list = new ArrayList<>();
         String sql = """
@@ -320,17 +450,22 @@ public class TournamentSetupDAO extends DBContext {
                     r.name AS round_name,
                     r.round_index,
                     b.type AS bracket_type,
+                    m.group_id,
+                    tg.name AS group_name,
                     LTRIM(RTRIM(COALESCE(uw.first_name, '') + ' ' + COALESCE(uw.last_name, ''))) AS white_name,
                     LTRIM(RTRIM(COALESCE(ub.first_name, '') + ' ' + COALESCE(ub.last_name, ''))) AS black_name,
                     (SELECT TOP 1 mr.referee_id FROM Match_Referee mr WHERE mr.match_id = m.match_id) AS referee_id
                 FROM Matches m
                 LEFT JOIN Round r ON r.round_id = m.round_id
                 LEFT JOIN Bracket b ON b.bracket_id = r.bracket_id
+                LEFT JOIN Tournament_Group tg ON tg.group_id = m.group_id
                 LEFT JOIN Users uw ON uw.user_id = m.white_player_id
                 LEFT JOIN Users ub ON ub.user_id = m.black_player_id
                 WHERE m.tournament_id = ?
                 ORDER BY
                     CASE b.type WHEN 'RoundRobin' THEN 1 WHEN 'KnockOut' THEN 2 ELSE 3 END,
+                    ISNULL(tg.sort_order, 999),
+                    ISNULL(tg.name, ''),
                     ISNULL(r.round_index, 9999),
                     ISNULL(m.board_number, 9999),
                     m.match_id
@@ -349,6 +484,8 @@ public class TournamentSetupDAO extends DBContext {
                     dto.setRoundName(rs.getString("round_name"));
                     dto.setRoundIndex((Integer) rs.getObject("round_index"));
                     dto.setStage(rs.getString("bracket_type"));
+                    try { dto.setGroupId((Integer) rs.getObject("group_id")); } catch (SQLException ignored) {}
+                    try { dto.setGroupName(rs.getString("group_name")); } catch (SQLException ignored) {}
                     dto.setWhitePlayerName(rs.getString("white_name"));
                     dto.setBlackPlayerName(rs.getString("black_name"));
                     Object refObj = rs.getObject("referee_id");
@@ -362,6 +499,9 @@ public class TournamentSetupDAO extends DBContext {
         return list;
     }
 
+    /**
+     * Thay thế toàn bộ bracket/schedule: xóa Bracket, Round, Matches cũ; tạo mới từ danh sách matches.
+     */
     public boolean replaceManualSetup(
             int tournamentId,
             String format,
@@ -374,14 +514,15 @@ public class TournamentSetupDAO extends DBContext {
                 INSERT INTO Bracket (bracket_name, tournament_id, type, status)
                 VALUES (?, ?, ?, 'Pending')
                 """;
+        String insertGroupSql = "INSERT INTO Tournament_Group (tournament_id, bracket_id, name, sort_order, max_players) VALUES (?, ?, ?, ?, ?)";
         String insertRoundSql = """
-                INSERT INTO Round (bracket_id, tournament_id, name, round_index, is_completed)
-                VALUES (?, ?, ?, ?, 0)
+                INSERT INTO Round (bracket_id, tournament_id, group_id, name, round_index, is_completed)
+                VALUES (?, ?, ?, ?, ?, 0)
                 """;
         String insertMatchSql = """
                 INSERT INTO Matches
-                (tournament_id, round_id, board_number, white_player_id, black_player_id, status, start_time)
-                VALUES (?, ?, ?, ?, ?, 'Scheduled', ?)
+                (tournament_id, round_id, group_id, board_number, white_player_id, black_player_id, status, start_time)
+                VALUES (?, ?, ?, ?, ?, ?, 'Scheduled', ?)
                 """;
 
         try (Connection conn = getConnection()) {
@@ -424,6 +565,41 @@ public class TournamentSetupDAO extends DBContext {
                     bracketByStage.put(stage, bracketId);
                 }
 
+                Map<String, Integer> groupByName = new HashMap<>();
+                String selectGroupSql = "SELECT group_id FROM Tournament_Group WHERE tournament_id = ? AND name = ?";
+                for (String stage : collectDistinctStages(format, matches)) {
+                    int bracketId = bracketByStage.get(stage);
+                    for (TournamentSetupMatchDTO m : matches) {
+                        if (!stage.equals(normalizeStage(m.getStage(), format))) continue;
+                        String gn = (m.getGroupName() != null && !m.getGroupName().isBlank()) ? m.getGroupName().trim() : null;
+                        if (gn != null && !groupByName.containsKey(gn)) {
+                            Integer existingId = null;
+                            try (PreparedStatement ps = conn.prepareStatement(selectGroupSql)) {
+                                ps.setInt(1, tournamentId);
+                                ps.setString(2, gn);
+                                try (ResultSet rs = ps.executeQuery()) {
+                                    if (rs.next()) existingId = rs.getInt("group_id");
+                                }
+                            }
+                            if (existingId != null) {
+                                groupByName.put(gn, existingId);
+                            } else {
+                                try (PreparedStatement ps = conn.prepareStatement(insertGroupSql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+                                    ps.setInt(1, tournamentId);
+                                    ps.setInt(2, bracketId);
+                                    ps.setString(3, gn);
+                                    ps.setInt(4, groupByName.size());
+                                    ps.setNull(5, java.sql.Types.INTEGER);
+                                    ps.executeUpdate();
+                                    try (ResultSet keys = ps.getGeneratedKeys()) {
+                                        if (keys.next()) groupByName.put(gn, keys.getInt(1));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Map<String, Integer> roundByKey = new LinkedHashMap<>();
                 for (TournamentSetupMatchDTO match : matches) {
                     String stage = normalizeStage(match.getStage(), format);
@@ -432,15 +608,18 @@ public class TournamentSetupDAO extends DBContext {
                     String roundName = (match.getRoundName() == null || match.getRoundName().isBlank())
                             ? "Round " + roundIndex
                             : match.getRoundName().trim();
-                    String roundKey = stage + "::" + roundIndex + "::" + roundName;
+                    String gn = (match.getGroupName() != null && !match.getGroupName().isBlank()) ? match.getGroupName().trim() : null;
+                    Integer groupId = gn != null ? groupByName.get(gn) : null;
+                    String roundKey = stage + "::" + (gn != null ? gn : "") + "::" + roundIndex + "::" + roundName;
 
                     Integer roundId = roundByKey.get(roundKey);
                     if (roundId == null) {
                         try (PreparedStatement ps = conn.prepareStatement(insertRoundSql, PreparedStatement.RETURN_GENERATED_KEYS)) {
                             ps.setInt(1, bracketId);
                             ps.setInt(2, tournamentId);
-                            ps.setString(3, roundName);
-                            ps.setInt(4, roundIndex);
+                            ps.setObject(3, groupId);
+                            ps.setString(4, roundName);
+                            ps.setInt(5, roundIndex);
                             ps.executeUpdate();
                             try (ResultSet keys = ps.getGeneratedKeys()) {
                                 if (!keys.next()) {
@@ -456,26 +635,15 @@ public class TournamentSetupDAO extends DBContext {
                     try (PreparedStatement ps = conn.prepareStatement(insertMatchSql)) {
                         ps.setInt(1, tournamentId);
                         ps.setInt(2, roundId);
-                        if (match.getBoardNumber() == null) {
-                            ps.setNull(3, java.sql.Types.INTEGER);
-                        } else {
-                            ps.setInt(3, match.getBoardNumber());
-                        }
-                        if (match.getWhitePlayerId() == null) {
-                            ps.setNull(4, java.sql.Types.INTEGER);
-                        } else {
-                            ps.setInt(4, match.getWhitePlayerId());
-                        }
-                        if (match.getBlackPlayerId() == null) {
-                            ps.setNull(5, java.sql.Types.INTEGER);
-                        } else {
-                            ps.setInt(5, match.getBlackPlayerId());
-                        }
-                        if (match.getStartTime() == null) {
-                            ps.setNull(6, java.sql.Types.TIMESTAMP);
-                        } else {
-                            ps.setTimestamp(6, match.getStartTime());
-                        }
+                        ps.setObject(3, groupId);
+                        if (match.getBoardNumber() == null) ps.setNull(4, java.sql.Types.INTEGER);
+                        else ps.setInt(4, match.getBoardNumber());
+                        if (match.getWhitePlayerId() == null) ps.setNull(5, java.sql.Types.INTEGER);
+                        else ps.setInt(5, match.getWhitePlayerId());
+                        if (match.getBlackPlayerId() == null) ps.setNull(6, java.sql.Types.INTEGER);
+                        else ps.setInt(6, match.getBlackPlayerId());
+                        if (match.getStartTime() == null) ps.setNull(7, java.sql.Types.TIMESTAMP);
+                        else ps.setTimestamp(7, match.getStartTime());
                         ps.executeUpdate();
                     }
                 }
@@ -509,6 +677,11 @@ public class TournamentSetupDAO extends DBContext {
         return stages;
     }
 
+    // ==================== REFEREE ASSIGNMENT ====================
+
+    /**
+     * Cập nhật trọng tài cho từng trận: xóa Match_Referee cũ, insert mới theo danh sách matches có refereeId.
+     */
     public boolean updateMatchReferees(int tournamentId, List<TournamentSetupMatchDTO> matches) {
         if (matches == null || matches.isEmpty()) {
             return true;

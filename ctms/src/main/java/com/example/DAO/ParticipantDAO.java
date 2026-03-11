@@ -276,7 +276,8 @@ public class ParticipantDAO extends DBContext {
         String sql = """
             SELECT p.participant_id, p.user_id, u.first_name, u.last_name,
                    u.email, u.avatar, u.rank,
-                   p.status, p.registration_date, p.is_paid, p.seed, p.title_at_registration
+                   p.status, p.registration_date, p.is_paid, p.seed, p.title_at_registration,
+                   p.group_id
             FROM Participants p
             JOIN Users u ON p.user_id = u.user_id
             WHERE p.tournament_id = ?
@@ -300,6 +301,7 @@ public class ParticipantDAO extends DBContext {
                 dto.setIsPaid(rs.getBoolean("is_paid"));
                 dto.setSeed((Integer) rs.getObject("seed"));
                 dto.setTitleAtRegistration(rs.getString("title_at_registration"));
+                try { dto.setGroupId((Integer) rs.getObject("group_id")); } catch (SQLException ignored) {}
                 list.add(dto);
             }
         } catch (SQLException e) {
