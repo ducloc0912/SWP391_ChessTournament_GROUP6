@@ -229,6 +229,32 @@ public class TournamentRefereeDAO extends DBContext {
         return false;
     }
 
+    /**
+     * Returns "email" if email already exists, "phone" if phone already exists (and email does not), null if neither.
+     */
+    public String findDuplicateEmailOrPhone(String email, String phone) {
+        if (email == null || phone == null) return null;
+        String emailSql = "SELECT 1 FROM Users WHERE email = ?";
+        String phoneSql = "SELECT 1 FROM Users WHERE phone_number = ?";
+        try (Connection conn = getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(emailSql)) {
+                ps.setString(1, email.trim());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) return "email";
+                }
+            }
+            try (PreparedStatement ps = conn.prepareStatement(phoneSql)) {
+                ps.setString(1, phone.trim());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) return "phone";
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public TournamentRefereeDTO createRefereeUser(
             String firstName,
             String lastName,

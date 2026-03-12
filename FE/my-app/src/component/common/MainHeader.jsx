@@ -68,7 +68,10 @@ export default function MainHeader({
     const rawRole = localStorage.getItem("role");
     const normalizedRole = (rawRole || "").toString().toUpperCase().replace(/[\s_]/g, "");
     if (normalizedRole === "REFEREE") {
-      extraItems = [{ to: "/referee/invitations", label: "Invitations" }];
+      extraItems = [
+        { to: "/referee/invitations", label: "Invitations" },
+        { to: "/referee/matches", label: "Matches" },
+      ];
     }
   } catch {
     extraItems = [];

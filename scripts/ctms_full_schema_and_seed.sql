@@ -241,13 +241,14 @@ CREATE TABLE Matches (
     round_id INT,
     group_id INT NULL,
     board_number INT,
-    white_player_id INT,
-    black_player_id INT,
+    white_player_id INT, /* người chơi 1 */
+    black_player_id INT, /* người chơi 2 */
     result NVARCHAR(50) CHECK (result IN ('1-0','0-1','1/2-1/2','*','forfeit-w','forfeit-b')),
     termination NVARCHAR(50) CHECK (termination IN ('Checkmate','Resignation','Timeout','Stalemate','Draw','Forfeit','Adjudication')),
     status NVARCHAR(20) DEFAULT 'Scheduled' CHECK (status IN ('Scheduled','Ongoing','Completed','Cancelled','Postponed')),
     start_time DATETIME,
     end_time DATETIME,
+    match_group_id INT NULL,
     FOREIGN KEY (tournament_id) REFERENCES Tournaments(tournament_id) ON DELETE CASCADE,
     FOREIGN KEY (round_id) REFERENCES Round(round_id),
     FOREIGN KEY (group_id) REFERENCES Tournament_Group(group_id),
@@ -264,6 +265,20 @@ CREATE TABLE Match_Referee (
     PRIMARY KEY (match_id, referee_id),
     FOREIGN KEY (match_id) REFERENCES Matches(match_id) ON DELETE CASCADE,
     FOREIGN KEY (referee_id) REFERENCES Users(user_id)
+);
+GO
+
+CREATE TABLE Match_Attendance (
+    match_id INT NOT NULL,
+    user_id INT NOT NULL,
+    status NVARCHAR(20) NOT NULL DEFAULT 'Pending'
+        CHECK (status IN ('Pending','Present','Absent')),
+    recorded_at DATETIME DEFAULT GETDATE(),
+    recorded_by INT NULL,
+    PRIMARY KEY (match_id, user_id),
+    FOREIGN KEY (match_id) REFERENCES Matches(match_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    FOREIGN KEY (recorded_by) REFERENCES Users(user_id)
 );
 GO
 
@@ -842,6 +857,69 @@ INSERT INTO Prize_Template (tournament_id, rank_position, percentage, label) VAL
 (3,1,50,'Champion'),(3,2,30,'Runner-up'),(3,3,20,'3rd'),
 (4,1,50,'Champion'),(4,2,30,'Runner-up'),(4,3,10,'3rd'),(4,4,10,'4th'),
 (5,1,50,'Champion'),(5,2,30,'Runner-up'),(5,3,20,'3rd');
+GO
+
+/* ========================= 5b. SEED: Giải KnockOut đang diễn ra (T6) – test Referee Matches ========================= */
+SET IDENTITY_INSERT Tournaments ON;
+INSERT INTO Tournaments (tournament_id, tournament_name, description, location, format, categories, max_player, min_player, entry_fee, prize_pool, status, registration_deadline, start_date, end_date, create_by) VALUES
+(6, N'Giải KnockOut Đang diễn ra 2026', N'Giải loại trực tiếp đang diễn ra để test điều hành trận.', N'Hà Nội', 'KnockOut', 'Open', 8, 4, 100000, 4000000, 'Ongoing', '2026-03-01 23:59:00', '2026-03-05 08:00:00', '2026-03-15 18:00:00', 4);
+SET IDENTITY_INSERT Tournaments OFF;
+GO
+
+SET IDENTITY_INSERT Participants ON;
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) VALUES
+(49,6,9,'CM',1,'Active',1,'2026-03-02 10:00:00','2026-03-01 08:00:00'),
+(50,6,10,'WIM',2,'Active',1,'2026-03-02 11:00:00','2026-03-01 09:00:00'),
+(51,6,11,'FM',3,'Active',1,'2026-03-02 12:00:00','2026-03-01 10:00:00'),
+(52,6,12,'WCM',4,'Active',1,'2026-03-02 13:00:00','2026-03-01 11:00:00'),
+(53,6,13,'NM',5,'Active',1,'2026-03-02 14:00:00','2026-03-01 12:00:00'),
+(54,6,14,'WFM',6,'Active',1,'2026-03-02 15:00:00','2026-03-01 13:00:00'),
+(55,6,15,'CM',7,'Active',1,'2026-03-02 16:00:00','2026-03-01 14:00:00'),
+(56,6,16,'Unrated',8,'Active',1,'2026-03-02 17:00:00','2026-03-01 15:00:00');
+SET IDENTITY_INSERT Participants OFF;
+GO
+
+INSERT INTO Tournament_Referee (tournament_id, referee_id, referee_role, assigned_by) VALUES
+(6,7,'Chief',4),(6,8,'Assistant',4);
+GO
+
+INSERT INTO Tournament_Setup_State (tournament_id, current_step, bracket_status, players_status, schedule_status, referees_status) VALUES
+(6, 'COMPLETED', 'FINALIZED', 'FINALIZED', 'FINALIZED', 'FINALIZED');
+GO
+
+SET IDENTITY_INSERT Bracket ON;
+INSERT INTO Bracket (bracket_id, bracket_name, tournament_id, type, status) VALUES
+(3, N'KnockOut Bracket', 6, 'KnockOut', 'Ongoing');
+SET IDENTITY_INSERT Bracket OFF;
+GO
+
+SET IDENTITY_INSERT Round ON;
+INSERT INTO Round (round_id, bracket_id, tournament_id, name, round_index, start_time, end_time, is_completed) VALUES
+(8, 3, 6, N'Tứ kết', 1, '2026-03-05 08:00:00', '2026-03-05 12:00:00', 1),
+(9, 3, 6, N'Bán kết', 2, '2026-03-08 08:00:00', '2026-03-08 12:00:00', 0),
+(10, 3, 6, N'Chung kết', 3, '2026-03-12 09:00:00', '2026-03-12 14:00:00', 0);
+SET IDENTITY_INSERT Round OFF;
+GO
+
+SET IDENTITY_INSERT Matches ON;
+INSERT INTO Matches (match_id, tournament_id, round_id, board_number, white_player_id, black_player_id, result, status, start_time) VALUES
+(17, 6, 8, 1, 9, 10, '1-0', 'Completed', '2026-03-05 08:00:00'),
+(18, 6, 8, 2, 11, 12, '0-1', 'Completed', '2026-03-05 08:30:00'),
+(19, 6, 8, 3, 13, 14, NULL, 'Scheduled', '2026-03-05 09:00:00'),
+(20, 6, 8, 4, 15, 16, NULL, 'Scheduled', '2026-03-05 09:30:00'),
+(21, 6, 9, 1, 9, 12, NULL, 'Scheduled', '2026-03-08 08:00:00'),
+(22, 6, 9, 2, 13, 15, NULL, 'Scheduled', '2026-03-08 08:30:00'),
+(23, 6, 10, 1, 9, 13, NULL, 'Scheduled', '2026-03-12 09:00:00');
+SET IDENTITY_INSERT Matches OFF;
+GO
+
+INSERT INTO Match_Referee (match_id, referee_id, role) VALUES
+(17, 7, 'Main'),(18, 8, 'Main'),(19, 7, 'Main'),(20, 8, 'Main'),
+(21, 7, 'Main'),(22, 8, 'Main'),(23, 7, 'Main');
+GO
+
+INSERT INTO Prize_Template (tournament_id, rank_position, percentage, label) VALUES
+(6,1,60,'Vô địch'),(6,2,30,'Á quân'),(6,3,10,'Hạng ba');
 GO
 
 /* ========================= 6. BLOG POSTS ========================= */

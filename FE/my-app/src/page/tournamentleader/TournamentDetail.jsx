@@ -3427,21 +3427,20 @@ const RefereeTab = ({ tournamentId }) => {
       setShowCreateModal(false);
       setCreateForm({ firstName: "", lastName: "", email: "", phoneNumber: "", address: "" });
       await fetchReferees();
-      if (created?.email && tournamentId && confirm("Tạo trọng tài thành công. Bạn có muốn gửi lời mời tham gia giải này không?")) {
+      if (created?.refereeId != null && tournamentId) {
         try {
-          const invitePayload = {
-            email: String(created.email).trim(),
-            refereeRole: assignRole,
-          };
-          const inviteRes = await axios.post(
-            `${API_BASE}/api/tournaments?action=inviteReferee&id=${tournamentId}`,
-            invitePayload,
+          await axios.post(
+            `${API_BASE}/api/tournaments?action=assignReferee&id=${tournamentId}`,
+            { refereeId: created.refereeId, refereeRole: assignRole || "Assistant" },
             { withCredentials: true }
           );
-          alert(inviteRes?.data?.message || "Đã gửi lời mời cho trọng tài.");
-        } catch (inviteErr) {
-          alert(inviteErr?.response?.data?.message || "Gửi lời mời trọng tài thất bại.");
+          await fetchReferees();
+          alert("Đã tạo trọng tài và thêm vào giải.");
+        } catch (assignErr) {
+          alert(assignErr?.response?.data?.message || "Thêm trọng tài vào giải thất bại.");
         }
+      } else if (created) {
+        alert("Tạo trọng tài thành công.");
       }
     } catch (err) {
       alert(err?.response?.data?.message || "Tạo trọng tài thất bại.");

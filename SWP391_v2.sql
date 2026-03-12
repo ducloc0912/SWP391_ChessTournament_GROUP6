@@ -289,6 +289,19 @@ CREATE TABLE Match_Referee (
     FOREIGN KEY (referee_id) REFERENCES Users(user_id)
 );
 
+CREATE TABLE Match_Attendance (
+    match_id INT NOT NULL,
+    user_id INT NOT NULL,
+    status NVARCHAR(20) NOT NULL DEFAULT 'Pending'
+        CHECK (status IN ('Pending','Present','Absent')),
+    recorded_at DATETIME DEFAULT GETDATE(),
+    recorded_by INT NULL,
+    PRIMARY KEY (match_id, user_id),
+    FOREIGN KEY (match_id) REFERENCES Matches(match_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    FOREIGN KEY (recorded_by) REFERENCES Users(user_id)
+);
+
 /* Swim-lane setup state per tournament */
 CREATE TABLE Tournament_Setup_State (
     tournament_id INT PRIMARY KEY,
