@@ -16,8 +16,8 @@ import com.example.model.dto.TournamentReportDTO;
 import com.example.model.dto.TournamentSetupStateDTO;
 import com.example.model.enums.SetupStep;
 import com.example.DAO.ParticipantDAO;
-import com.example.DAO.TournamentGroupDAO;
-import com.example.model.entity.TournamentGroup;
+import com.example.DAO.PrizeTemplateDAO;
+import com.example.model.entity.PrizeTemplate;
 import com.example.util.PasswordUtil;
 
 import java.math.BigDecimal;
@@ -50,17 +50,18 @@ public class TournamentService {
     private final ReportDAO reportDAO;
     private final MatchDAO matchDAO;
     private final TournamentSetupDAO setupDAO;
-    private final TournamentGroupDAO tournamentGroupDAO;
+    private final PrizeTemplateDAO prizeTemplateDAO;
 
     public TournamentService() {
         this.tournamentDAO = new TournamentDAO();
         this.participantDAO = new ParticipantDAO();
+        this.prizeTemplateDAO = new PrizeTemplateDAO();
         this.refereeDAO = new TournamentRefereeDAO();
         this.invitationDAO = new RefereeInvitationDAO();
         this.reportDAO = new ReportDAO();
         this.matchDAO = new MatchDAO();
         this.setupDAO = new TournamentSetupDAO();
-        this.tournamentGroupDAO = new TournamentGroupDAO();
+        this.prizeTemplateDAO = new PrizeTemplateDAO();
     }
 
     public List<TournamentDTO> getAllTournamentsWithCurrentPlayers() {
@@ -95,41 +96,6 @@ public class TournamentService {
     public List<TournamentPlayerDTO> getPlayersByTournament(int tournamentId) {
         if (tournamentId <= 0) return List.of();
         return participantDAO.getPlayersWithUserInfo(tournamentId);
-    }
-
-    public List<TournamentGroup> getGroupsByTournament(int tournamentId) {
-        if (tournamentId <= 0) return List.of();
-        return tournamentGroupDAO.findByTournamentId(tournamentId);
-    }
-
-    /** Tạo groups cho Group Stage. numGroups: số bảng (A,B,C...), maxPlayersPerGroup: người mỗi bảng. */
-    public boolean saveGroupStructure(int tournamentId, int numGroups, int maxPlayersPerGroup) {
-        if (tournamentId <= 0 || numGroups < 2 || numGroups > 8 || maxPlayersPerGroup < 2) return false;
-        tournamentGroupDAO.deleteByTournamentId(tournamentId);
-        String[] names = {"A", "B", "C", "D", "E", "F", "G", "H"};
-        for (int i = 0; i < numGroups && i < names.length; i++) {
-            TournamentGroup g = new TournamentGroup();
-            g.setTournamentId(tournamentId);
-            g.setName(names[i]);
-            g.setSortOrder(i);
-            g.setMaxPlayers(maxPlayersPerGroup);
-            tournamentGroupDAO.insert(g);
-        }
-        return true;
-    }
-
-    /** Gán participant vào group. assignments: [{ participantId, groupId }] */
-    public boolean saveGroupAssignments(int tournamentId, List<Map<String, Object>> assignments) {
-        if (tournamentId <= 0 || assignments == null) return false;
-        for (Map<String, Object> a : assignments) {
-            Object pid = a.get("participantId");
-            Object gid = a.get("groupId");
-            if (pid == null) continue;
-            int participantId = pid instanceof Number ? ((Number) pid).intValue() : Integer.parseInt(String.valueOf(pid));
-            Integer groupId = (gid == null || "".equals(gid)) ? null : (gid instanceof Number ? ((Number) gid).intValue() : Integer.parseInt(String.valueOf(gid)));
-            tournamentGroupDAO.updateParticipantGroup(participantId, groupId);
-        }
-        return true;
     }
 
     // =========================
@@ -351,7 +317,7 @@ public class TournamentService {
 
         String format = normalizeFormat(request.getFormat());
         if (format == null) {
-            return SetupValidationResult.invalid("Thể thức không hợp lệ. Chỉ hỗ trợ RoundRobin, KnockOut, Hybrid.");
+            return SetupValidationResult.invalid("Thể thức không hợp lệ. Chỉ hỗ trợ RoundRobin, KnockOut.");
         }
 
         String targetStep = normalizeSetupStep(request.getSetupStep());
@@ -495,18 +461,18 @@ public class TournamentService {
     // =========================
     // CREATE
     // =========================
-    public boolean createTournament(TournamentDTO t) {
+    /** Returns the new tournament ID, or null on failure. */
+    public Integer createTournament(TournamentDTO t) {
 
-        if (t == null) return false;
+        if (t == null) return null;
 
         // ---- REQUIRED FIELDS ----
-        if (isBlank(t.getTournamentName())) return false;
-        if (isBlank(t.getFormat())) return false;
-        if (isBlank(t.getCategories())) return false;
+        if (isBlank(t.getTournamentName())) return null;
+        if (isBlank(t.getFormat())) return null;
 
         // ---- PLAYER VALIDATION ----
-        if (t.getMinPlayer() < 0 || t.getMaxPlayer() < 0) return false;
-        if (t.getMinPlayer() > t.getMaxPlayer()) return false;
+        if (t.getMinPlayer() < 0 || t.getMaxPlayer() < 0) return null;
+        if (t.getMinPlayer() > t.getMaxPlayer()) return null;
 
         // ---- DEFAULT VALUES ----
         if (t.getEntryFee() == null) {
@@ -517,10 +483,12 @@ public class TournamentService {
             t.setPrizePool(BigDecimal.ZERO);
         }
 
-        // create_at → DB DEFAULT
-        // status → DB DEFAULT (Pending)
-
         return tournamentDAO.createTournament(t);
+    }
+
+    public boolean savePrizeTemplates(int tournamentId, List<PrizeTemplate> templates) {
+        if (tournamentId <= 0 || templates == null) return false;
+        return prizeTemplateDAO.insertAll(tournamentId, templates);
     }
 
     // =========================
@@ -607,18 +575,7 @@ if (isBlank(t.getTournamentName())) return false;
             }
         }
 
-        if ("Hybrid".equals(format)) {
-            if (!hasRoundRobinStage || !hasKnockOutStage) {
-                return SetupValidationResult.invalid("Hybrid bắt buộc có cả 2 stage: Round Robin trước, rồi Knock Out.");
-            }
-            int firstKoIndex = firstIndexOfStage(matches, "KnockOut");
-            int lastRrIndex = lastIndexOfStage(matches, "RoundRobin");
-            if (firstKoIndex >= 0 && lastRrIndex >= 0 && firstKoIndex < lastRrIndex) {
-                return SetupValidationResult.invalid("Hybrid phải xếp Round Robin trước rồi mới Knock Out.");
-            }
-        }
-
-        // Giới hạn số round: Round Robin (cả thuần và Hybrid) đủ full vòng theo luật quốc tế, tối đa 10 round.
+        // Giới hạn số round: Round Robin đủ full vòng theo luật quốc tế, tối đa 10 round.
         // KO tối đa 4 round.
         final int maxRoundRobinRounds = 10;
         final int maxKnockOutRounds = 4;
@@ -659,15 +616,6 @@ if (isBlank(t.getTournamentName())) return false;
             Integer white = m.getWhitePlayerId();
             Integer black = m.getBlackPlayerId();
             int roundIndex = m.getRoundIndex() == null ? 1 : m.getRoundIndex();
-
-            // Hybrid: Ở bước Add Players, toàn bộ Knock Out không bắt buộc (và không được) gán player;
-            // KO sẽ nhận top N từ Round Robin sau khi kết thúc, nên chưa xác định được ai vào.
-            if ("Hybrid".equals(format) && "KnockOut".equals(stage)) {
-                if (white != null || black != null) {
-                    return SetupValidationResult.invalid("Hybrid: Ở bước Add Players, không gán người chơi cho Knock Out. KO sẽ nhận top N từ Round Robin sau khi kết thúc.");
-                }
-                continue;
-            }
 
             if (white != null && !participantIds.contains(white)) {
                 return SetupValidationResult.invalid("Có người chơi trắng không thuộc danh sách đã duyệt.");
@@ -720,11 +668,7 @@ if (isBlank(t.getTournamentName())) return false;
         for (TournamentSetupMatchDTO m : matches) {
             if (m == null) continue;
             TournamentSetupMatchDTO copy = new TournamentSetupMatchDTO();
-            String stage = normalizeStage(m.getStage(), format);
-            if ("Hybrid".equals(format) && "KnockOut".equals(stage) && (m.getWhitePlayerId() != null || m.getBlackPlayerId() != null)) {
-                stage = "RoundRobin";
-            }
-            copy.setStage(stage);
+            copy.setStage(normalizeStage(m.getStage(), format));
             copy.setRoundName(m.getRoundName());
             copy.setRoundIndex(m.getRoundIndex() == null || m.getRoundIndex() <= 0 ? 1 : m.getRoundIndex());
             copy.setBoardNumber(m.getBoardNumber() == null || m.getBoardNumber() <= 0 ? null : m.getBoardNumber());
@@ -740,13 +684,12 @@ if (isBlank(t.getTournamentName())) return false;
         return ts;
     }
 
-    /** Chuẩn hóa format: RoundRobin, KnockOut, Hybrid. */
+    /** Chuẩn hóa format: RoundRobin, KnockOut. */
     private String normalizeFormat(String format) {
         if (format == null) return null;
         String f = format.trim();
         if ("RoundRobin".equalsIgnoreCase(f) || "Round Robin".equalsIgnoreCase(f)) return "RoundRobin";
         if ("KnockOut".equalsIgnoreCase(f) || "Knock Out".equalsIgnoreCase(f)) return "KnockOut";
-        if ("Hybrid".equalsIgnoreCase(f)) return "Hybrid";
         return null;
     }
 
@@ -799,9 +742,6 @@ if (isBlank(t.getTournamentName())) return false;
         if ("KnockOut".equals(format)) {
             return count >= 8 && count <= 32;
         }
-        if ("Hybrid".equals(format)) {
-            return count >= 8 && count <= 32;
-        }
         return false;
     }
 
@@ -811,9 +751,6 @@ if (isBlank(t.getTournamentName())) return false;
         }
         if ("KnockOut".equals(format)) {
             return "Knock Out yêu cầu tối thiểu 8 và tối đa 32 người chơi đã duyệt.";
-        }
-        if ("Hybrid".equals(format)) {
-            return "Hybrid yêu cầu tối thiểu 8 và tối đa 32 người chơi đã duyệt.";
         }
         return "Số lượng người chơi không hợp lệ.";
     }
@@ -880,7 +817,7 @@ if (isBlank(t.getTournamentName())) return false;
      * Generate auto setup: structure + players (where applicable) + schedule times.
      * Uses MatchGenerationService. Does NOT persist; FE receives matches and can save via manualSetup/finalizeStep.
      */
-    public AutoSetupResult generateAutoSetup(int tournamentId) {
+    public AutoSetupResult  generateAutoSetup(int tournamentId) {
         if (tournamentId <= 0) return AutoSetupResult.error("Tournament id không hợp lệ.");
         TournamentDTO tournament = tournamentDAO.getTournamentById(tournamentId);
         if (tournament == null) return AutoSetupResult.error("Không tìm thấy giải đấu.");
@@ -909,29 +846,6 @@ if (isBlank(t.getTournamentName())) return false;
             if (playerIds.size() != nextPowerOf2(playerIds.size())) {
                 int bracketSize = nextPowerOf2(playerIds.size());
                 warnings.add("Auto tạo bracket " + bracketSize + " slots theo seeding chuẩn, có " + (bracketSize - playerIds.size()) + " BYE slot.");
-            }
-        } else {
-            // Hybrid: check Group Stage (groups exist, players assigned)
-            List<TournamentGroup> groups = tournamentGroupDAO.findByTournamentId(tournamentId);
-            if (!groups.isEmpty()) {
-                Map<String, List<Integer>> groupPlayers = new LinkedHashMap<>();
-                for (TournamentGroup g : groups) {
-                    List<Integer> ids = activePlayers.stream()
-                            .filter(p -> g.getGroupId().equals(p.getGroupId()))
-                            .map(TournamentPlayerDTO::getUserId)
-                            .collect(Collectors.toList());
-                    if (ids.size() >= 2) groupPlayers.put(g.getName(), ids);
-                }
-                if (!groupPlayers.isEmpty()) {
-                    int topN = Math.min(8, Math.max(4, groupPlayers.size() * 2));
-                    generated = MatchGenerationService.generateHybridMatchesWithGroups(groupPlayers, topN);
-                    warnings.add("Hybrid Group Stage: Round Robin theo bảng, Knock Out chưa gán người (top N từ mỗi bảng sau khi kết thúc).");
-                }
-            }
-            if (generated.isEmpty()) {
-                int topN = Math.min(4, Math.max(2, (playerIds.size() + 1) / 2));
-                generated = MatchGenerationService.generateHybridMatches(playerIds, topN);
-                warnings.add("Hybrid: Knock Out bracket chỉ dựng structure, chưa gán người chơi. Hệ thống sẽ lấy top N từ Round Robin sau khi kết thúc.");
             }
         }
 
@@ -1063,9 +977,7 @@ if (isBlank(t.getTournamentName())) return false;
     }
 
     private String normalizeFormatFromMatches(List<TournamentSetupMatchDTO> matches) {
-        boolean hasRR = matches.stream().anyMatch(m -> "RoundRobin".equalsIgnoreCase(m.getStage()));
         boolean hasKO = matches.stream().anyMatch(m -> "KnockOut".equalsIgnoreCase(m.getStage()));
-        if (hasRR && hasKO) return "Hybrid";
         if (hasKO) return "KnockOut";
         return "RoundRobin";
     }

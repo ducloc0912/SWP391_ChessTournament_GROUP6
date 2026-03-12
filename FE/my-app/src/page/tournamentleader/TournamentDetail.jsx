@@ -397,7 +397,6 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
         tournamentImage: tournament.tournamentImage,
         location: tournament.location,
         format: tournament.format,
-        categories: tournament.categories,
         maxPlayer: Number(tournament.maxPlayer) || 0,
         minPlayer: Number(tournament.minPlayer) || 0,
         entryFee: Number(tournament.entryFee) || 0,
@@ -1257,15 +1256,11 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
     const raw = String(value || "").trim().toLowerCase().replace(/[\s_]/g, "");
     if (raw === "roundrobin") return "RoundRobin";
     if (raw === "knockout") return "KnockOut";
-    if (raw === "hybrid") return "Hybrid";
     return "RoundRobin";
   };
 
   const effectiveFormat = normalizeFormat(tournamentFormat);
-  const stageOptions =
-    effectiveFormat === "Hybrid"
-      ? ["RoundRobin", "KnockOut"]
-      : [effectiveFormat];
+  const stageOptions = [effectiveFormat];
 
   const toDateTimeLocal = (value) => {
     if (!value) return "";
@@ -1310,7 +1305,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
           "Unknown",
         email: p.email || p.registrationEmail || "",
         rank: Number(p.rankAtRegistration ?? p.eloRating ?? p.rank ?? 0),
-        groupId: p.groupId ?? p.group_id ?? null,
       }))
       .filter((p) => Number.isInteger(p.userId) && p.userId > 0)
       .filter((p) => {
@@ -1326,19 +1320,12 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
   const [unlocking, setUnlocking] = useState(false);
   const [autoSetupLoading, setAutoSetupLoading] = useState(false);
   const [laneStep, setLaneStep] = useState("structure");
-  /** Sub-tab cho Hybrid: "rr" = Round Robin, "ko" = Knock Out */
-  const [bracketSubTab, setBracketSubTab] = useState("rr");
   const [serverSetupStep, setServerSetupStep] = useState("BRACKET");
   const [stepStatuses, setStepStatuses] = useState({});
   const [serverBanner, setServerBanner] = useState(null);
   const [rowErrors, setRowErrors] = useState({});
   const [tournamentReferees, setTournamentReferees] = useState([]);
   const [toast, setToast] = useState("");
-  /** Group Stage (Hybrid): groups từ API */
-  const [groups, setGroups] = useState([]);
-  const [groupConfig, setGroupConfig] = useState({ numGroups: 4, playersPerGroup: 4 });
-  const [savingGroupStructure, setSavingGroupStructure] = useState(false);
-  const [savingGroupAssignments, setSavingGroupAssignments] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -1426,17 +1413,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       .then((res) => setTournamentReferees(Array.isArray(res?.data) ? res.data : []))
       .catch(() => setTournamentReferees([]));
   }, [tournamentId]);
-
-  useEffect(() => {
-    if (!tournamentId || effectiveFormat !== "Hybrid") return;
-    axios
-      .get(`${API_BASE}/api/tournaments?action=groups&id=${tournamentId}`, { withCredentials: true })
-      .then((res) => {
-        const list = Array.isArray(res?.data) ? res.data : [];
-        setGroups(list);
-      })
-      .catch(() => setGroups([]));
-  }, [tournamentId, effectiveFormat]);
 
   useEffect(() => {
     if (laneStep === "referee" && stepStatuses?.SCHEDULE !== "FINALIZED") {
@@ -1536,9 +1512,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
     if (effectiveFormat === "KnockOut" && (count < 8 || count > 32)) {
       errors.push("Knock Out yêu cầu từ 8 đến 32 người chơi đã được duyệt.");
     }
-    if (effectiveFormat === "Hybrid" && (count < 8 || count > 32)) {
-      errors.push("Hybrid yêu cầu từ 8 đến 32 người chơi đã được duyệt.");
-    }
     if (rows.length === 0) {
       errors.push("Bạn chưa xếp cặp đấu nào.");
       return errors;
@@ -1561,28 +1534,17 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       const hasWhite = Number.isInteger(white) && white > 0;
       const hasBlack = Number.isInteger(black) && black > 0;
 
-      // Hybrid: ở bước Add Players, toàn bộ Knock Out được phép để trống (sẽ lấy top N từ Round Robin sau).
-      if (effectiveFormat === "Hybrid" && stage === "KnockOut" && laneStep === "players") {
-        if (hasWhite || hasBlack) {
-          errors.push(
-            `Dòng ${idx + 1}: Hybrid - Ở bước Add Players, không gán người chơi cho Knock Out. KO sẽ nhận top N từ Round Robin sau khi kết thúc.`,
-          );
-        }
-        return;
-      }
       if (stage === "RoundRobin") {
         if (!hasWhite || !hasBlack) {
           errors.push(`Dòng ${idx + 1}: Thiếu người chơi trắng/đen.`);
           return;
         }
       } else if (stage === "KnockOut") {
-        // Thuần KnockOut: có thể để trống (round sau chưa biết người thắng) hoặc điền đủ. Hybrid đã xử lý ở trên.
         if ((hasWhite && !hasBlack) || (!hasWhite && hasBlack)) {
           errors.push(`Dòng ${idx + 1}: Knock Out phải để trống cả 2 hoặc điền đủ cả 2 người chơi.`);
           return;
         }
-        // Round 1 KO bắt buộc đủ 2 người chỉ với giải thuần KnockOut; Hybrid không bắt buộc điền KO.
-        if (!hasWhite && !hasBlack && roundIndex <= 1 && effectiveFormat !== "Hybrid") {
+        if (!hasWhite && !hasBlack && roundIndex <= 1) {
           errors.push(`Dòng ${idx + 1}: Round 1 của Knock Out cần có đủ 2 người chơi.`);
           return;
         }
@@ -1631,22 +1593,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
         }
       }
     });
-
-    if (effectiveFormat === "Hybrid") {
-      if (!hasRr || !hasKo) {
-        errors.push("Hybrid bắt buộc có cả 2 stage: Round Robin trước, rồi Knock Out.");
-      } else {
-        const firstKo = rows.findIndex((r) => r.stage === "KnockOut");
-        const lastRr = rows
-          .map((r, i) => ({ stage: r.stage, i }))
-          .filter((x) => x.stage === "RoundRobin")
-          .map((x) => x.i)
-          .pop();
-        if (firstKo !== -1 && lastRr !== undefined && firstKo < lastRr) {
-          errors.push("Hybrid phải xếp Round Robin trước rồi mới Knock Out.");
-        }
-      }
-    }
     return errors;
   };
 
@@ -1748,7 +1694,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
     setRowErrors({});
   };
 
-  // Round Robin (cả thuần và Hybrid): tối đa 10 round, đủ full vòng theo luật quốc tế (8 người = 7 round, 28 trận).
+  // Round Robin: tối đa 10 round, đủ full vòng theo luật quốc tế (8 người = 7 round, 28 trận).
   const MAX_ROUND_ROBIN_ROUNDS = 10;
   const MAX_KNOCKOUT_ROUNDS = 4;
 
@@ -1823,7 +1769,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       }));
       setRows(generatedRows);
       setRowErrors({});
-      if (effectiveFormat === "Hybrid") setBracketSubTab("rr");
       setServerBanner({
         type: "success",
         text: `${data.message || "Đã tạo " + generatedRows.length + " trận."}${warnings.length ? " " + warnings.join(" ") : ""}`,
@@ -2073,24 +2018,20 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
           setServerBanner({ type: "error", text: "Chưa có vòng/trận nào. Hãy thêm ít nhất một dòng (Round + Board) trước khi Finalize." });
           return;
         }
-        // Finalize BRACKET: Hybrid phải gửi stage "RoundRobin" hoặc "KnockOut", không gửi "Hybrid"
-        const firstKoIdx = effectiveFormat === "Hybrid" ? rows.findIndex((r) => r.stage === "KnockOut") : -1;
-        const bracketStage = (r, i) => {
+        const bracketStage = (r) => {
           if (r.stage === "RoundRobin" || r.stage === "KnockOut") return r.stage;
-          if (effectiveFormat === "Hybrid") return (firstKoIdx >= 0 && i >= firstKoIdx) ? "KnockOut" : "RoundRobin";
           return effectiveFormat === "KnockOut" ? "KnockOut" : (r.stage || effectiveFormat);
         };
         const payload = {
           format: effectiveFormat,
-          matches: rows.map((r, i) => ({
-            stage: bracketStage(r, i),
+          matches: rows.map((r) => ({
+            stage: bracketStage(r),
             roundName: r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
             roundIndex: Math.max(1, Number(r.roundIndex || 1)),
             boardNumber: Math.max(1, Number(r.boardNumber || 1)),
             whitePlayerId: r.whitePlayerId ? Number(r.whitePlayerId) : null,
             blackPlayerId: r.blackPlayerId ? Number(r.blackPlayerId) : null,
             startTime: toSqlDateTime(r.startTime),
-            groupName: r.groupName || null,
           })),
         };
         const res = await axios.post(
@@ -2122,10 +2063,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
         return;
       }
       try {
-        // Hybrid: mỗi match phải có stage "RoundRobin" hoặc "KnockOut", không gửi "Hybrid"
         const resolveStage = (r) => {
           if (r.stage === "RoundRobin" || r.stage === "KnockOut") return r.stage;
-          if (effectiveFormat === "Hybrid") return (r.whitePlayerId || r.blackPlayerId) ? "RoundRobin" : "KnockOut";
           return r.stage || effectiveFormat;
         };
         const payload = {
@@ -2138,7 +2077,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
             whitePlayerId: r.whitePlayerId ? Number(r.whitePlayerId) : null,
             blackPlayerId: r.blackPlayerId ? Number(r.blackPlayerId) : null,
             startTime: toSqlDateTime(r.startTime),
-            groupName: r.groupName || null,
           })),
         };
         const res = await axios.post(
@@ -2806,7 +2744,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                     setSaving(true);
                     const scheduleStage = (r) => {
                       if (r.stage === "RoundRobin" || r.stage === "KnockOut") return r.stage;
-                      if (effectiveFormat === "Hybrid") return (r.whitePlayerId || r.blackPlayerId) ? "RoundRobin" : "KnockOut";
                       return r.stage || effectiveFormat;
                     };
                     const payload = {
@@ -2912,18 +2849,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                   stageRows.nativeRounds,
                   "Knock Out - Chọn trọng tài",
                 )}
-              {effectiveFormat === "Hybrid" && (
-                <>
-                  {renderRoundRobinPreview(
-                    stageRows.roundRobinRounds,
-                    "Stage 1 Round Robin - Chọn trọng tài",
-                  )}
-                  {renderKnockoutPreview(
-                    stageRows.knockOutRounds,
-                    "Stage 2 Knock Out - Chọn trọng tài",
-                  )}
-                </>
-              )}
             </div>
           ) : (
             <div className="tsu-schedule-wrap">
@@ -2933,10 +2858,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                   <p>
                     {laneStep === "structure" &&
                       "Bước Structure: chỉ dựng bracket (round, board, số match)."}
-                    {laneStep === "players" &&
-                      (effectiveFormat === "Hybrid" && groups.length > 0 && bracketSubTab === "rr"
-                        ? "Phân bổ người chơi vào các bảng. Kéo thả hoặc chọn bảng từ dropdown."
-                        : "Bước Add Players: dùng structure đã dựng để gán player vào từng match.")}
+                    {laneStep === "players" && "Bước Add Players: dùng structure đã dựng để gán player vào từng match."}
                     {laneStep === "schedule" && (
                       <>
                         Bước Schedule: thêm thời gian thi đấu cho từng match.
@@ -2994,9 +2916,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                     </button>
                   </div>
                 )}
-                {laneStep === "structure" && effectiveFormat !== "Hybrid" && (
+                {laneStep === "structure" && (
                   <div className="tsu-preview-head-actions">
-                    {(effectiveFormat === "RoundRobin") && (
+                    {effectiveFormat === "RoundRobin" && (
                       <button
                         className="tsu-round-add-btn"
                         onClick={() => addInlineRound("RoundRobin")}
@@ -3004,7 +2926,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                         + Thêm round RoundRobin
                       </button>
                     )}
-                    {(effectiveFormat === "KnockOut") && (
+                    {effectiveFormat === "KnockOut" && (
                       <button
                         className="tsu-round-add-btn"
                         onClick={() => addInlineRound("KnockOut")}
@@ -3015,256 +2937,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                   </div>
                 )}
               </div>
-
-              {/* Assign Players to Groups - Hybrid Group Stage */}
-              {laneStep === "players" &&
-                effectiveFormat === "Hybrid" &&
-                groups.length > 0 &&
-                bracketSubTab === "rr" && (
-                <div className="tsu-assign-groups-wrap">
-                  {(() => {
-                    const maxPerGroup = groups[0]?.maxPlayers ?? groupConfig.playersPerGroup ?? 4;
-                    const byGroup = groups.reduce((acc, g) => {
-                      acc[g.groupId] = { ...g, players: [] };
-                      return acc;
-                    }, {});
-                    availablePlayers.forEach((p) => {
-                      const gid = p.groupId;
-                      if (gid && byGroup[gid]) byGroup[gid].players.push(p);
-                    });
-                    const unassigned = availablePlayers.filter((p) => !p.groupId);
-                    const allAssigned = unassigned.length === 0;
-                    return (
-                      <>
-                        {!allAssigned && (
-                          <div className="tsu-assign-groups-warn">
-                            Vui lòng phân bổ đủ người cho các bảng.
-                          </div>
-                        )}
-                        <div className="tsu-assign-groups-grid">
-                          <div className="tsu-assign-group-panel tsu-assign-unassigned">
-                            <h4>Chưa phân bổ ({unassigned.length})</h4>
-                            <div className="tsu-assign-player-list">
-                              {unassigned.map((p) => (
-                                <div key={p.participantId || p.userId} className="tsu-assign-player-card">
-                                  <span>{p.fullName}</span>
-                                  <span className="tsu-assign-player-rank">Rating: {p.rank || "—"}</span>
-                                  <select
-                                    value=""
-                                    onChange={async (e) => {
-                                      const gid = e.target.value ? Number(e.target.value) : null;
-                                      if (!gid) return;
-                                      setSavingGroupAssignments(true);
-                                      try {
-                                        await axios.post(
-                                          `${API_BASE}/api/tournaments?action=saveGroupAssignments&id=${tournamentId}`,
-                                          { assignments: [{ participantId: p.participantId, groupId: gid }] },
-                                          { withCredentials: true },
-                                        );
-                                        onApprovedChanged?.();
-                                      } finally {
-                                        setSavingGroupAssignments(false);
-                                      }
-                                    }}
-                                  >
-                                    <option value="">-- Chọn bảng --</option>
-                                    {groups.map((g) => (
-                                      <option key={g.groupId} value={g.groupId}>
-                                        Bảng {g.name} ({(byGroup[g.groupId]?.players?.length || 0)}/{maxPerGroup})
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          {groups.map((g) => (
-                            <div key={g.groupId} className="tsu-assign-group-panel">
-                              <h4>Bảng {g.name} ({(byGroup[g.groupId]?.players?.length || 0)}/{maxPerGroup})</h4>
-                              <div className="tsu-assign-player-list">
-                                {(byGroup[g.groupId]?.players || []).map((p) => (
-                                  <div key={p.participantId || p.userId} className="tsu-assign-player-card">
-                                    <span>{p.fullName}</span>
-                                    <span className="tsu-assign-player-rank">Rating: {p.rank || "—"}</span>
-                                    <select
-                                      value={g.groupId}
-                                      onChange={async (e) => {
-                                        const newGid = e.target.value ? Number(e.target.value) : null;
-                                        setSavingGroupAssignments(true);
-                                        try {
-                                          await axios.post(
-                                            `${API_BASE}/api/tournaments?action=saveGroupAssignments&id=${tournamentId}`,
-                                            { assignments: [{ participantId: p.participantId, groupId: newGid }] },
-                                            { withCredentials: true },
-                                          );
-                                          onApprovedChanged?.();
-                                        } finally {
-                                          setSavingGroupAssignments(false);
-                                        }
-                                      }}
-                                    >
-                                      <option value="">-- Chưa phân bổ --</option>
-                                      {groups.map((gr) => (
-                                        <option key={gr.groupId} value={gr.groupId}>
-                                          Bảng {gr.name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="tsu-assign-groups-actions">
-                          <button
-                            className="tsu-round-add-btn"
-                            disabled={savingGroupAssignments || !allAssigned}
-                            onClick={async () => {
-                              setAutoSetupLoading(true);
-                              try {
-                                const res = await axios.post(
-                                  `${API_BASE}/api/tournaments?action=autoSetup&id=${tournamentId}`,
-                                  null,
-                                  { withCredentials: true },
-                                );
-                                const data = res?.data;
-                                if (data?.success && Array.isArray(data?.matches)) {
-                                  setRows(
-                                    data.matches.map((m, idx) => ({
-                                      id: `sv-${m.matchId || idx + 1}`,
-                                      matchId: m.matchId,
-                                      stage: m.stage || "RoundRobin",
-                                      roundName: m.roundName || "",
-                                      roundIndex: Number(m.roundIndex || 1),
-                                      boardNumber: Number(m.boardNumber || idx + 1),
-                                      whitePlayerId: String(m.whitePlayerId ?? ""),
-                                      blackPlayerId: String(m.blackPlayerId ?? ""),
-                                      startTime: toDateTimeLocal(m.startTime),
-                                      refereeId: m.refereeId ? String(m.refereeId) : "",
-                                      groupId: m.groupId ?? null,
-                                      groupName: m.groupName ?? "",
-                                    })),
-                                  );
-                                  setToast("Đã tạo structure từ Group Stage. Chuyển sang bước 1 và nhấn Finalize Structure để lưu.");
-                                }
-                              } catch (err) {
-                                setToast(err?.response?.data?.message || "Auto Setup thất bại.");
-                              } finally {
-                                setAutoSetupLoading(false);
-                              }
-                            }}
-                          >
-                            {autoSetupLoading ? "Đang tạo..." : "Auto Setup từ phân bổ"}
-                          </button>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
-
-              {/* Hybrid: sub-tabs Round Robin / Knock Out */}
-              {effectiveFormat === "Hybrid" &&
-                (laneStep === "structure" || laneStep === "players" || laneStep === "schedule") && (
-                <div className="tsu-bracket-subtabs-wrap">
-                  <div className="tsu-bracket-subtabs">
-                    <button
-                      type="button"
-                      className={`tsu-subtab ${bracketSubTab === "rr" ? "active" : ""}`}
-                      onClick={() => setBracketSubTab("rr")}
-                    >
-                      Bracket 1: Round Robin
-                    </button>
-                    <button
-                      type="button"
-                      className={`tsu-subtab ${bracketSubTab === "ko" ? "active" : ""}`}
-                      onClick={() => setBracketSubTab("ko")}
-                    >
-                      Bracket 2: Knock Out
-                    </button>
-                  </div>
-              {laneStep === "structure" && bracketSubTab === "rr" && (
-                  <div className="tsu-group-stage-structure">
-                    <div className="tsu-group-config">
-                      <div className="tsu-group-config-row">
-                        <label>Số bảng</label>
-                        <select
-                          value={groupConfig.numGroups}
-                          onChange={(e) => {
-                            const n = Number(e.target.value);
-                            const total = availablePlayers.length || 16;
-                            const perGroup = total > 0 ? Math.ceil(total / n) : 4;
-                            setGroupConfig({ numGroups: n, playersPerGroup: perGroup });
-                          }}
-                        >
-                          {[2, 3, 4, 5, 6, 7, 8].map((n) => (
-                            <option key={n} value={n}>{n} bảng</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="tsu-group-config-row">
-                        <label>Người mỗi bảng</label>
-                        <input
-                          type="number"
-                          min={2}
-                          max={16}
-                          value={groupConfig.playersPerGroup}
-                          onChange={(e) => setGroupConfig((c) => ({ ...c, playersPerGroup: Number(e.target.value) || 4 }))}
-                        />
-                        <span className="tsu-group-config-hint">
-                          Tự tính từ tổng người ({availablePlayers.length})
-                        </span>
-                      </div>
-                    </div>
-                    <div className="tsu-group-preview">
-                      {Array.from({ length: groupConfig.numGroups }, (_, i) => (
-                        <span key={i} className="tsu-group-preview-badge">
-                          Bảng {String.fromCharCode(65 + i)} ({groupConfig.playersPerGroup} người)
-                        </span>
-                      ))}
-                    </div>
-                    <div className="tsu-subtab-actions">
-                      <button
-                        className="tsu-round-add-btn"
-                        onClick={async () => {
-                          setSavingGroupStructure(true);
-                          try {
-                            await axios.post(
-                              `${API_BASE}/api/tournaments?action=saveGroupStructure&id=${tournamentId}`,
-                              { numGroups: groupConfig.numGroups, playersPerGroup: groupConfig.playersPerGroup },
-                              { withCredentials: true },
-                            );
-                            const res = await axios.get(`${API_BASE}/api/tournaments?action=groups&id=${tournamentId}`, { withCredentials: true });
-                            setGroups(Array.isArray(res?.data) ? res.data : []);
-                            setToast("Đã lưu cấu hình Group Stage. Vào bước 2 để phân bổ người chơi, sau đó nhấn Auto Setup từ phân bổ.");
-                          } catch (err) {
-                            setToast(err?.response?.data?.message || "Lưu thất bại.");
-                          } finally {
-                            setSavingGroupStructure(false);
-                          }
-                        }}
-                        disabled={savingGroupStructure || stepStatuses?.BRACKET === "FINALIZED"}
-                      >
-                        {savingGroupStructure ? "Đang lưu..." : "Lưu cấu hình"}
-                      </button>
-                    </div>
-                  </div>
-              )}
-              {laneStep === "structure" && (
-                  <div className="tsu-subtab-actions">
-                      {bracketSubTab === "ko" && (
-                        <button
-                          className="tsu-round-add-btn"
-                          onClick={() => addInlineRound("KnockOut")}
-                        >
-                          + Thêm round Knock Out
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
 
               {effectiveFormat === "RoundRobin" &&
                 renderRoundRobinPreview(
@@ -3277,18 +2949,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                   stageRows.nativeRounds,
                   "Knock Out bracket",
                 )}
-
-              {effectiveFormat === "Hybrid" &&
-                (laneStep === "structure" || laneStep === "players" || laneStep === "schedule") &&
-                (bracketSubTab === "rr"
-                  ? renderRoundRobinPreview(
-                      stageRows.roundRobinRounds,
-                      "Bracket 1 - Round Robin",
-                    )
-                  : renderKnockoutPreview(
-                      stageRows.knockOutRounds,
-                      "Bracket 2 - Knock Out",
-                    ))}
             </div>
           )}
         </div>

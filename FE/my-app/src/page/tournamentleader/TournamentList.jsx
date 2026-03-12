@@ -3,27 +3,67 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import {
   LayoutDashboard,
-  Clock,
-  PlayCircle,
-  CheckCircle,
   Search,
   Plus,
   Calendar,
   MapPin,
   Users,
   Trophy,
-  Eye,
-  Edit2,
-  XCircle,
   ChevronLeft,
   ChevronRight,
+  XCircle,
 } from "lucide-react";
 import MainHeader from "../../component/common/MainHeader";
-import FilterSection from "../../component/tournament/FilterSection";
 import "../../assets/css/HomePage.css";
 import "../../assets/css/tournament-leader/TournamentList.css";
+import "../../assets/css/TournamentPublic.css";
 
 import { API_BASE } from "../../config/api";
+
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1528819622765-d6bcf132f793?auto=format&fit=crop&w=1200&q=80";
+
+function getApiOrigin() {
+  try {
+    return new URL(API_BASE).origin;
+  } catch {
+    return window.location.origin;
+  }
+}
+
+function resolveImageUrl(rawImage) {
+  const src = String(rawImage || "").trim();
+  if (!src) return FALLBACK_IMAGE;
+  const apiOrigin = getApiOrigin();
+  if (/^(https?:)?\/\//i.test(src)) {
+    if (src.startsWith("//")) return `${window.location.protocol}${src}`;
+    return src;
+  }
+  if (/^(data:|blob:)/i.test(src)) return src;
+  if (src.startsWith("/")) return `${apiOrigin}${src}`;
+  const cleaned = src.replace(/^\.?\//, "");
+  return `${apiOrigin}/${cleaned}`;
+}
+
+function formatMoney(amount) {
+  const num = Number(amount);
+  if (Number.isNaN(num)) return "0";
+  return num.toLocaleString("vi-VN");
+}
+
+/** Nhãn trạng thái in hoa cho badge trên ảnh */
+function getStatusBadgeLabel(s) {
+  const map = {
+    Pending: "SẮP DIỄN RA",
+    Upcoming: "SẮP DIỄN RA",
+    Ongoing: "ĐANG DIỄN RA",
+    Finished: "ĐÃ KẾT THÚC",
+    Completed: "ĐÃ KẾT THÚC",
+    Delayed: "HOÃN",
+    Cancelled: "ĐÃ HỦY",
+    Rejected: "BỊ TỪ CHỐI",
+  };
+  return map[s] || String(s || "").toUpperCase();
+}
 
 const EDITABLE_STATUSES = ["Pending", "Rejected", "Delayed", "Cancelled"];
 const CANCELLED_ABLE = ["Pending", "Ongoing", "Delayed"];
@@ -43,7 +83,6 @@ const STATUS_LABELS = {
 const FORMAT_LABELS = {
   RoundRobin: "Vòng tròn",
   KnockOut: "Loại trực tiếp",
-  Hybrid: "Kết hợp",
 };
 
 const getStatusLabel = (s) => STATUS_LABELS[s] || s;
@@ -67,6 +106,8 @@ const TournamentList = () => {
     const stored = localStorage.getItem("user");
     return stored ? JSON.parse(stored) : null;
   });
+  const [statuses, setStatuses] = useState([]);
+  const [formats, setFormats] = useState([]);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -96,6 +137,16 @@ const TournamentList = () => {
 
   useEffect(() => {
     fetchTournaments();
+  }, []);
+
+  useEffect(() => {
+    axios
+      .get(`${API_BASE}/api/tournaments?action=filters`, { withCredentials: true })
+      .then((res) => {
+        setStatuses(res.data.statuses || []);
+        setFormats(res.data.formats || []);
+      })
+      .catch(() => {});
   }, []);
 
   const filteredTournaments = useMemo(() => {
@@ -153,15 +204,6 @@ const TournamentList = () => {
     }
   };
 
-  /* Stats */
-  const stats = useMemo(() => {
-    const total = tournaments.length;
-    const upcoming = tournaments.filter((t) => t.status === "Upcoming" || t.status === "Pending").length;
-    const ongoing = tournaments.filter((t) => t.status === "Ongoing").length;
-    const finished = tournaments.filter((t) => t.status === "Finished" || t.status === "Completed").length;
-    return { total, upcoming, ongoing, finished };
-  }, [tournaments]);
-
   if (loading) {
     return (
       <div className="tl-page">
@@ -176,75 +218,58 @@ const TournamentList = () => {
       <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
 
       <div className="tl-body">
-        {/* Header */}
-        <div className="tl-header-section">
-          <div>
-            <h1 className="tl-header-title">Giải đấu của tôi</h1>
-            <p className="tl-header-subtitle">Quản lý và theo dõi các giải cờ vua của bạn</p>
+        {/* Header - giống tournament public */}
+        <div className="tp-header tl-leader-header">
+          <div className="tp-header-text">
+            <h1>Giải đấu của tôi</h1>
+            <p>Quản lý và theo dõi các giải cờ vua của bạn. Lọc theo trạng thái và thể thức bên dưới.</p>
           </div>
-          <div className="tl-header-actions">
-            <div className="tl-search-box">
-              <Search className="tl-search-icon" size={18} />
-              <input
-                type="text"
-                placeholder="Tìm kiếm giải đấu..."
-                className="tl-search-input"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <button className="tl-create-btn" onClick={() => navigate("/tournaments/create")}>
-              <Plus size={20} />
-              Tạo giải đấu
+          <button type="button" className="tp-all-btn tl-create-btn-inline" onClick={() => navigate("/tournaments/create")}>
+            <Plus size={18} />
+            Tạo giải đấu
+          </button>
+        </div>
+
+        {/* Bộ lọc ngang - trạng thái hệ thống + thể thức */}
+        <div className="tp-filters tl-leader-filters">
+          <div className="tp-search-box">
+            <Search size={18} />
+            <input
+              type="text"
+              placeholder="Tìm theo tên giải hoặc địa điểm..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className="tp-filter-row">
+            <select
+              className="tp-select"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">Tất cả trạng thái</option>
+              {statuses.filter((s) => s !== "Delayed").map((s) => (
+                <option key={s} value={s}>{getStatusLabel(s)}</option>
+              ))}
+            </select>
+            <select
+              className="tp-select"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <option value="">Tất cả thể thức</option>
+              {formats.map((f) => (
+                <option key={f} value={f}>{getFormatLabel(f)}</option>
+              ))}
+            </select>
+            <button type="button" className="tl-filter-reset-btn" onClick={handleReset}>
+              Đặt lại
             </button>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="tl-stats-grid">
-          <div className="tl-stat-card">
-            <div>
-              <p className="tl-stat-label">Tổng giải đấu</p>
-              <h3 className="tl-stat-value">{stats.total}</h3>
-            </div>
-            <div className="tl-stat-icon indigo"><LayoutDashboard size={24} /></div>
-          </div>
-          <div className="tl-stat-card">
-            <div>
-              <p className="tl-stat-label">Chờ duyệt</p>
-              <h3 className="tl-stat-value">{stats.upcoming}</h3>
-            </div>
-            <div className="tl-stat-icon blue"><Clock size={24} /></div>
-          </div>
-          <div className="tl-stat-card">
-            <div>
-              <p className="tl-stat-label">Đang diễn ra</p>
-              <h3 className="tl-stat-value">{stats.ongoing}</h3>
-            </div>
-            <div className="tl-stat-icon emerald"><PlayCircle size={24} /></div>
-          </div>
-          <div className="tl-stat-card">
-            <div>
-              <p className="tl-stat-label">Đã kết thúc</p>
-              <h3 className="tl-stat-value">{stats.finished}</h3>
-            </div>
-            <div className="tl-stat-icon gray"><CheckCircle size={24} /></div>
-          </div>
-            </div>
-
-        {/* Content: Sidebar + Grid */}
-        <div className="tld-content-layout">
-          <aside className="tld-filter-wrap">
-            <FilterSection
-              statusFilter={statusFilter}
-              typeFilter={typeFilter}
-              onStatusChange={setStatusFilter}
-              onTypeChange={setTypeFilter}
-              onReset={handleReset}
-            />
-          </aside>
-
-          <div className="tld-main-area">
+        {/* Nội dung danh sách */}
+        <div className="tld-main-area">
             {filteredTournaments.length > 0 ? (
               <>
                 <div className="tl-card-grid">
@@ -254,39 +279,43 @@ const TournamentList = () => {
                       : 0;
 
                     return (
-                      <div className="tl-tournament-card" key={t.tournamentId}>
-                        <div className="tl-card-banner">
+                      <div className="tl-tournament-card tl-card-new" key={t.tournamentId}>
+                        <div className="tl-card-banner tl-card-banner-img">
+                          <img
+                            src={resolveImageUrl(t.tournamentImage)}
+                            alt={t.tournamentName || "Tournament"}
+                            onError={(e) => {
+                              e.currentTarget.src = FALLBACK_IMAGE;
+                            }}
+                          />
                           <div className="tl-card-banner-overlay" />
-                          <Trophy size={48} className="tl-card-banner-icon" />
-                          <span className={`tl-card-status-badge ${t.status}`}>
-                            {getStatusLabel(t.status)}
+                          <span className="tl-card-status-badge tl-card-status-pill">
+                            {getStatusBadgeLabel(t.status)}
                           </span>
                         </div>
 
                         <div className="tl-card-content">
-                          <span className="tl-card-format">{getFormatLabel(t.format)}</span>
+                          <span className="tl-card-format tl-card-format-pill">
+                            {getFormatLabel(t.format).toUpperCase()}
+                          </span>
                           <h3 className="tl-card-name">{t.tournamentName}</h3>
 
                           <div className="tl-card-details">
                             <div className="tl-card-detail-row">
-                              <MapPin size={16} />
+                              <MapPin size={15} />
                               {t.location || "—"}
                             </div>
                             <div className="tl-card-detail-row">
-                              <Calendar size={16} />
+                              <Calendar size={15} />
                               {t.startDate?.split(" ")[0].replaceAll("-", "/")} – {t.endDate?.split(" ")[0].replaceAll("-", "/")}
                             </div>
                             <div className="tl-card-detail-row">
-                              <Trophy size={16} />
-                              Quỹ thưởng: ${t.prizePool ?? 0}
-                            </div>
-                            <div className="tl-card-detail-row">
-                              <Clock size={16} />
-                              Hạn đăng ký: {t.registrationDeadline?.split(" ")[0].replaceAll("-", "/")}
+                              <Trophy size={15} />
+                              {formatMoney(t.prizePool ?? 0)} VND
                             </div>
                           </div>
 
-                          <div className="tl-card-progress">
+                          <div className="tl-card-progress tl-card-progress-new">
                             <div className="tl-card-progress-header">
                               <span className="tl-card-progress-label">
                                 <Users size={14} />
@@ -297,46 +326,31 @@ const TournamentList = () => {
                             <div className="tl-card-progress-bar">
                               <div
                                 className="tl-card-progress-fill"
-                                style={{ width: `${progress}%` }}
+                                style={{ width: `${Math.min(progress, 100)}%` }}
                               />
                             </div>
                           </div>
-                        </div>
 
-                        <div className="tl-card-footer">
                           <button
-                            className="tl-card-manage-btn"
+                            className="tl-card-cta-btn"
                             onClick={() => navigate(`/tournaments/${t.tournamentId}`)}
                           >
-                            Quản lý
+                            QUẢN LÝ
                           </button>
-                          <div className="tl-card-actions">
+                          {CANCELLED_ABLE.includes(t.status) && (
                             <button
-                              className="tl-card-action-btn"
-                              title="Xem chi tiết"
-                              onClick={() => navigate(`/tournaments/${t.tournamentId}`)}
+                              type="button"
+                              className="tl-card-cancel-link"
+                              title="Hủy giải"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenConfirm(t);
+                              }}
                             >
-                              <Eye size={18} />
+                              <XCircle size={14} />
+                              Hủy giải
                             </button>
-                            {EDITABLE_STATUSES.includes(t.status) && (
-                              <button
-                                className="tl-card-action-btn"
-                                title="Chỉnh sửa"
-                                onClick={() => navigate(`/tournaments/edit/${t.tournamentId}`)}
-                              >
-                                <Edit2 size={18} />
-                              </button>
-                            )}
-                            {CANCELLED_ABLE.includes(t.status) && (
-                              <button
-                                className="tl-card-action-btn danger"
-                                title="Hủy giải"
-                                onClick={() => handleOpenConfirm(t)}
-                              >
-                                <XCircle size={18} />
-                              </button>
-                            )}
-                          </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -387,7 +401,6 @@ const TournamentList = () => {
                 </button>
               </div>
             )}
-          </div>
         </div>
       </div>
 

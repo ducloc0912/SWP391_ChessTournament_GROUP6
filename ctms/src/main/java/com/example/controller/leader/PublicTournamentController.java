@@ -69,7 +69,7 @@ public class PublicTournamentController extends HttpServlet {
         if ("filters".equals(action)) {
             Map<String, Object> data = new HashMap<>();
             data.put("statuses", Arrays.stream(TournamentStatus.values()).map(Enum::name).toList());
-            data.put("formats", Arrays.stream(TournamentFormat.values()).map(Enum::name).toList());
+            data.put("formats", Arrays.stream(TournamentFormat.values()).filter(f -> f != TournamentFormat.Hybrid).map(Enum::name).toList());
             response.getWriter().write(gson.toJson(data));
             return;
         }

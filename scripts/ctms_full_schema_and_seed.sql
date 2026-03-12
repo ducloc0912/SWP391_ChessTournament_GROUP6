@@ -88,7 +88,6 @@ CREATE TABLE Tournaments (
     rules NVARCHAR(MAX),
     location NVARCHAR(200),
     format NVARCHAR(20) NOT NULL CHECK (format IN ('RoundRobin','KnockOut','Hybrid')),
-    categories NVARCHAR(50) NOT NULL,
     max_player INT,
     min_player INT,
     entry_fee DECIMAL(18,2) DEFAULT 0,
@@ -684,17 +683,17 @@ GO
 /* 4b. 3 giải Upcoming: RoundRobin, KnockOut, Hybrid (full players) */
 
 SET IDENTITY_INSERT Tournaments ON;
-INSERT INTO Tournaments (tournament_id, tournament_name, description, location, format, categories, max_player, min_player, entry_fee, prize_pool, status, registration_deadline, start_date, end_date, create_by) VALUES
+INSERT INTO Tournaments (tournament_id, tournament_name, description, location, format, max_player, min_player, entry_fee, prize_pool, status, registration_deadline, start_date, end_date, create_by) VALUES
 -- Completed - RoundRobin 8 người
-(1, N'Giải RoundRobin Completed 2026', N'Giải vòng tròn đã kết thúc.', N'Hà Nội', 'RoundRobin', 'Open', 8, 4, 100000, 5000000, 'Completed', '2026-01-10 23:59:00', '2026-01-15 08:00:00', '2026-01-20 18:00:00', 4),
+(1, N'Giải RoundRobin Completed 2026', N'Giải vòng tròn đã kết thúc.', N'Hà Nội', 'RoundRobin', 8, 4, 100000, 5000000, 'Completed', '2026-01-10 23:59:00', '2026-01-15 08:00:00', '2026-01-20 18:00:00', 4),
 -- Ongoing - RoundRobin 8 người
-(2, N'Giải RoundRobin Ongoing 2026', N'Giải vòng tròn đang diễn ra.', N'TP.HCM', 'RoundRobin', 'Open', 8, 4, 100000, 5000000, 'Ongoing', '2026-02-10 23:59:00', '2026-02-15 08:00:00', '2026-02-25 18:00:00', 5),
+(2, N'Giải RoundRobin Ongoing 2026', N'Giải vòng tròn đang diễn ra.', N'TP.HCM', 'RoundRobin', 8, 4, 100000, 5000000, 'Ongoing', '2026-02-10 23:59:00', '2026-02-15 08:00:00', '2026-02-25 18:00:00', 5),
 -- Upcoming - RoundRobin 8 người
-(3, N'Giải RoundRobin Upcoming 2026', N'Giải vòng tròn sắp diễn ra.', N'Đà Nẵng', 'RoundRobin', 'Open', 8, 4, 100000, 5000000, 'Upcoming', '2026-04-15 23:59:00', '2026-04-20 08:00:00', '2026-04-25 18:00:00', 4),
+(3, N'Giải RoundRobin Upcoming 2026', N'Giải vòng tròn sắp diễn ra.', N'Đà Nẵng', 'RoundRobin', 8, 4, 100000, 5000000, 'Upcoming', '2026-04-15 23:59:00', '2026-04-20 08:00:00', '2026-04-25 18:00:00', 4),
 -- Upcoming - KnockOut 8 người
-(4, N'Giải KnockOut Upcoming 2026', N'Giải loại trực tiếp sắp diễn ra.', N'Hải Phòng', 'KnockOut', 'Blitz', 8, 4, 150000, 6000000, 'Upcoming', '2026-05-10 23:59:00', '2026-05-15 09:00:00', '2026-05-20 18:00:00', 5),
+(4, N'Giải KnockOut Upcoming 2026', N'Giải loại trực tiếp sắp diễn ra.', N'Hải Phòng', 'KnockOut', 8, 4, 150000, 6000000, 'Upcoming', '2026-05-10 23:59:00', '2026-05-15 09:00:00', '2026-05-20 18:00:00', 5),
 -- Upcoming - Hybrid 16 người
-(5, N'Giải Hybrid Upcoming 2026', N'Giải kết hợp vòng tròn + loại trực tiếp.', N'Bình Dương', 'Hybrid', 'Open', 16, 8, 200000, 10000000, 'Upcoming', '2026-06-15 23:59:00', '2026-06-20 08:00:00', '2026-06-30 18:00:00', 6);
+(5, N'Giải Hybrid Upcoming 2026', N'Giải kết hợp vòng tròn + loại trực tiếp.', N'Bình Dương', 'Hybrid', 16, 8, 200000, 10000000, 'Upcoming', '2026-06-15 23:59:00', '2026-06-20 08:00:00', '2026-06-30 18:00:00', 6);
 SET IDENTITY_INSERT Tournaments OFF;
 GO
 

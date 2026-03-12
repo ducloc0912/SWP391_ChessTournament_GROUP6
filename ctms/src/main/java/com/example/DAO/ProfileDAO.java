@@ -258,7 +258,6 @@ public class ProfileDAO {
                 t.description     AS description,
                 t.location        AS location,
                 t.format          AS format,
-                t.categories      AS categories,
                 t.max_player      AS maxPlayer,
                 t.min_player      AS minPlayer,
                 t.entry_fee       AS entryFee,
@@ -286,7 +285,6 @@ public class ProfileDAO {
                     t.put("description", EncodingUtil.fixUtf8Mojibake(rs.getString("description")));
                     t.put("location", EncodingUtil.fixUtf8Mojibake(rs.getString("location")));
                     t.put("format", rs.getString("format"));
-                    t.put("categories", rs.getString("categories"));
                     t.put("maxPlayer", rs.getObject("maxPlayer"));
                     t.put("minPlayer", rs.getObject("minPlayer"));
                     t.put("entryFee", rs.getObject("entryFee"));

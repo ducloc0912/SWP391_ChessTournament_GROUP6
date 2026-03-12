@@ -177,7 +177,6 @@ const StaffTournament = ({ currentUser }) => {
                                             <div className="item-icon"><Trophy size={18} /></div>
                                             <div className="item-info">
                                                 <span className="item-title">{item.tournamentName}</span>
-                                                <span className="item-sub">{item.categories}</span>
                                             </div>
                                         </div>
                                     </td>

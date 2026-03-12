@@ -201,7 +201,6 @@ public class TournamentStaffDAO extends DBContext {
         t.setDescription(rs.getString("description"));
         t.setLocation(rs.getString("location"));
         t.setFormat(parseFormat(rs.getString("format")));
-        t.setCategories(rs.getString("categories"));
         t.setMaxPlayer(rs.getInt("max_player"));
         t.setMinPlayer(rs.getInt("min_player"));
         t.setEntryFee(rs.getBigDecimal("entry_fee"));
