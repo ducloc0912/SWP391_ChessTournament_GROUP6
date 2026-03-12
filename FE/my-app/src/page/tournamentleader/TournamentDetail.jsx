@@ -36,7 +36,10 @@ import {
   UserCog,
   ArrowLeft,
   ImagePlus,
+  MessageSquare,
 } from "lucide-react";
+
+import TournamentFeedbackSection from "../../component/common/TournamentFeedbackSection";
 
 import { API_BASE } from "../../config/api";
 
@@ -179,6 +182,7 @@ const TournamentDetail = () => {
     { label: "Setup & Schedule", icon: <GitBranch size={18} /> },
     { label: "Referees", icon: <ShieldCheck size={18} /> },
     { label: "Reports", icon: <FileText size={18} /> },
+    { label: "Feedback & Reviews", icon: <MessageSquare size={18} /> },
   ];
 
   const displayBannerUrl = resolveMediaUrl(tournament?.tournamentImage, API_BASE) || FALLBACK_BANNER;
@@ -324,7 +328,16 @@ const TournamentDetail = () => {
           {activeTab === 3 && (
             <RefereeTab tournamentId={tournament.tournamentId ?? id} />
           )}
-          {activeTab === 4 && <ReportsTab />}
+          {activeTab === 4 && (
+            <ReportsTab tournamentId={tournament.tournamentId ?? id} />
+          )}
+          {activeTab === 5 && (
+            <LeaderFeedbackTab
+              tournamentId={tournament.tournamentId ?? id}
+              user={user}
+              role={typeof window !== "undefined" ? (localStorage.getItem("role") || "TOURNAMENTLEADER") : "TOURNAMENTLEADER"}
+            />
+          )}
         </div>
 
       </div>
@@ -3379,58 +3392,204 @@ const ReplaceInviteModal = ({ invitation, onClose, onReplace }) => {
   );
 };
 
-const ReportsTab = () => (
-  <div className="td-reports-card">
-    {/* Header */}
-    <div className="td-reports-header">
-      <div>
-        <h3>Documentation Center</h3>
-        <p>Audit logs, performance reviews and match data.</p>
-      </div>
+const LeaderFeedbackTab = ({ tournamentId, user, role }) => (
+  <TournamentFeedbackSection
+    tournamentId={tournamentId}
+    user={user}
+    role={role || "TOURNAMENTLEADER"}
+  />
+);
 
-      <button className="td-export-btn">
-        <Download size={20} />
-        Export Final Ledger
-      </button>
-    </div>
+const ReportsTab = ({ tournamentId }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [items, setItems] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("");
 
-    {/* Table */}
-    <div className="td-reports-table-wrapper">
-      <table className="td-reports-table">
-        <thead>
-          <tr>
-            <th>Document Identity</th>
-            <th>Authority</th>
-            <th>Timestamp</th>
-            <th>Validation</th>
-            <th className="right">Action</th>
-          </tr>
-        </thead>
+  const loadReports = React.useCallback(
+    async (overrideStatus) => {
+      if (!tournamentId) return;
+      const status = overrideStatus ?? statusFilter;
+      try {
+        setLoading(true);
+        setError("");
+        const params = new URLSearchParams();
+        params.set("tournamentId", tournamentId);
+        if (status) params.set("status", status);
+        const res = await axios
+          .get(`${API_BASE}/api/leader/reports?${params.toString()}`, {
+            withCredentials: true,
+          })
+          .catch(() => null);
+        setItems(Array.isArray(res?.data) ? res.data : []);
+      } catch {
+        setError("Không thể tải danh sách report.");
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [tournamentId, statusFilter],
+  );
 
-        <tbody></tbody>
-      </table>
-    </div>
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
 
-    {/* Footer CTA */}
-    <div className="td-reports-footer">
-      <div className="td-footer-box">
-        <div className="td-footer-icon">
-          <AlertCircle size={32} />
+  const handleDecision = async (reportId, valid) => {
+    const note = window.prompt(
+      valid
+        ? "Nhập ghi chú/hình phạt (bắt buộc, hiển thị trong phản hồi cho player):"
+        : "Nhập lý do từ chối report (bắt buộc):",
+      "",
+    );
+    if (!note || !note.trim()) {
+      alert("Vui lòng nhập nội dung phản hồi trước khi gửi.");
+      return;
+    }
+    try {
+      await axios.put(
+        `${API_BASE}/api/leader/reports`,
+        { reportId, valid, note },
+        { withCredentials: true },
+      );
+      await loadReports();
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message || "Không thể cập nhật trạng thái report.";
+      alert(msg);
+    }
+  };
+
+  const formatTime = (value) => {
+    if (!value) return "—";
+    try {
+      return new Date(value).toLocaleString("vi-VN");
+    } catch {
+      return String(value);
+    }
+  };
+
+  const typeLabel = (type) => {
+    switch (type) {
+      case "Cheating":
+        return "Gian lận";
+      case "Misconduct":
+        return "Hành vi xấu";
+      case "TechnicalIssue":
+        return "Lỗi kỹ thuật";
+      default:
+        return type || "Khác";
+    }
+  };
+
+  return (
+    <div className="td-reports-card">
+      <div className="td-reports-header">
+        <div>
+          <h3>Báo cáo vi phạm</h3>
+          <p>Danh sách report liên quan đến các trận trong giải này.</p>
         </div>
 
-        <h4>Custom Analytics Engine</h4>
-        <p>
-          Need deep insights into player performance or fair play metrics? Our
-          AI-driven engine can generate a specialized 30-page audit in under 5
-          minutes.
-        </p>
+        <div className="td-reports-filter">
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              const next = e.target.value;
+              setStatusFilter(next);
+              loadReports(next);
+            }}
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="Pending">Đang chờ xử lý</option>
+            <option value="Investigating">Đang điều tra</option>
+            <option value="Resolved">Đã xử lý</option>
+            <option value="Dismissed">Đã từ chối</option>
+          </select>
+        </div>
+      </div>
 
-        <button className="td-audit-btn">
-          Run Advanced Audit <ArrowRight size={14} />
-        </button>
+      <div className="td-reports-table-wrapper">
+        {loading ? (
+          <div className="td-state-card">Đang tải danh sách report...</div>
+        ) : error ? (
+          <div className="td-state-card">{error}</div>
+        ) : items.length === 0 ? (
+          <div className="td-state-card">Chưa có report nào cho giải này.</div>
+        ) : (
+          <table className="td-reports-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Loại</th>
+                <th>Reporter</th>
+                <th>Match</th>
+                <th>Mô tả</th>
+                <th>Evidence</th>
+                <th>Trạng thái</th>
+                <th>Tạo lúc</th>
+                <th className="right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((r) => (
+                <tr key={r.reportId}>
+                  <td>{r.reportId}</td>
+                  <td>{typeLabel(r.type)}</td>
+                  <td>{r.reporterId ?? "—"}</td>
+                  <td>{r.matchId ?? "—"}</td>
+                  <td className="td-reports-desc">
+                    {r.description?.length > 80
+                      ? `${r.description.slice(0, 80)}…`
+                      : r.description}
+                  </td>
+                  <td>
+                    {r.evidenceUrl ? (
+                      <a
+                        href={r.evidenceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Xem
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td>{r.status}</td>
+                  <td>{formatTime(r.createAt)}</td>
+                  <td className="right">
+                    {r.status === "Pending" || r.status === "Investigating" ? (
+                      <div className="td-reports-actions">
+                        <button
+                          type="button"
+                          className="td-btn-small td-btn-success"
+                          onClick={() => handleDecision(r.reportId, true)}
+                        >
+                          Xác nhận vi phạm
+                        </button>
+                        <button
+                          type="button"
+                          className="td-btn-small td-btn-danger"
+                          onClick={() => handleDecision(r.reportId, false)}
+                        >
+                          Từ chối
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="td-reports-status-done">
+                        {r.status === "Resolved" ? "Đã phạt" : "Đã từ chối"}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default TournamentDetail;

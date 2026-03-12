@@ -67,11 +67,22 @@ export default function MainHeader({
   try {
     const rawRole = localStorage.getItem("role");
     const normalizedRole = (rawRole || "").toString().toUpperCase().replace(/[\s_]/g, "");
+
+    // Link riêng cho referee
     if (normalizedRole === "REFEREE") {
-      extraItems = [{ to: "/referee/invitations", label: "Invitations" }];
+      extraItems.push({ to: "/referee/invitations", label: "Invitations" });
+    }
+
+    // Nút Report trên header:
+    // - STAFF: dẫn tới trang xử lý system report
+    // - Các role còn lại: dẫn tới trang user gửi/lịch sử report
+    if (normalizedRole === "STAFF") {
+      extraItems.push({ to: "/staff/reports", label: "Report" });
+    } else {
+      extraItems.push({ to: "/user/reports", label: "Report" });
     }
   } catch {
-    extraItems = [];
+    extraItems = [{ to: "/user/reports", label: "Report" }];
   }
 
   const fullNavItems = React.useMemo(() => {
