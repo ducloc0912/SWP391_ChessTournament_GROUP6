@@ -1,14 +1,15 @@
 package com.example.service.common;
 
+import com.example.DAO.NotificationDAO;
 import com.example.DAO.ReportDAO;
 import com.example.DAO.UserDAO;
 import com.example.model.dto.ReportDTO;
 import com.example.model.entity.BlogPost;
+import com.example.model.entity.Notification;
 import com.example.model.entity.User;
 import com.example.model.enums.BlogCategory;
 import com.example.model.enums.BlogStatus;
 import com.example.service.staff.BlogPostStaffService;
-import com.example.util.EmailUtil;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -19,34 +20,39 @@ public class ReportService {
     private final ReportDAO reportDAO;
     private final UserDAO userDAO;
     private final BlogPostStaffService blogService;
+    private final NotificationDAO notificationDAO;
 
     public ReportService() {
         this.reportDAO = new ReportDAO();
         this.userDAO = new UserDAO();
         this.blogService = new BlogPostStaffService();
+        this.notificationDAO = new NotificationDAO();
     }
 
     public int createReport(ReportDTO dto) {
+        // Các validate nghiệp vụ sẽ ném IllegalArgumentException nếu có lỗi.
+        // Không được nuốt (catch) IllegalArgumentException ở đây để servlet có thể trả
+        // lại đúng message cho frontend.
+        if (dto.getReporterId() == null) {
+            throw new IllegalArgumentException("Reporter is required");
+        }
+        if (dto.getDescription() == null || dto.getDescription().trim().isEmpty()) {
+            throw new IllegalArgumentException("Description is required");
+        }
+        if (dto.getType() == null || dto.getType().trim().isEmpty()) {
+            throw new IllegalArgumentException("Type is required");
+        }
+
+        // Chuẩn hóa evidenceUrl: cột DB không cho NULL -> dùng chuỗi rỗng nếu không có
+        if (dto.getEvidenceUrl() == null) {
+            dto.setEvidenceUrl("");
+        } else {
+            dto.setEvidenceUrl(dto.getEvidenceUrl().trim());
+        }
+
+        // Không cho phép 1 user gửi trùng report cho cùng 1 trận (violation)
+        String type = dto.getType().trim();
         try {
-            if (dto.getReporterId() == null) {
-                throw new IllegalArgumentException("Reporter is required");
-            }
-            if (dto.getDescription() == null || dto.getDescription().trim().isEmpty()) {
-                throw new IllegalArgumentException("Description is required");
-            }
-            if (dto.getType() == null || dto.getType().trim().isEmpty()) {
-                throw new IllegalArgumentException("Type is required");
-            }
-
-            // Chuẩn hóa evidenceUrl: cột DB không cho NULL -> dùng chuỗi rỗng nếu không có
-            if (dto.getEvidenceUrl() == null) {
-                dto.setEvidenceUrl("");
-            } else {
-                dto.setEvidenceUrl(dto.getEvidenceUrl().trim());
-            }
-
-            // Không cho phép 1 user gửi trùng report cho cùng 1 trận (violation)
-            String type = dto.getType().trim();
             if (dto.getMatchId() != null
                     && ("Cheating".equalsIgnoreCase(type) || "Misconduct".equalsIgnoreCase(type))) {
                 if (reportDAO.existsByReporterAndMatch(dto.getReporterId(), dto.getMatchId())) {
@@ -56,6 +62,9 @@ public class ReportService {
 
             dto.setStatus("Pending");
             return reportDAO.createReport(dto);
+        } catch (IllegalArgumentException e) {
+            // Đẩy tiếp cho servlet xử lý và trả message cụ thể cho client
+            throw e;
         } catch (Exception e) {
             e.printStackTrace();
             return -1;
@@ -80,6 +89,11 @@ public class ReportService {
         }
     }
 
+    /** Admin xem cùng tập system report (TechnicalIssue / Other). */
+    public List<ReportDTO> getSystemReportsForAdmin(String status) {
+        return getSystemReportsForStaff(status);
+    }
+
     public List<ReportDTO> getViolationReportsByTournament(int tournamentId, String status) {
         try {
             return reportDAO.getViolationReportsByTournament(tournamentId, status);
@@ -93,7 +107,14 @@ public class ReportService {
         try {
             String status = valid ? "Resolved" : "Dismissed";
             String finalNote = note != null ? note.trim() : "";
-            return reportDAO.updateReportDecision(reportId, status, finalNote, staffId);
+            boolean ok = reportDAO.updateReportDecision(reportId, status, finalNote, staffId);
+            if (!ok) return false;
+
+            ReportDTO dto = reportDAO.getById(reportId);
+            if (dto != null) {
+                handleSystemReportSideEffects(dto, finalNote, valid);
+            }
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -120,7 +141,7 @@ public class ReportService {
 
     private void handleViolationSideEffects(ReportDTO report, String note, int leaderId, boolean valid) {
         try {
-            // Nếu có vi phạm -> tạo blog + gửi email cho cả 2
+            // Nếu có vi phạm -> tạo blog thông báo công khai
             if (valid) {
                 BlogPost blog = new BlogPost();
                 blog.setTitle("Thông báo xử lý vi phạm trận #" + (report.getMatchId() != null ? report.getMatchId() : report.getReportId()));
@@ -140,84 +161,132 @@ public class ReportService {
                 blogService.createBlogPost(blog);
             }
 
-            // Gửi email cho người tố cáo trong cả 2 trường hợp (vi phạm / không vi phạm)
+            // Tạo thông báo in-app cho người tố cáo trong cả 2 trường hợp (vi phạm / không vi phạm)
             if (report.getReporterId() != null) {
                 User reporter = userDAO.getUserById(report.getReporterId());
-                if (reporter != null && reporter.getEmail() != null) {
-                    String subject;
-                    String contentReporter;
+                if (reporter != null) {
+                    Notification n = new Notification();
+                    n.setUserId(reporter.getUserId());
+                    n.setType("Report");
+                    n.setActionUrl("/user/reports");
                     if (valid) {
-                        subject = "[Chess Tournament] Báo cáo vi phạm của bạn đã được xử lý";
-                        contentReporter = """
-                                Xin chào %s,
-
+                        n.setTitle("Báo cáo vi phạm của bạn đã được xử lý");
+                        String msg = """
                                 Báo cáo vi phạm của bạn đã được xác nhận là HỢP LỆ và đã được áp dụng hình phạt.
 
-                                Mô tả report:
-                                %s
+                                Mô tả report: %s
 
-                                Hình phạt / Ghi chú từ Tournament Leader:
-                                %s
-
-                                Trân trọng,
-                                Chess Tournament Management System
+                                Hình phạt / Ghi chú từ Tournament Leader: %s
                                 """.formatted(
-                                safeName(reporter),
                                 report.getDescription() != null ? report.getDescription() : "",
                                 note != null && !note.isBlank() ? note : "(Không có ghi chú thêm)"
                         );
+                        n.setMessage(msg.trim());
                     } else {
-                        subject = "[Chess Tournament] Báo cáo vi phạm của bạn đã được xem xét";
-                        contentReporter = """
-                                Xin chào %s,
-
+                        n.setTitle("Báo cáo vi phạm của bạn đã được xem xét");
+                        String msg = """
                                 Báo cáo vi phạm của bạn đã được xem xét và kết quả là: KHÔNG VI PHẠM.
 
-                                Mô tả report:
-                                %s
+                                Mô tả report: %s
 
-                                Ghi chú / Lý do từ Tournament Leader:
-                                %s
-
-                                Trân trọng,
-                                Chess Tournament Management System
+                                Ghi chú / Lý do từ Tournament Leader: %s
                                 """.formatted(
-                                safeName(reporter),
                                 report.getDescription() != null ? report.getDescription() : "",
                                 note != null && !note.isBlank() ? note : "(Không có ghi chú thêm)"
                         );
+                        n.setMessage(msg.trim());
                     }
-                    EmailUtil.sendEmail(reporter.getEmail(), subject, contentReporter);
+                    notificationDAO.createNotification(n);
                 }
             }
 
-            // Chỉ gửi email cho người bị tố cáo nếu có vi phạm
+            // Chỉ tạo thông báo in-app cho người bị tố cáo nếu có vi phạm
             if (valid && report.getAccusedId() != null) {
                 User accused = userDAO.getUserById(report.getAccusedId());
-                if (accused != null && accused.getEmail() != null) {
-                    String subject = "[Chess Tournament] Bạn đã bị xử lý vi phạm";
-                    String contentAccused = """
-                            Xin chào %s,
-
+                if (accused != null) {
+                    Notification n2 = new Notification();
+                    n2.setUserId(accused.getUserId());
+                    n2.setType("Report");
+                    n2.setActionUrl("/user/reports");
+                    n2.setTitle("Bạn đã bị xử lý vi phạm");
+                    String msg2 = """
                             Hệ thống xin thông báo: bạn đã bị xác nhận VI PHẠM trong một trận đấu.
 
-                            Mô tả report:
-                            %s
+                            Mô tả report: %s
 
-                            Hình phạt / Ghi chú từ Tournament Leader:
-                            %s
+                            Hình phạt / Ghi chú từ Tournament Leader: %s
 
                             Nếu bạn cho rằng đây là nhầm lẫn, vui lòng liên hệ ban tổ chức để được hỗ trợ thêm.
-
-                            Trân trọng,
-                            Chess Tournament Management System
                             """.formatted(
-                            safeName(accused),
                             report.getDescription() != null ? report.getDescription() : "",
                             note != null && !note.isBlank() ? note : "(Không có ghi chú thêm)"
                     );
-                    EmailUtil.sendEmail(accused.getEmail(), subject, contentAccused);
+                    n2.setMessage(msg2.trim());
+                    notificationDAO.createNotification(n2);
                 }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleSystemReportSideEffects(ReportDTO report, String note, boolean valid) {
+        try {
+            // Thông báo cho người gửi system report (dù hợp lệ hay không)
+            if (report.getReporterId() != null) {
+                User reporter = userDAO.getUserById(report.getReporterId());
+                if (reporter != null) {
+                    Notification noti = new Notification();
+                    noti.setUserId(reporter.getUserId());
+                    noti.setType("Report");
+                    noti.setActionUrl("/user/reports");
+                    if (valid) {
+                        noti.setTitle("System report của bạn đã được chuyển cho Admin");
+                        String msg = """
+                                System report của bạn đã được staff xác nhận là HỢP LỆ và chuyển cho Admin để xử lý tiếp.
+
+                                Mô tả report: %s
+
+                                Ghi chú từ Staff: %s
+                                """.formatted(
+                                report.getDescription() != null ? report.getDescription() : "",
+                                note != null && !note.isBlank() ? note : "(Không có ghi chú thêm)"
+                        );
+                        noti.setMessage(msg.trim());
+                    } else {
+                        noti.setTitle("System report của bạn đã được xem xét");
+                        String msg = """
+                                System report của bạn đã được staff xem xét và kết luận: KHÔNG HỢP LỆ.
+
+                                Mô tả report: %s
+
+                                Lý do / ghi chú từ Staff: %s
+                                """.formatted(
+                                report.getDescription() != null ? report.getDescription() : "",
+                                note != null && !note.isBlank() ? note : "(Không có ghi chú thêm)"
+                        );
+                        noti.setMessage(msg.trim());
+                    }
+                    notificationDAO.createNotification(noti);
+                }
+            }
+
+            // Nếu hợp lệ: tạo thông báo hệ thống để Admin chú ý (notification global, user_id = NULL)
+            if (valid) {
+                Notification adminNoti = new Notification();
+                adminNoti.setUserId(null);
+                adminNoti.setType("System");
+                adminNoti.setActionUrl("/admin/dashboard");
+                adminNoti.setTitle("Có system report mới đã được xác thực");
+                String msg = """
+                        Staff đã xác nhận một system report là HỢP LỆ và chuyển cho Admin.
+
+                        Mô tả report: %s
+                        """.formatted(
+                        report.getDescription() != null ? report.getDescription() : ""
+                );
+                adminNoti.setMessage(msg.trim());
+                notificationDAO.createNotification(adminNoti);
             }
         } catch (Exception e) {
             e.printStackTrace();

@@ -1891,7 +1891,7 @@
 
 /* Table */
 .td-reports-table-wrapper {
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .td-reports-table {
@@ -1953,6 +1953,32 @@
   color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.1em;
+}
+
+/* ===== Buttons in Reports table ===== */
+.td-reports-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.td-btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.td-btn-success {
+  background-color: #22c55e;
+  color: #ffffff;
+}
+
+.td-btn-danger {
+  background-color: #ef4444;
+  color: #ffffff;
 }
 
 /* Authority */

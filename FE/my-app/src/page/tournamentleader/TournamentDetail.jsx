@@ -46,12 +46,18 @@ import { API_BASE } from "../../config/api";
 const resolveMediaUrl = (value, apiBase = API_BASE) => {
   const raw = String(value || "").trim();
   if (!raw) return "";
-  if (raw.startsWith("http://") || raw.startsWith("https://") || raw.startsWith("data:") || raw.startsWith("blob:"))
+  if (
+    raw.startsWith("http://") ||
+    raw.startsWith("https://") ||
+    raw.startsWith("data:") ||
+    raw.startsWith("blob:")
+  )
     return raw;
   if (raw.startsWith("/")) return `${apiBase}${raw}`;
   return `${apiBase}/${raw}`;
 };
-const FALLBACK_BANNER = "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&q=80&w=1000";
+const FALLBACK_BANNER =
+  "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&q=80&w=1000";
 
 const Badge = ({ children, variant }) => (
   <span className={`td-badge td-badge-${variant}`}>{children}</span>
@@ -95,10 +101,9 @@ const TournamentDetail = () => {
 
   const fetchTournament = async () => {
     try {
-      const res = await axios.get(
-        `${API_BASE}/api/tournaments?id=${id}`,
-        { withCredentials: true },
-      );
+      const res = await axios.get(`${API_BASE}/api/tournaments?id=${id}`, {
+        withCredentials: true,
+      });
       setTournament(res.data);
     } catch (err) {
       console.error("Error loading tournament:", err);
@@ -152,14 +157,16 @@ const TournamentDetail = () => {
       const res = await axios.post(
         `${API_BASE}/api/tournaments?action=uploadImageFile`,
         formData,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       if (res?.data?.success && res?.data?.imageUrl) {
-        const existingDetails = Array.isArray(tournament.tournamentImages) ? tournament.tournamentImages : [];
+        const existingDetails = Array.isArray(tournament.tournamentImages)
+          ? tournament.tournamentImages
+          : [];
         await axios.put(
           `${API_BASE}/api/tournaments?action=updateImages&id=${tournament.tournamentId}`,
           { coverImage: res.data.imageUrl, detailImages: existingDetails },
-          { withCredentials: true }
+          { withCredentials: true },
         );
         await fetchTournament();
       }
@@ -185,12 +192,18 @@ const TournamentDetail = () => {
     { label: "Feedback & Reviews", icon: <MessageSquare size={18} /> },
   ];
 
-  const displayBannerUrl = resolveMediaUrl(tournament?.tournamentImage, API_BASE) || FALLBACK_BANNER;
+  const displayBannerUrl =
+    resolveMediaUrl(tournament?.tournamentImage, API_BASE) || FALLBACK_BANNER;
 
   if (loading) {
     return (
       <div className="tdp-page td-page-wrapper hpv-page">
-        <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} menuItems={menuItems} />
+        <MainHeader
+          user={user}
+          onLogout={handleLogout}
+          currentPath={location.pathname}
+          menuItems={menuItems}
+        />
         <div className="tdp-container">
           <div className="tdp-state-card">Đang tải giải đấu...</div>
         </div>
@@ -201,7 +214,12 @@ const TournamentDetail = () => {
   if (!tournament) {
     return (
       <div className="tdp-page td-page-wrapper hpv-page">
-        <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} menuItems={menuItems} />
+        <MainHeader
+          user={user}
+          onLogout={handleLogout}
+          currentPath={location.pathname}
+          menuItems={menuItems}
+        />
         <div className="tdp-container">
           <div className="tdp-state-card">Không tìm thấy giải đấu.</div>
         </div>
@@ -211,9 +229,18 @@ const TournamentDetail = () => {
 
   return (
     <div className="tdp-page td-page-wrapper hpv-page">
-      <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} menuItems={menuItems} />
+      <MainHeader
+        user={user}
+        onLogout={handleLogout}
+        currentPath={location.pathname}
+        menuItems={menuItems}
+      />
       <div className="tdp-container">
-        <button type="button" className="tdp-back-btn" onClick={() => navigate("/tournaments")}>
+        <button
+          type="button"
+          className="tdp-back-btn"
+          onClick={() => navigate("/tournaments")}
+        >
           <ArrowLeft size={16} /> Quay lại danh sách giải
         </button>
 
@@ -248,12 +275,18 @@ const TournamentDetail = () => {
             <button
               type="button"
               className="tdp-register-btn"
-              onClick={() => navigate(`/tournaments/edit/${tournament.tournamentId ?? id}`)}
+              onClick={() =>
+                navigate(`/tournaments/edit/${tournament.tournamentId ?? id}`)
+              }
             >
               <Edit2 size={18} />
               Chỉnh sửa giải đấu
             </button>
-            <button type="button" className="td-leader-btn-danger" title="Xóa giải">
+            <button
+              type="button"
+              className="td-leader-btn-danger"
+              title="Xóa giải"
+            >
               <Trash2 size={18} />
             </button>
           </div>
@@ -335,11 +368,14 @@ const TournamentDetail = () => {
             <LeaderFeedbackTab
               tournamentId={tournament.tournamentId ?? id}
               user={user}
-              role={typeof window !== "undefined" ? (localStorage.getItem("role") || "TOURNAMENTLEADER") : "TOURNAMENTLEADER"}
+              role={
+                typeof window !== "undefined"
+                  ? localStorage.getItem("role") || "TOURNAMENTLEADER"
+                  : "TOURNAMENTLEADER"
+              }
             />
           )}
         </div>
-
       </div>
     </div>
   );
@@ -388,7 +424,7 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
       await axios.put(
         `${API_BASE}/api/tournaments?id=${tournament.tournamentId}`,
         payload,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       if (field === "description") setDescription(value);
       if (field === "rules") setRules(value);
@@ -416,9 +452,7 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
 
   const progressPct =
     tournament.maxPlayer > 0
-      ? Math.round(
-          (tournament.currentPlayers / tournament.maxPlayer) * 100
-        )
+      ? Math.round((tournament.currentPlayers / tournament.maxPlayer) * 100)
       : 0;
 
   const now = new Date();
@@ -437,7 +471,8 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
     {
       label: "Đóng đăng ký",
       date: fmt(tournament.registrationDeadline),
-      status: regDead && now >= regDead ? "done" : regDead ? "current" : "upcoming",
+      status:
+        regDead && now >= regDead ? "done" : regDead ? "current" : "upcoming",
     },
     {
       label: "Bắt đầu giải",
@@ -472,17 +507,22 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
     return num.toLocaleString("vi-VN");
   };
 
-  const dateRangeStr = [tournament.startDate, tournament.endDate]
-    .map((d) => (d ? fmt(d) : "—"))
-    .filter(Boolean)
-    .join(" — ") || "—";
+  const dateRangeStr =
+    [tournament.startDate, tournament.endDate]
+      .map((d) => (d ? fmt(d) : "—"))
+      .filter(Boolean)
+      .join(" — ") || "—";
 
   const InlineEditBlock = ({ label, fieldKey, value }) => (
     <div className="td-overview-inline-block">
       <div className="td-overview-inline-head">
         <label>{label}</label>
         {editingField !== fieldKey ? (
-          <button type="button" className="td-overview-inline-edit-btn" onClick={() => startEdit(fieldKey)}>
+          <button
+            type="button"
+            className="td-overview-inline-edit-btn"
+            onClick={() => startEdit(fieldKey)}
+          >
             <Edit2 size={14} /> Sửa
           </button>
         ) : null}
@@ -493,7 +533,13 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
             value={editDraft}
             onChange={(e) => setEditDraft(e.target.value)}
             rows={fieldKey === "description" ? 4 : fieldKey === "rules" ? 5 : 3}
-            placeholder={fieldKey === "description" ? "Mô tả giải đấu..." : fieldKey === "rules" ? "Luật thi đấu..." : "Ghi chú..."}
+            placeholder={
+              fieldKey === "description"
+                ? "Mô tả giải đấu..."
+                : fieldKey === "rules"
+                  ? "Luật thi đấu..."
+                  : "Ghi chú..."
+            }
           />
           <div className="td-overview-inline-actions">
             <button
@@ -504,13 +550,19 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
             >
               {savingOverview ? "Đang lưu..." : "Lưu"}
             </button>
-            <button type="button" className="td-overview-btn td-overview-btn-outline" onClick={cancelEdit}>
+            <button
+              type="button"
+              className="td-overview-btn td-overview-btn-outline"
+              onClick={cancelEdit}
+            >
               Hủy
             </button>
           </div>
         </div>
       ) : (
-        <div className="td-overview-inline-view">{value || "Chưa có nội dung."}</div>
+        <div className="td-overview-inline-view">
+          {value || "Chưa có nội dung."}
+        </div>
       )}
     </div>
   );
@@ -522,7 +574,11 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
           <article className="tdp-card tdp-overview-card">
             <h2>{tournament.tournamentName || "Tournament"} overview</h2>
             <div className="tdp-desc">
-              <InlineEditBlock label="Mô tả" fieldKey="description" value={description} />
+              <InlineEditBlock
+                label="Mô tả"
+                fieldKey="description"
+                value={description}
+              />
             </div>
             <div className="tdp-placement-rewards">
               <h4>Giải thưởng theo thứ hạng</h4>
@@ -531,21 +587,42 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
                   <span className="tdp-medal tdp-medal-gold" />
                   <div>
                     <strong>1st Place</strong>
-                    <span>{formatMoney(tournament.prizePool ? Math.round(tournament.prizePool * 0.5) : 0)} VND</span>
+                    <span>
+                      {formatMoney(
+                        tournament.prizePool
+                          ? Math.round(tournament.prizePool * 0.5)
+                          : 0,
+                      )}{" "}
+                      VND
+                    </span>
                   </div>
                 </li>
                 <li>
                   <span className="tdp-medal tdp-medal-silver" />
                   <div>
                     <strong>2nd Place</strong>
-                    <span>{formatMoney(tournament.prizePool ? Math.round(tournament.prizePool * 0.3) : 0)} VND</span>
+                    <span>
+                      {formatMoney(
+                        tournament.prizePool
+                          ? Math.round(tournament.prizePool * 0.3)
+                          : 0,
+                      )}{" "}
+                      VND
+                    </span>
                   </div>
                 </li>
                 <li>
                   <span className="tdp-medal tdp-medal-bronze" />
                   <div>
                     <strong>3rd Place</strong>
-                    <span>{formatMoney(tournament.prizePool ? Math.round(tournament.prizePool * 0.2) : 0)} VND</span>
+                    <span>
+                      {formatMoney(
+                        tournament.prizePool
+                          ? Math.round(tournament.prizePool * 0.2)
+                          : 0,
+                      )}{" "}
+                      VND
+                    </span>
                   </div>
                 </li>
               </ul>
@@ -554,15 +631,19 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
 
           <article className="tdp-card tdp-event-phases">
             <h3>Event Phases</h3>
-            <InlineEditBlock label="Luật & Quy định" fieldKey="rules" value={rules} />
+            <InlineEditBlock
+              label="Luật & Quy định"
+              fieldKey="rules"
+              value={rules}
+            />
             <div className="tdp-phase-block">
               <h4>Giai đoạn thi đấu</h4>
               <p>
                 {tournament.format === "RoundRobin"
                   ? "Thi đấu vòng tròn tính điểm. Mỗi người chơi đấu với tất cả người chơi khác."
                   : tournament.format === "KnockOut"
-                  ? "Thi đấu loại trực tiếp. Thua một trận sẽ bị loại khỏi giải."
-                  : "Thi đấu kết hợp: vòng tròn để chọn top, sau đó loại trực tiếp cho vòng chung kết."}
+                    ? "Thi đấu loại trực tiếp. Thua một trận sẽ bị loại khỏi giải."
+                    : "Thi đấu kết hợp: vòng tròn để chọn top, sau đó loại trực tiếp cho vòng chung kết."}
               </p>
             </div>
             <div className="tdp-phase-block">
@@ -575,27 +656,44 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
           <article className="tdp-card tdp-participants-card">
             <h3>Người tham gia</h3>
             <p className="tdp-participants-intro">
-              {tournament.currentPlayers || 0}/{tournament.maxPlayer || 0} người đã đăng ký
+              {tournament.currentPlayers || 0}/{tournament.maxPlayer || 0} người
+              đã đăng ký
             </p>
             <div className="tdp-participants-info">
-              <p><MapPin size={14} /> {tournament.location || "Online"}</p>
-              <p><Calendar size={14} /> {dateRangeStr}</p>
-              <p><Clock3 size={14} /> Hạn đăng ký: {fmt(tournament.registrationDeadline)}</p>
-              <p><Trophy size={14} /> Quỹ thưởng: {formatMoney(tournament.prizePool)} VND</p>
+              <p>
+                <MapPin size={14} /> {tournament.location || "Online"}
+              </p>
+              <p>
+                <Calendar size={14} /> {dateRangeStr}
+              </p>
+              <p>
+                <Clock3 size={14} /> Hạn đăng ký:{" "}
+                {fmt(tournament.registrationDeadline)}
+              </p>
+              <p>
+                <Trophy size={14} /> Quỹ thưởng:{" "}
+                {formatMoney(tournament.prizePool)} VND
+              </p>
             </div>
             <div className="tdp-reg-progress-wrap">
               <div className="td-reg-progress-bar">
-                <div className="td-reg-progress-fill" style={{ width: `${progressPct}%` }} />
+                <div
+                  className="td-reg-progress-fill"
+                  style={{ width: `${progressPct}%` }}
+                />
               </div>
               <p className="td-reg-progress-footer">
-                <strong>{tournament.currentPlayers || 0}</strong> / {tournament.maxPlayer} người chơi
+                <strong>{tournament.currentPlayers || 0}</strong> /{" "}
+                {tournament.maxPlayer} người chơi
               </p>
             </div>
             <div className="tdp-timeline-wrap">
               <h4>Timeline</h4>
               {timeline.map((item, idx) => (
                 <div key={idx} className="td-timeline-item">
-                  <span className={item.status === "done" ? "" : "dim"}>{item.label}</span>
+                  <span className={item.status === "done" ? "" : "dim"}>
+                    {item.label}
+                  </span>
                   <span>{item.date}</span>
                 </div>
               ))}
@@ -652,7 +750,7 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
     const res = await axios.post(
       `${API_BASE}/api/tournaments?action=uploadImageFile`,
       formData,
-      { withCredentials: true }
+      { withCredentials: true },
     );
     if (!res?.data?.success || !res?.data?.imageUrl) {
       throw new Error(res?.data?.message || "Upload ảnh thất bại");
@@ -669,7 +767,9 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
       setCoverImage(imageUrl);
       setToast("Đã cập nhật ảnh đại diện.");
     } catch (err) {
-      alert(err?.response?.data?.message || err?.message || "Upload ảnh thất bại.");
+      alert(
+        err?.response?.data?.message || err?.message || "Upload ảnh thất bại.",
+      );
     } finally {
       setUploading(false);
       if (coverInputRef.current) coverInputRef.current.value = "";
@@ -695,7 +795,9 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
       setDetailImages((prev) => [...prev, ...uploaded]);
       setToast(`Đã thêm ${uploaded.length} ảnh.`);
     } catch (err) {
-      alert(err?.response?.data?.message || err?.message || "Upload ảnh thất bại.");
+      alert(
+        err?.response?.data?.message || err?.message || "Upload ảnh thất bại.",
+      );
     } finally {
       setUploading(false);
       if (addInputRef.current) addInputRef.current.value = "";
@@ -708,10 +810,14 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
     setUploading(true);
     try {
       const imageUrl = await uploadSingleImage(file);
-      setDetailImages((prev) => prev.map((img, idx) => (idx === editingIdx ? imageUrl : img)));
+      setDetailImages((prev) =>
+        prev.map((img, idx) => (idx === editingIdx ? imageUrl : img)),
+      );
       setToast("Đã thay ảnh.");
     } catch (err) {
-      alert(err?.response?.data?.message || err?.message || "Thay ảnh thất bại.");
+      alert(
+        err?.response?.data?.message || err?.message || "Thay ảnh thất bại.",
+      );
     } finally {
       setUploading(false);
       setEditingIdx(null);
@@ -749,7 +855,9 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
     if (deleteTarget.type === "cover") {
       setCoverImage("");
     } else {
-      setDetailImages((prev) => prev.filter((_, idx) => idx !== deleteTarget.idx));
+      setDetailImages((prev) =>
+        prev.filter((_, idx) => idx !== deleteTarget.idx),
+      );
     }
     setDeleteTarget(null);
   };
@@ -764,7 +872,7 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
           coverImage: coverImage || null,
           detailImages,
         },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       if (!res?.data?.success) {
         throw new Error(res?.data?.message || "Lưu ảnh thất bại");
@@ -772,7 +880,9 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
       setToast("Lưu ảnh thành công.");
       await onSaved();
     } catch (err) {
-      alert(err?.response?.data?.message || err?.message || "Lưu ảnh thất bại.");
+      alert(
+        err?.response?.data?.message || err?.message || "Lưu ảnh thất bại.",
+      );
     } finally {
       setSaving(false);
     }
@@ -786,7 +896,11 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
   const nextPreview = () =>
     setPreviewIdx((p) => (p + 1) % Math.max(allPreviewImages.length, 1));
   const prevPreview = () =>
-    setPreviewIdx((p) => (p - 1 + Math.max(allPreviewImages.length, 1)) % Math.max(allPreviewImages.length, 1));
+    setPreviewIdx(
+      (p) =>
+        (p - 1 + Math.max(allPreviewImages.length, 1)) %
+        Math.max(allPreviewImages.length, 1),
+    );
 
   return (
     <div className="ti-modal-overlay" onClick={onClose}>
@@ -795,41 +909,54 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
           <div>
             <h2>Manage Tournament Images</h2>
             <p>Upload and organize images for this tournament</p>
-        </div>
+          </div>
           <button className="ti-close-btn" onClick={onClose}>
             <X size={18} />
           </button>
-      </div>
+        </div>
 
         <div className="ti-modal-body">
           <section className="ti-card">
             <div className="ti-section-head">
               <h3>Cover Image</h3>
               <span className="ti-note">Recommended: 1920 x 1080</span>
-      </div>
+            </div>
             <div
               className="ti-cover-preview"
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault();
                 if (e.dataTransfer.files?.[0]) {
-                  handleSetCoverFile({ target: { files: [e.dataTransfer.files[0]] } });
+                  handleSetCoverFile({
+                    target: { files: [e.dataTransfer.files[0]] },
+                  });
                 }
               }}
             >
               {coverImage ? (
-                <img src={resolveMediaUrl(coverImage)} alt="Cover" onClick={() => openPreview(0)} />
+                <img
+                  src={resolveMediaUrl(coverImage)}
+                  alt="Cover"
+                  onClick={() => openPreview(0)}
+                />
               ) : (
                 <div className="ti-cover-placeholder">
                   <p>No cover image</p>
-                  <button className="ti-primary-btn" onClick={() => coverInputRef.current?.click()}>
+                  <button
+                    className="ti-primary-btn"
+                    onClick={() => coverInputRef.current?.click()}
+                  >
                     Upload Cover
                   </button>
                 </div>
               )}
             </div>
             <div className="ti-btn-row">
-              <button className="ti-primary-btn" onClick={() => coverInputRef.current?.click()} disabled={uploading}>
+              <button
+                className="ti-primary-btn"
+                onClick={() => coverInputRef.current?.click()}
+                disabled={uploading}
+              >
                 Change Cover Image
               </button>
               <button
@@ -845,7 +972,9 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
           <section className="ti-card">
             <div className="ti-section-head">
               <h3>Detail Images</h3>
-              <span className="ti-note">{detailImages.length} / {MAX_DETAIL_IMAGES}</span>
+              <span className="ti-note">
+                {detailImages.length} / {MAX_DETAIL_IMAGES}
+              </span>
             </div>
             <div className="ti-grid">
               {detailImages.map((img, idx) => (
@@ -857,16 +986,26 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => moveImage(draggingIdx, idx)}
                 >
-                  <img src={resolveMediaUrl(img)} alt={`Detail ${idx + 1}`} onClick={() => openPreview((coverImage ? 1 : 0) + idx)} />
+                  <img
+                    src={resolveMediaUrl(img)}
+                    alt={`Detail ${idx + 1}`}
+                    onClick={() => openPreview((coverImage ? 1 : 0) + idx)}
+                  />
                   <span className="ti-order-badge">#{idx + 1}</span>
                   <div className="ti-card-actions">
                     <button onClick={() => openReplacePicker(idx)} title="Edit">
                       <Edit size={14} />
                     </button>
-                    <button onClick={() => setDeleteTarget({ type: "detail", idx })} title="Delete">
+                    <button
+                      onClick={() => setDeleteTarget({ type: "detail", idx })}
+                      title="Delete"
+                    >
                       <Trash2 size={14} />
                     </button>
-                    <button onClick={() => setAsCover(idx)} title="Set as cover">
+                    <button
+                      onClick={() => setAsCover(idx)}
+                      title="Set as cover"
+                    >
                       <Trophy size={14} />
                     </button>
                     <button className="drag" title="Drag to reorder">
@@ -887,36 +1026,77 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
             >
               <p>Drag & drop images here or click to upload</p>
               <small>JPG, PNG, WEBP</small>
-              <button className="ti-primary-btn" onClick={() => addInputRef.current?.click()} disabled={uploading}>
+              <button
+                className="ti-primary-btn"
+                onClick={() => addInputRef.current?.click()}
+                disabled={uploading}
+              >
                 Add Images
               </button>
-      </div>
+            </div>
           </section>
         </div>
 
         <div className="ti-modal-footer">
-          <div className="ti-counter">{(coverImage ? 1 : 0) + detailImages.length} images total</div>
+          <div className="ti-counter">
+            {(coverImage ? 1 : 0) + detailImages.length} images total
+          </div>
           <div className="ti-footer-actions">
-            <button className="ti-outline-btn" onClick={onClose}>Cancel</button>
-            <button className="ti-primary-btn" onClick={handleSave} disabled={!hasChanges || saving || uploading}>
+            <button className="ti-outline-btn" onClick={onClose}>
+              Cancel
+            </button>
+            <button
+              className="ti-primary-btn"
+              onClick={handleSave}
+              disabled={!hasChanges || saving || uploading}
+            >
               {saving ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </div>
 
-        <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleSetCoverFile} />
-        <input ref={addInputRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={(e) => handleAddFiles(e.target.files)} />
-        <input ref={replaceInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleReplaceDetailImage} />
+        <input
+          ref={coverInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={handleSetCoverFile}
+        />
+        <input
+          ref={addInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: "none" }}
+          onChange={(e) => handleAddFiles(e.target.files)}
+        />
+        <input
+          ref={replaceInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={handleReplaceDetailImage}
+        />
       </div>
 
       {deleteTarget && (
-        <div className="ti-confirm-overlay" onClick={() => setDeleteTarget(null)}>
+        <div
+          className="ti-confirm-overlay"
+          onClick={() => setDeleteTarget(null)}
+        >
           <div className="ti-confirm" onClick={(e) => e.stopPropagation()}>
             <h4>Delete image?</h4>
             <p>Image will be removed from this tournament when you save.</p>
             <div className="ti-confirm-actions">
-              <button className="ti-outline-btn" onClick={() => setDeleteTarget(null)}>Cancel</button>
-              <button className="ti-danger-btn" onClick={confirmDelete}>Delete</button>
+              <button
+                className="ti-outline-btn"
+                onClick={() => setDeleteTarget(null)}
+              >
+                Cancel
+              </button>
+              <button className="ti-danger-btn" onClick={confirmDelete}>
+                Delete
+              </button>
             </div>
           </div>
         </div>
@@ -938,11 +1118,27 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
             touchStartX.current = null;
           }}
         >
-          <button className="ti-preview-nav left" onClick={(e) => { e.stopPropagation(); prevPreview(); }}>
+          <button
+            className="ti-preview-nav left"
+            onClick={(e) => {
+              e.stopPropagation();
+              prevPreview();
+            }}
+          >
             <ChevronLeft size={24} />
           </button>
-          <img src={resolveMediaUrl(allPreviewImages[previewIdx])} alt="preview" className="ti-preview-image" />
-          <button className="ti-preview-nav right" onClick={(e) => { e.stopPropagation(); nextPreview(); }}>
+          <img
+            src={resolveMediaUrl(allPreviewImages[previewIdx])}
+            alt="preview"
+            className="ti-preview-image"
+          />
+          <button
+            className="ti-preview-nav right"
+            onClick={(e) => {
+              e.stopPropagation();
+              nextPreview();
+            }}
+          >
             <ChevronRight size={24} />
           </button>
         </div>
@@ -984,10 +1180,16 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
   }, [tournamentId]);
 
   const fullName = (r) =>
-    [r.firstName, r.lastName].filter(Boolean).join(" ") || r.titleAtRegistration || "-";
+    [r.firstName, r.lastName].filter(Boolean).join(" ") ||
+    r.titleAtRegistration ||
+    "-";
   const filteredRows = rows.filter((r) => {
-    const matchesEmail = (r.email || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesName = fullName(r).toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesEmail = (r.email || "")
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    const matchesName = fullName(r)
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
     const rank = Number(r.rank ?? 0);
     const matchesRank = (() => {
       if (!rankFilter) return true;
@@ -1032,16 +1234,14 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
           paymentExpiresAt: row.paymentExpiresAt || null,
           notes: row.notes || null,
         };
-        const res = await axios.put(
-          `${API_BASE}/api/participants`,
-          payload,
-          {
-            params: { participantId: row.participantId },
-            withCredentials: true,
-          },
-        );
+        const res = await axios.put(`${API_BASE}/api/participants`, payload, {
+          params: { participantId: row.participantId },
+          withCredentials: true,
+        });
         if (!res?.data?.success) {
-          throw new Error(res?.data?.message || "Cập nhật trạng thái thất bại.");
+          throw new Error(
+            res?.data?.message || "Cập nhật trạng thái thất bại.",
+          );
         }
       }
 
@@ -1051,7 +1251,11 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
       }
     } catch (err) {
       console.error("Update participant status failed:", err);
-      window.alert(err?.response?.data?.message || err.message || "Không thể cập nhật trạng thái người chơi.");
+      window.alert(
+        err?.response?.data?.message ||
+          err.message ||
+          "Không thể cập nhật trạng thái người chơi.",
+      );
     } finally {
       setActionLoadingId(null);
     }
@@ -1118,7 +1322,7 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
               style={{ fontWeight: 700, color: "#0f172a", opacity: 1 }}
             >
               Xóa lọc
-          </button>
+            </button>
           </div>
         </div>
       </div>
@@ -1188,14 +1392,22 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
                     })()}
                   </td>
                   <td className="text-right">
-                    <div style={{ display: "inline-flex", gap: 8, justifyContent: "flex-end" }}>
-                      <span style={{ marginRight: 8 }}>
-                        {row.notes || "—"}
-                      </span>
+                    <div
+                      style={{
+                        display: "inline-flex",
+                        gap: 8,
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <span style={{ marginRight: 8 }}>{row.notes || "—"}</span>
                       {(() => {
-                        const norm = (row.status || "").toString().trim().toLowerCase();
+                        const norm = (row.status || "")
+                          .toString()
+                          .trim()
+                          .toLowerCase();
                         const isDisqualified = norm === "disqualified";
-                        const loadingThis = actionLoadingId === row.participantId;
+                        const loadingThis =
+                          actionLoadingId === row.participantId;
                         if (isDisqualified) {
                           return (
                             <button
@@ -1213,7 +1425,9 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
                             type="button"
                             className="tdp-register-btn"
                             disabled={loadingThis}
-                            onClick={() => handleUpdateStatus(row, "Disqualified")}
+                            onClick={() =>
+                              handleUpdateStatus(row, "Disqualified")
+                            }
                           >
                             {loadingThis ? "Đang ban..." : "Ban khỏi giải"}
                           </button>
@@ -1231,9 +1445,18 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
   );
 };
 
-const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tournamentStartDate, tournamentEndDate }) => {
+const BracketTab = ({
+  tournamentId,
+  tournamentFormat,
+  approvedPlayers = [],
+  tournamentStartDate,
+  tournamentEndDate,
+}) => {
   const normalizeFormat = (value) => {
-    const raw = String(value || "").trim().toLowerCase().replace(/[\s_]/g, "");
+    const raw = String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_]/g, "");
     if (raw === "roundrobin") return "RoundRobin";
     if (raw === "knockout") return "KnockOut";
     if (raw === "hybrid") return "Hybrid";
@@ -1264,12 +1487,16 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
     const fmt = (d) => {
       if (!d) return "";
       const x = new Date(d);
-      return Number.isNaN(x.getTime()) ? "" : x.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+      return Number.isNaN(x.getTime())
+        ? ""
+        : x.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
     };
     const start = fmt(tournamentStartDate);
     const end = fmt(tournamentEndDate);
-    if (!start && !end) return "Định dạng: dd/mm/yyyy HH:mm. Nhập thời gian bắt đầu ván đấu.";
-    if (start && end) return `Định dạng: dd/mm/yyyy HH:mm. Gợi ý: nhập trong khoảng ${start} - ${end}`;
+    if (!start && !end)
+      return "Định dạng: dd/mm/yyyy HH:mm. Nhập thời gian bắt đầu ván đấu.";
+    if (start && end)
+      return `Định dạng: dd/mm/yyyy HH:mm. Gợi ý: nhập trong khoảng ${start} - ${end}`;
     return `Định dạng: dd/mm/yyyy HH:mm. ${start ? `Từ ${start}` : ""}${end ? ` đến ${end}` : ""}`;
   }, [tournamentStartDate, tournamentEndDate]);
 
@@ -1324,7 +1551,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
         ]);
         if (!mounted) return;
         const list = Array.isArray(res.data) ? res.data : [];
-        const rawStep = stateRes?.data?.currentStep || stateRes?.data?.step || "BRACKET";
+        const rawStep =
+          stateRes?.data?.currentStep || stateRes?.data?.step || "BRACKET";
         const step = String(rawStep).toUpperCase();
         setServerSetupStep(step);
         const statuses = stateRes?.data?.stepStatuses || {};
@@ -1332,7 +1560,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
         if (step === "BRACKET") setLaneStep("structure");
         else if (step === "PLAYERS") setLaneStep("players");
         else if (step === "REFEREES") setLaneStep("referee");
-        else if (step === "SCHEDULE" || step === "COMPLETED") setLaneStep("schedule");
+        else if (step === "SCHEDULE" || step === "COMPLETED")
+          setLaneStep("schedule");
         // Dùng effectiveFormat cho stage fallback để KO không bị gán nhầm RoundRobin khi load
         const stageFallback = effectiveFormat || "RoundRobin";
         setRows(
@@ -1369,8 +1598,12 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
   useEffect(() => {
     if (!tournamentId || tournamentId === "undefined") return;
     axios
-      .get(`${API_BASE}/api/tournaments?action=referees&id=${tournamentId}`, { withCredentials: true })
-      .then((res) => setTournamentReferees(Array.isArray(res?.data) ? res.data : []))
+      .get(`${API_BASE}/api/tournaments?action=referees&id=${tournamentId}`, {
+        withCredentials: true,
+      })
+      .then((res) =>
+        setTournamentReferees(Array.isArray(res?.data) ? res.data : []),
+      )
       .catch(() => setTournamentReferees([]));
   }, [tournamentId]);
 
@@ -1439,7 +1672,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       const roundIndex = Number(row.roundIndex || 1);
       const boardNumber = Number(row.boardNumber || 1);
       if (!stageOptions.includes(stage)) {
-        errors.push(`Dòng ${idx + 1}: Stage không hợp lệ với thể thức hiện tại.`);
+        errors.push(
+          `Dòng ${idx + 1}: Stage không hợp lệ với thể thức hiện tại.`,
+        );
       }
       if (roundIndex <= 0) {
         errors.push(`Dòng ${idx + 1}: Round index phải >= 1.`);
@@ -1482,13 +1717,19 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       const roundIndex = Number(row.roundIndex || 1);
 
       if (!stageOptions.includes(stage)) {
-        errors.push(`Dòng ${idx + 1}: Stage không hợp lệ với thể thức hiện tại.`);
+        errors.push(
+          `Dòng ${idx + 1}: Stage không hợp lệ với thể thức hiện tại.`,
+        );
       }
       const hasWhite = Number.isInteger(white) && white > 0;
       const hasBlack = Number.isInteger(black) && black > 0;
 
       // Hybrid: ở bước Add Players, toàn bộ Knock Out được phép để trống (sẽ lấy top N từ Round Robin sau).
-      if (effectiveFormat === "Hybrid" && stage === "KnockOut" && laneStep === "players") {
+      if (
+        effectiveFormat === "Hybrid" &&
+        stage === "KnockOut" &&
+        laneStep === "players"
+      ) {
         if (hasWhite || hasBlack) {
           errors.push(
             `Dòng ${idx + 1}: Hybrid - Ở bước Add Players, không gán người chơi cho Knock Out. KO sẽ nhận top N từ Round Robin sau khi kết thúc.`,
@@ -1504,20 +1745,36 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       } else if (stage === "KnockOut") {
         // Thuần KnockOut: có thể để trống (round sau chưa biết người thắng) hoặc điền đủ. Hybrid đã xử lý ở trên.
         if ((hasWhite && !hasBlack) || (!hasWhite && hasBlack)) {
-          errors.push(`Dòng ${idx + 1}: Knock Out phải để trống cả 2 hoặc điền đủ cả 2 người chơi.`);
+          errors.push(
+            `Dòng ${idx + 1}: Knock Out phải để trống cả 2 hoặc điền đủ cả 2 người chơi.`,
+          );
           return;
         }
         // Round 1 KO bắt buộc đủ 2 người chỉ với giải thuần KnockOut; Hybrid không bắt buộc điền KO.
-        if (!hasWhite && !hasBlack && roundIndex <= 1 && effectiveFormat !== "Hybrid") {
-          errors.push(`Dòng ${idx + 1}: Round 1 của Knock Out cần có đủ 2 người chơi.`);
+        if (
+          !hasWhite &&
+          !hasBlack &&
+          roundIndex <= 1 &&
+          effectiveFormat !== "Hybrid"
+        ) {
+          errors.push(
+            `Dòng ${idx + 1}: Round 1 của Knock Out cần có đủ 2 người chơi.`,
+          );
           return;
         }
       }
       if (hasWhite && hasBlack && white === black) {
-        errors.push(`Dòng ${idx + 1}: Một trận không thể để cùng 1 người chơi ở 2 bên.`);
+        errors.push(
+          `Dòng ${idx + 1}: Một trận không thể để cùng 1 người chơi ở 2 bên.`,
+        );
       }
-      if ((hasWhite && !playerSet.has(white)) || (hasBlack && !playerSet.has(black))) {
-        errors.push(`Dòng ${idx + 1}: Có người chơi không thuộc danh sách đã duyệt.`);
+      if (
+        (hasWhite && !playerSet.has(white)) ||
+        (hasBlack && !playerSet.has(black))
+      ) {
+        errors.push(
+          `Dòng ${idx + 1}: Có người chơi không thuộc danh sách đã duyệt.`,
+        );
       }
       if (roundIndex <= 0) {
         errors.push(`Dòng ${idx + 1}: Round index phải >= 1.`);
@@ -1560,7 +1817,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
 
     if (effectiveFormat === "Hybrid") {
       if (!hasRr || !hasKo) {
-        errors.push("Hybrid bắt buộc có cả 2 stage: Round Robin trước, rồi Knock Out.");
+        errors.push(
+          "Hybrid bắt buộc có cả 2 stage: Round Robin trước, rồi Knock Out.",
+        );
       } else {
         const firstKo = rows.findIndex((r) => r.stage === "KnockOut");
         const lastRr = rows
@@ -1586,9 +1845,13 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
   };
 
   const labelForReferee = (id) => {
-    const r = tournamentReferees.find((x) => (x.refereeId ?? x.referee_id) === Number(id));
+    const r = tournamentReferees.find(
+      (x) => (x.refereeId ?? x.referee_id) === Number(id),
+    );
     if (!r) return "-";
-    const name = (r.fullName ?? [r.firstName, r.lastName].filter(Boolean).join(" ")) || r.email;
+    const name =
+      (r.fullName ?? [r.firstName, r.lastName].filter(Boolean).join(" ")) ||
+      r.email;
     return name || `Referee #${id}`;
   };
 
@@ -1632,7 +1895,12 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
   };
 
   const handleRowFieldChange = (id, field, value) => {
-    const structureFields = new Set(["stage", "roundName", "roundIndex", "boardNumber"]);
+    const structureFields = new Set([
+      "stage",
+      "roundName",
+      "roundIndex",
+      "boardNumber",
+    ]);
     setRowErrors((prev) => {
       if (!prev[id]) return prev;
       const copy = { ...prev };
@@ -1669,7 +1937,10 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
   };
 
   const addInlineMatch = ({ stage, roundIndex }) => {
-    setRows((prev) => [...prev, makeRow({ stage, roundIndex, boardNumber: 1 })]);
+    setRows((prev) => [
+      ...prev,
+      makeRow({ stage, roundIndex, boardNumber: 1 }),
+    ]);
     setServerBanner(null);
     setRowErrors({});
   };
@@ -1680,14 +1951,18 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
 
   const addInlineRound = (stage) => {
     const targetRows = rows.filter((r) => r.stage === stage);
-    const roundIndices = new Set(targetRows.map((r) => Number(r.roundIndex || 1)));
-    const maxForStage = stage === "RoundRobin" ? MAX_ROUND_ROBIN_ROUNDS : MAX_KNOCKOUT_ROUNDS;
+    const roundIndices = new Set(
+      targetRows.map((r) => Number(r.roundIndex || 1)),
+    );
+    const maxForStage =
+      stage === "RoundRobin" ? MAX_ROUND_ROBIN_ROUNDS : MAX_KNOCKOUT_ROUNDS;
     if (roundIndices.size >= maxForStage) {
       setServerBanner({
         type: "error",
-        text: stage === "RoundRobin"
-          ? `Round Robin chỉ được tối đa ${MAX_ROUND_ROBIN_ROUNDS} round.`
-          : `Knock Out chỉ được tối đa ${MAX_KNOCKOUT_ROUNDS} round.`,
+        text:
+          stage === "RoundRobin"
+            ? `Round Robin chỉ được tối đa ${MAX_ROUND_ROBIN_ROUNDS} round.`
+            : `Knock Out chỉ được tối đa ${MAX_KNOCKOUT_ROUNDS} round.`,
       });
       return;
     }
@@ -1821,15 +2096,22 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       const rr = createRoundRobinRows(seededPlayers, "RoundRobin");
 
       const ko = createKnockoutBracketRows(seededPlayers, "KnockOut");
-      const koRounds = [...new Set(ko.generated.map((r) => r.roundIndex))].sort((a, b) => a - b).slice(0, MAX_KNOCKOUT_ROUNDS);
-      const koFiltered = ko.generated.filter((r) => koRounds.includes(r.roundIndex));
+      const koRounds = [...new Set(ko.generated.map((r) => r.roundIndex))]
+        .sort((a, b) => a - b)
+        .slice(0, MAX_KNOCKOUT_ROUNDS);
+      const koFiltered = ko.generated.filter((r) =>
+        koRounds.includes(r.roundIndex),
+      );
       const koRows = koFiltered.map((r) => ({
         ...r,
         whitePlayerId: "",
         blackPlayerId: "",
       }));
       generatedRows = [...rr, ...koRows];
-      warnings.push(...ko.warnings, "Hybrid: Knock Out bracket chỉ dựng structure, chưa gán người chơi. Hệ thống sẽ lấy top N từ Round Robin sau khi kết thúc.");
+      warnings.push(
+        ...ko.warnings,
+        "Hybrid: Knock Out bracket chỉ dựng structure, chưa gán người chơi. Hệ thống sẽ lấy top N từ Round Robin sau khi kết thúc.",
+      );
     }
 
     if (generatedRows.length === 0) {
@@ -1870,7 +2152,13 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
           {},
           { withCredentials: true },
         );
-        setServerBanner({ type: "success", text: finalizeRes?.data?.message || res?.data?.message || "Lưu và công bố thành công." });
+        setServerBanner({
+          type: "success",
+          text:
+            finalizeRes?.data?.message ||
+            res?.data?.message ||
+            "Lưu và công bố thành công.",
+        });
         setServerSetupStep("COMPLETED");
         setRowErrors({});
       } catch (err) {
@@ -1900,7 +2188,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       setupStep: "SCHEDULE",
       matches: rows.map((r) => ({
         stage: r.stage || effectiveFormat,
-        roundName: r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
+        roundName:
+          r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
         roundIndex: Math.max(1, Number(r.roundIndex || 1)),
         boardNumber: Math.max(1, Number(r.boardNumber || 1)),
         whitePlayerId: r.whitePlayerId ? Number(r.whitePlayerId) : null,
@@ -1915,7 +2204,10 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
         payload,
         { withCredentials: true },
       );
-      setServerBanner({ type: "success", text: res?.data?.message || "Lưu setup thành công." });
+      setServerBanner({
+        type: "success",
+        text: res?.data?.message || "Lưu setup thành công.",
+      });
       setRowErrors({});
     } catch (err) {
       setServerBanner({
@@ -1956,12 +2248,16 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       if (Number.isInteger(b) && b > 0) taken.add(b);
     });
 
-    const oppositeId = Number(slot === "white" ? match.blackPlayerId : match.whitePlayerId);
+    const oppositeId = Number(
+      slot === "white" ? match.blackPlayerId : match.whitePlayerId,
+    );
     if (Number.isInteger(oppositeId) && oppositeId > 0) {
       taken.add(oppositeId);
     }
 
-    const currentId = Number(slot === "white" ? match.whitePlayerId : match.blackPlayerId);
+    const currentId = Number(
+      slot === "white" ? match.whitePlayerId : match.blackPlayerId,
+    );
     return availablePlayers.filter(
       (p) => p.userId === currentId || !taken.has(p.userId),
     );
@@ -2001,7 +2297,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       const rrStructureRounds = groupRowsByRound(rrRows);
       rrStructureRounds.forEach((round) => {
         const sourceRound =
-          rrGeneratedByRound[(Math.max(1, round.roundIndex) - 1) % rrGeneratedCount];
+          rrGeneratedByRound[
+            (Math.max(1, round.roundIndex) - 1) % rrGeneratedCount
+          ];
         const sourceMatches = sourceRound?.matches || [];
         round.matches.forEach((match, idx) => {
           const pick = sourceMatches[idx % Math.max(1, sourceMatches.length)];
@@ -2015,7 +2313,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
     }
 
     const koFilledById = {};
-    const koRoundOneRows = koRows.filter((r) => Number(r.roundIndex || 1) === 1);
+    const koRoundOneRows = koRows.filter(
+      (r) => Number(r.roundIndex || 1) === 1,
+    );
     koRoundOneRows.forEach((row, idx) => {
       const white = ids[(idx * 2) % ids.length];
       let black = ids[(idx * 2 + 1) % ids.length];
@@ -2055,14 +2355,21 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       }
       try {
         if (rows.length === 0) {
-          setServerBanner({ type: "error", text: "Chưa có vòng/trận nào. Hãy thêm ít nhất một dòng (Round + Board) trước khi Finalize." });
+          setServerBanner({
+            type: "error",
+            text: "Chưa có vòng/trận nào. Hãy thêm ít nhất một dòng (Round + Board) trước khi Finalize.",
+          });
           return;
         }
         const payload = {
           format: effectiveFormat,
           matches: rows.map((r) => ({
-            stage: effectiveFormat === "KnockOut" ? "KnockOut" : (r.stage || effectiveFormat),
-            roundName: r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
+            stage:
+              effectiveFormat === "KnockOut"
+                ? "KnockOut"
+                : r.stage || effectiveFormat,
+            roundName:
+              r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
             roundIndex: Math.max(1, Number(r.roundIndex || 1)),
             boardNumber: Math.max(1, Number(r.boardNumber || 1)),
             whitePlayerId: r.whitePlayerId ? Number(r.whitePlayerId) : null,
@@ -2083,7 +2390,10 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
         });
         setRowErrors({});
       } catch (err) {
-        const msg = err?.response?.data?.message || err?.message || "Không thể hoàn tất bước Structure.";
+        const msg =
+          err?.response?.data?.message ||
+          err?.message ||
+          "Không thể hoàn tất bước Structure.";
         setServerBanner({
           type: "error",
           text: `${msg} Bạn có thể nhấn vào bước 2 (Gán người chơi), 3 (Lịch) hoặc 4 (Trọng tài) trên thanh tiến trình để chuyển tab.`,
@@ -2103,7 +2413,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
           format: effectiveFormat,
           matches: rows.map((r) => ({
             stage: r.stage || effectiveFormat,
-            roundName: r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
+            roundName:
+              r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
             roundIndex: Math.max(1, Number(r.roundIndex || 1)),
             boardNumber: Math.max(1, Number(r.boardNumber || 1)),
             whitePlayerId: r.whitePlayerId ? Number(r.whitePlayerId) : null,
@@ -2126,7 +2437,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       } catch (err) {
         setServerBanner({
           type: "error",
-          text: err?.response?.data?.message || "Không thể hoàn tất bước Add Players.",
+          text:
+            err?.response?.data?.message ||
+            "Không thể hoàn tất bước Add Players.",
         });
       }
     }
@@ -2146,13 +2459,27 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
         {},
         { withCredentials: true },
       );
-      const laneFromStep = stepKey === "BRACKET" ? "structure" : stepKey === "PLAYERS" ? "players" : stepKey === "SCHEDULE" ? "schedule" : "referee";
+      const laneFromStep =
+        stepKey === "BRACKET"
+          ? "structure"
+          : stepKey === "PLAYERS"
+            ? "players"
+            : stepKey === "SCHEDULE"
+              ? "schedule"
+              : "referee";
       const [res, stateRes] = await Promise.all([
-        axios.get(`${API_BASE}/api/tournaments?action=schedule&id=${tournamentId}`, { withCredentials: true }),
-        axios.get(`${API_BASE}/api/tournaments?action=setupState&id=${tournamentId}`, { withCredentials: true }),
+        axios.get(
+          `${API_BASE}/api/tournaments?action=schedule&id=${tournamentId}`,
+          { withCredentials: true },
+        ),
+        axios.get(
+          `${API_BASE}/api/tournaments?action=setupState&id=${tournamentId}`,
+          { withCredentials: true },
+        ),
       ]);
       const list = Array.isArray(res.data) ? res.data : [];
-      const rawStep = stateRes?.data?.currentStep || stateRes?.data?.step || "BRACKET";
+      const rawStep =
+        stateRes?.data?.currentStep || stateRes?.data?.step || "BRACKET";
       const step = String(rawStep).toUpperCase();
       setServerSetupStep(step);
       setStepStatuses(stateRes?.data?.stepStatuses || {});
@@ -2172,7 +2499,10 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
           refereeId: m.refereeId ? String(m.refereeId) : "",
         })),
       );
-      setServerBanner({ type: "success", text: "Đã mở khóa bước. Các bước sau cần được finalize lại." });
+      setServerBanner({
+        type: "success",
+        text: "Đã mở khóa bước. Các bước sau cần được finalize lại.",
+      });
     } catch (err) {
       setServerBanner({
         type: "error",
@@ -2237,18 +2567,27 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                 className="tsu-mini-select"
                 value={match.whitePlayerId || ""}
                 onChange={(e) =>
-                  handleRowFieldChange(match.id, "whitePlayerId", e.target.value)
+                  handleRowFieldChange(
+                    match.id,
+                    "whitePlayerId",
+                    e.target.value,
+                  )
                 }
               >
                 <option value="">-- White --</option>
                 {availablePlayers.map((p) => (
-                  <option key={`inline-w-${match.id}-${p.userId}`} value={p.userId}>
+                  <option
+                    key={`inline-w-${match.id}-${p.userId}`}
+                    value={p.userId}
+                  >
                     {labelForPlayer(p.userId)}
                   </option>
                 ))}
               </select>
             ) : (
-              <span className="tsu-readonly-value">{labelForPlayer(match.whitePlayerId)}</span>
+              <span className="tsu-readonly-value">
+                {labelForPlayer(match.whitePlayerId)}
+              </span>
             )}
           </div>
 
@@ -2259,18 +2598,27 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                 className="tsu-mini-select"
                 value={match.blackPlayerId || ""}
                 onChange={(e) =>
-                  handleRowFieldChange(match.id, "blackPlayerId", e.target.value)
+                  handleRowFieldChange(
+                    match.id,
+                    "blackPlayerId",
+                    e.target.value,
+                  )
                 }
               >
                 <option value="">-- Black --</option>
                 {availablePlayers.map((p) => (
-                  <option key={`inline-b-${match.id}-${p.userId}`} value={p.userId}>
+                  <option
+                    key={`inline-b-${match.id}-${p.userId}`}
+                    value={p.userId}
+                  >
                     {labelForPlayer(p.userId)}
                   </option>
                 ))}
               </select>
             ) : (
-              <span className="tsu-readonly-value">{labelForPlayer(match.blackPlayerId)}</span>
+              <span className="tsu-readonly-value">
+                {labelForPlayer(match.blackPlayerId)}
+              </span>
             )}
           </div>
         </>
@@ -2283,7 +2631,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
             type="datetime-local"
             className="tsu-mini-input"
             value={match.startTime || ""}
-            onChange={(e) => handleRowFieldChange(match.id, "startTime", e.target.value)}
+            onChange={(e) =>
+              handleRowFieldChange(match.id, "startTime", e.target.value)
+            }
             title={scheduleInputHint}
           />
         </div>
@@ -2294,7 +2644,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
           <select
             className="tsu-mini-select"
             value={match.refereeId || ""}
-            onChange={(e) => handleRowFieldChange(match.id, "refereeId", e.target.value)}
+            onChange={(e) =>
+              handleRowFieldChange(match.id, "refereeId", e.target.value)
+            }
           >
             <option value="">-- Chọn trọng tài --</option>
             {tournamentReferees.map((r) => {
@@ -2308,7 +2660,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
           </select>
         </div>
       )}
-      {rowErrors[match.id] && <p className="tsu-inline-error">{rowErrors[match.id]}</p>}
+      {rowErrors[match.id] && (
+        <p className="tsu-inline-error">{rowErrors[match.id]}</p>
+      )}
     </div>
   );
 
@@ -2322,7 +2676,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
           {rounds.map((round) => (
             <div key={`rr-${round.roundIndex}`} className="tsu-rr-round-card">
               <div className="tsu-rr-round-head">
-                <strong>{resolveRoundLabel(round.matches, round.roundIndex)}</strong>
+                <strong>
+                  {resolveRoundLabel(round.matches, round.roundIndex)}
+                </strong>
                 <div className="tsu-round-actions">
                   <span>{round.matches.length} trận</span>
                   <button
@@ -2342,9 +2698,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
               <div className="tsu-rr-round-list">
                 {round.matches.map((match) => renderRoundCard(match))}
               </div>
-              </div>
-            ))}
-          </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -2373,18 +2729,21 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                 }}
               >
                 <div className="tsu-ko-column-head">
-                  <strong>{resolveRoundLabel(round.matches, round.roundIndex)}</strong>
+                  <strong>
+                    {resolveRoundLabel(round.matches, round.roundIndex)}
+                  </strong>
                   <span>Round #{round.roundIndex}</span>
-              </div>
+                </div>
                 <div
                   className="tsu-ko-column-list"
                   style={{
-                    "--tsu-ko-level-gap": `${14 * Math.max(
-                      1,
-                      2 ** (Number(round.roundIndex || 1) - 1),
-                    )}px`,
+                    "--tsu-ko-level-gap": `${
+                      14 * Math.max(1, 2 ** (Number(round.roundIndex || 1) - 1))
+                    }px`,
                     "--tsu-ko-level-top": `${Math.round(
-                      22 * (Math.max(1, 2 ** (Number(round.roundIndex || 1) - 1)) - 1),
+                      22 *
+                        (Math.max(1, 2 ** (Number(round.roundIndex || 1) - 1)) -
+                          1),
                     )}px`,
                   }}
                 >
@@ -2430,8 +2789,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                         </div>
                       ) : (
                         <div className="tsu-preview-meta-head">
-                          {match.roundName || `Round ${match.roundIndex}`} - Board{" "}
-                          {match.boardNumber}
+                          {match.roundName || `Round ${match.roundIndex}`} -
+                          Board {match.boardNumber}
                         </div>
                       )}
                       {laneStep !== "structure" && (
@@ -2456,14 +2815,16 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                                 }
                               >
                                 <option value="">-- White --</option>
-                                {getKoPlayersForSelect(match, "white").map((p) => (
-                                  <option
-                                    key={`ko-w-${match.id}-${p.userId}`}
-                                    value={p.userId}
-                                  >
-                                    {labelForPlayer(p.userId)}
-                                  </option>
-                                ))}
+                                {getKoPlayersForSelect(match, "white").map(
+                                  (p) => (
+                                    <option
+                                      key={`ko-w-${match.id}-${p.userId}`}
+                                      value={p.userId}
+                                    >
+                                      {labelForPlayer(p.userId)}
+                                    </option>
+                                  ),
+                                )}
                               </select>
                             ) : (
                               <span className="tsu-readonly-value">
@@ -2473,7 +2834,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                                   : labelForPlayer(match.whitePlayerId)}
                               </span>
                             )}
-          </div>
+                          </div>
                           <div className="tsu-ko-player-row">
                             <span className="tsu-ko-seat">B</span>
                             {laneStep === "players" &&
@@ -2494,14 +2855,16 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                                 }
                               >
                                 <option value="">-- Black --</option>
-                                {getKoPlayersForSelect(match, "black").map((p) => (
-                                  <option
-                                    key={`ko-b-${match.id}-${p.userId}`}
-                                    value={p.userId}
-                                  >
-                                    {labelForPlayer(p.userId)}
-                                  </option>
-                                ))}
+                                {getKoPlayersForSelect(match, "black").map(
+                                  (p) => (
+                                    <option
+                                      key={`ko-b-${match.id}-${p.userId}`}
+                                      value={p.userId}
+                                    >
+                                      {labelForPlayer(p.userId)}
+                                    </option>
+                                  ),
+                                )}
                               </select>
                             ) : (
                               <span className="tsu-readonly-value">
@@ -2522,7 +2885,11 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                             className="tsu-mini-input"
                             value={match.startTime || ""}
                             onChange={(e) =>
-                              handleRowFieldChange(match.id, "startTime", e.target.value)
+                              handleRowFieldChange(
+                                match.id,
+                                "startTime",
+                                e.target.value,
+                              )
                             }
                             title={scheduleInputHint}
                           />
@@ -2535,14 +2902,21 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                             className="tsu-mini-select"
                             value={match.refereeId || ""}
                             onChange={(e) =>
-                              handleRowFieldChange(match.id, "refereeId", e.target.value)
+                              handleRowFieldChange(
+                                match.id,
+                                "refereeId",
+                                e.target.value,
+                              )
                             }
                           >
                             <option value="">-- Chọn trọng tài --</option>
                             {tournamentReferees.map((r) => {
                               const rid = r.refereeId ?? r.referee_id;
                               return (
-                                <option key={`ref-ko-${match.id}-${rid}`} value={rid}>
+                                <option
+                                  key={`ref-ko-${match.id}-${rid}`}
+                                  value={rid}
+                                >
                                   {labelForReferee(rid)}
                                 </option>
                               );
@@ -2551,7 +2925,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                         </div>
                       )}
                       {rowErrors[match.id] && (
-                        <p className="tsu-inline-error">{rowErrors[match.id]}</p>
+                        <p className="tsu-inline-error">
+                          {rowErrors[match.id]}
+                        </p>
                       )}
                     </div>
                   ))}
@@ -2587,10 +2963,16 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
     <div className="tsu-shell tsu-shell-hpv">
       <div className="tsu-top">
         <div>
-          <h3 className="tsu-title-hpv">Setup &amp; Schedule — {effectiveFormat}</h3>
-          <p className="tsu-desc-hpv">Thiết lập cấu trúc giải, gán cặp đấu, lịch và trọng tài.</p>
+          <h3 className="tsu-title-hpv">
+            Setup &amp; Schedule — {effectiveFormat}
+          </h3>
+          <p className="tsu-desc-hpv">
+            Thiết lập cấu trúc giải, gán cặp đấu, lịch và trọng tài.
+          </p>
         </div>
-        <span className="tsu-badge-players">{availablePlayers.length} người chơi đã duyệt</span>
+        <span className="tsu-badge-players">
+          {availablePlayers.length} người chơi đã duyệt
+        </span>
       </div>
 
       {loadingRows ? (
@@ -2600,18 +2982,25 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
           <div className="tsu-stepper tsu-stepper-hpv">
             {setupSteps.map(({ key, label, step }) => {
               const stepKey =
-                key === "structure" ? "BRACKET" :
-                key === "players" ? "PLAYERS" :
-                key === "schedule" ? "SCHEDULE" :
-                "REFEREES";
+                key === "structure"
+                  ? "BRACKET"
+                  : key === "players"
+                    ? "PLAYERS"
+                    : key === "schedule"
+                      ? "SCHEDULE"
+                      : "REFEREES";
               const finalized = stepStatuses?.[stepKey] === "FINALIZED";
               const prevStep = step - 1;
               const prevKey =
-                prevStep === 1 ? "BRACKET" :
-                prevStep === 2 ? "PLAYERS" :
-                prevStep === 3 ? "SCHEDULE" :
-                null;
-              const prevOk = !prevKey || stepStatuses?.[prevKey] === "FINALIZED";
+                prevStep === 1
+                  ? "BRACKET"
+                  : prevStep === 2
+                    ? "PLAYERS"
+                    : prevStep === 3
+                      ? "SCHEDULE"
+                      : null;
+              const prevOk =
+                !prevKey || stepStatuses?.[prevKey] === "FINALIZED";
               // Bước structure khi đã finalize thì không cho chuyển về (chỉ mở khóa mới chỉnh được)
               const isStructureLocked = key === "structure" && finalized;
               const disabled = !prevOk || isStructureLocked;
@@ -2639,7 +3028,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                 >
                   <span className="tsu-step-num">{step}</span>
                   <span className="tsu-step-label">{label}</span>
-                  {finalized && <span className="tsu-step-label"> (Finalized)</span>}
+                  {finalized && (
+                    <span className="tsu-step-label"> (Finalized)</span>
+                  )}
                   {isStructureLocked && (
                     <button
                       type="button"
@@ -2658,82 +3049,99 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
               );
             })}
           </div>
-          <p className="tsu-stepper-hint">Nhấn vào từng bước trên để chuyển tab (Cấu trúc → Gán người chơi → Lịch → Trọng tài).</p>
+          <p className="tsu-stepper-hint">
+            Nhấn vào từng bước trên để chuyển tab (Cấu trúc → Gán người chơi →
+            Lịch → Trọng tài).
+          </p>
 
           <div className="tsu-actions">
             {/*
               Finalize buttons chỉ hiển thị khi bước tương ứng đang ở trạng thái DRAFT.
               Nếu đã FINALIZED thì phải dùng nút Unlock trước, sau đó mới Finalize lại.
             */}
-            {laneStep === "structure" && stepStatuses?.BRACKET !== "FINALIZED" && (
-              <button
-                className="tsu-btn tsu-btn-primary tsu-btn-hpv-primary"
-                onClick={runAutoSetup}
-              >
-                Auto Setup
-              </button>
-            )}
+            {laneStep === "structure" &&
+              stepStatuses?.BRACKET !== "FINALIZED" && (
+                <button
+                  className="tsu-btn tsu-btn-primary tsu-btn-hpv-primary"
+                  onClick={runAutoSetup}
+                >
+                  Auto Setup
+                </button>
+              )}
             {laneStep === "players" && (
-              <button className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary" onClick={autoFillPlayersIntoStructure}>
+              <button
+                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
+                onClick={autoFillPlayersIntoStructure}
+              >
                 Auto Add Players
               </button>
             )}
-            {laneStep === "structure" && stepStatuses?.BRACKET !== "FINALIZED" && (
-              <button
-                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                onClick={handleFinalizeCurrentStep}
-              >
-                Finalize Structure
-              </button>
-            )}
-            {laneStep === "players" && stepStatuses?.PLAYERS !== "FINALIZED" && (
-              <button
-                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                onClick={handleFinalizeCurrentStep}
-              >
-                Finalize Players
-              </button>
-            )}
-            {laneStep === "structure" && stepStatuses?.BRACKET === "FINALIZED" && (
-              <button
-                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                onClick={handleUnlockCurrentStep}
-                disabled={unlocking}
-              >
-                {unlocking ? "Đang mở khóa..." : "Unlock Structure"}
-              </button>
-            )}
-            {laneStep === "players" && stepStatuses?.PLAYERS === "FINALIZED" && (
-              <button
-                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                onClick={handleUnlockCurrentStep}
-                disabled={unlocking}
-              >
-                {unlocking ? "Đang mở khóa..." : "Unlock Players"}
-              </button>
-            )}
-            {laneStep === "schedule" && stepStatuses?.SCHEDULE === "FINALIZED" && (
-              <button
-                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                onClick={handleUnlockCurrentStep}
-                disabled={unlocking}
-              >
-                {unlocking ? "Đang mở khóa..." : "Unlock Schedule"}
-              </button>
-            )}
-            {laneStep === "referee" && stepStatuses?.REFEREES === "FINALIZED" && (
-              <button
-                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                onClick={handleUnlockCurrentStep}
-                disabled={unlocking}
-              >
-                {unlocking ? "Đang mở khóa..." : "Unlock Referees"}
-              </button>
-            )}
+            {laneStep === "structure" &&
+              stepStatuses?.BRACKET !== "FINALIZED" && (
+                <button
+                  className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
+                  onClick={handleFinalizeCurrentStep}
+                >
+                  Finalize Structure
+                </button>
+              )}
+            {laneStep === "players" &&
+              stepStatuses?.PLAYERS !== "FINALIZED" && (
+                <button
+                  className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
+                  onClick={handleFinalizeCurrentStep}
+                >
+                  Finalize Players
+                </button>
+              )}
+            {laneStep === "structure" &&
+              stepStatuses?.BRACKET === "FINALIZED" && (
+                <button
+                  className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
+                  onClick={handleUnlockCurrentStep}
+                  disabled={unlocking}
+                >
+                  {unlocking ? "Đang mở khóa..." : "Unlock Structure"}
+                </button>
+              )}
+            {laneStep === "players" &&
+              stepStatuses?.PLAYERS === "FINALIZED" && (
+                <button
+                  className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
+                  onClick={handleUnlockCurrentStep}
+                  disabled={unlocking}
+                >
+                  {unlocking ? "Đang mở khóa..." : "Unlock Players"}
+                </button>
+              )}
+            {laneStep === "schedule" &&
+              stepStatuses?.SCHEDULE === "FINALIZED" && (
+                <button
+                  className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
+                  onClick={handleUnlockCurrentStep}
+                  disabled={unlocking}
+                >
+                  {unlocking ? "Đang mở khóa..." : "Unlock Schedule"}
+                </button>
+              )}
+            {laneStep === "referee" &&
+              stepStatuses?.REFEREES === "FINALIZED" && (
+                <button
+                  className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
+                  onClick={handleUnlockCurrentStep}
+                  disabled={unlocking}
+                >
+                  {unlocking ? "Đang mở khóa..." : "Unlock Referees"}
+                </button>
+              )}
             {laneStep === "schedule" && (
               <button
                 className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                disabled={saving || errors.length > 0 || stepStatuses?.SCHEDULE === "FINALIZED"}
+                disabled={
+                  saving ||
+                  errors.length > 0 ||
+                  stepStatuses?.SCHEDULE === "FINALIZED"
+                }
                 onClick={async () => {
                   if (errors.length > 0) {
                     applyRowErrors(errors);
@@ -2746,11 +3154,16 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                       format: effectiveFormat,
                       matches: rows.map((r) => ({
                         stage: r.stage,
-                        roundName: r.roundName || `Round ${Number(r.roundIndex || 1)}`,
+                        roundName:
+                          r.roundName || `Round ${Number(r.roundIndex || 1)}`,
                         roundIndex: Number(r.roundIndex || 1),
                         boardNumber: Number(r.boardNumber || 1),
-                        whitePlayerId: r.whitePlayerId ? Number(r.whitePlayerId) : null,
-                        blackPlayerId: r.blackPlayerId ? Number(r.blackPlayerId) : null,
+                        whitePlayerId: r.whitePlayerId
+                          ? Number(r.whitePlayerId)
+                          : null,
+                        blackPlayerId: r.blackPlayerId
+                          ? Number(r.blackPlayerId)
+                          : null,
                         startTime: toSqlDateTime(r.startTime),
                       })),
                     };
@@ -2759,14 +3172,25 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                       payload,
                       { withCredentials: true },
                     );
-                    setServerBanner({ type: "success", text: res?.data?.message || "Lưu lịch thành công." });
+                    setServerBanner({
+                      type: "success",
+                      text: res?.data?.message || "Lưu lịch thành công.",
+                    });
                     setServerSetupStep("REFEREES");
                     setLaneStep("referee");
                     const [schedRes, stateRes] = await Promise.all([
-                      axios.get(`${API_BASE}/api/tournaments?action=schedule&id=${tournamentId}`, { withCredentials: true }),
-                      axios.get(`${API_BASE}/api/tournaments?action=setupState&id=${tournamentId}`, { withCredentials: true }),
+                      axios.get(
+                        `${API_BASE}/api/tournaments?action=schedule&id=${tournamentId}`,
+                        { withCredentials: true },
+                      ),
+                      axios.get(
+                        `${API_BASE}/api/tournaments?action=setupState&id=${tournamentId}`,
+                        { withCredentials: true },
+                      ),
                     ]);
-                    const list = Array.isArray(schedRes.data) ? schedRes.data : [];
+                    const list = Array.isArray(schedRes.data)
+                      ? schedRes.data
+                      : [];
                     setRows(
                       list.map((m, idx) => ({
                         id: `sv-${m.matchId || idx + 1}`,
@@ -2784,7 +3208,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                   } catch (err) {
                     setServerBanner({
                       type: "error",
-                      text: err?.response?.data?.message || "Không thể lưu lịch.",
+                      text:
+                        err?.response?.data?.message || "Không thể lưu lịch.",
                     });
                   } finally {
                     setSaving(false);
@@ -2809,127 +3234,127 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
             >
               {saving ? "Đang lưu..." : "Save & Publish"}
             </button>
-        </div>
+          </div>
 
-        <div className="tsu-preview-wrap">
-          {laneStep === "referee" ? (
-            <div className="tsu-referee-step">
-              <div className="tsu-preview-head">
-                <div>
-                  <h3>4. Select Referee</h3>
-                  <p>
-                    Gán trọng tài cho từng ván đấu. Trọng tài phải được thêm vào
-                    giải trước (tab Referees).
-                  </p>
-                  {tournamentReferees.length === 0 && (
-                    <p className="tsu-referee-empty-hint">
-                      Chưa có trọng tài nào. Vào tab Referees để thêm trọng tài
-                      vào giải trước.
+          <div className="tsu-preview-wrap">
+            {laneStep === "referee" ? (
+              <div className="tsu-referee-step">
+                <div className="tsu-preview-head">
+                  <div>
+                    <h3>4. Select Referee</h3>
+                    <p>
+                      Gán trọng tài cho từng ván đấu. Trọng tài phải được thêm
+                      vào giải trước (tab Referees).
                     </p>
-                  )}
-                </div>
-              </div>
-              {effectiveFormat === "RoundRobin" &&
-                renderRoundRobinPreview(
-                  stageRows.nativeRounds,
-                  "Round Robin - Chọn trọng tài",
-                )}
-              {effectiveFormat === "KnockOut" &&
-                renderKnockoutPreview(
-                  stageRows.nativeRounds,
-                  "Knock Out - Chọn trọng tài",
-                )}
-              {effectiveFormat === "Hybrid" && (
-                <>
-                  {renderRoundRobinPreview(
-                    stageRows.roundRobinRounds,
-                    "Stage 1 Round Robin - Chọn trọng tài",
-                  )}
-                  {renderKnockoutPreview(
-                    stageRows.knockOutRounds,
-                    "Stage 2 Knock Out - Chọn trọng tài",
-                  )}
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="tsu-schedule-wrap">
-              <div className="tsu-preview-head">
-                <div>
-                  <h3>Schedule Preview</h3>
-                  <p>
-                    {laneStep === "structure" &&
-                      "Bước Structure: chỉ dựng bracket (round, board, số match)."}
-                    {laneStep === "players" &&
-                      "Bước Add Players: dùng structure đã dựng để gán player vào từng match."}
-                    {laneStep === "schedule" && (
-                      <>
-                        Bước Schedule: thêm thời gian thi đấu cho từng match.
-                        {scheduleInputHint && (
-                          <span className="tsu-schedule-hint-inline">
-                            {" "}
-                            {scheduleInputHint}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </p>
-                </div>
-                {laneStep === "structure" && (
-                  <div className="tsu-preview-head-actions">
-                    {(effectiveFormat === "RoundRobin" ||
-                      effectiveFormat === "Hybrid") && (
-                      <button
-                        className="tsu-round-add-btn"
-                        onClick={() => addInlineRound("RoundRobin")}
-                      >
-                        + Thêm round RoundRobin
-                      </button>
-                    )}
-                    {(effectiveFormat === "KnockOut" ||
-                      effectiveFormat === "Hybrid") && (
-                      <button
-                        className="tsu-round-add-btn"
-                        onClick={() => addInlineRound("KnockOut")}
-                      >
-                        + Thêm round KnockOut
-                      </button>
+                    {tournamentReferees.length === 0 && (
+                      <p className="tsu-referee-empty-hint">
+                        Chưa có trọng tài nào. Vào tab Referees để thêm trọng
+                        tài vào giải trước.
+                      </p>
                     )}
                   </div>
+                </div>
+                {effectiveFormat === "RoundRobin" &&
+                  renderRoundRobinPreview(
+                    stageRows.nativeRounds,
+                    "Round Robin - Chọn trọng tài",
+                  )}
+                {effectiveFormat === "KnockOut" &&
+                  renderKnockoutPreview(
+                    stageRows.nativeRounds,
+                    "Knock Out - Chọn trọng tài",
+                  )}
+                {effectiveFormat === "Hybrid" && (
+                  <>
+                    {renderRoundRobinPreview(
+                      stageRows.roundRobinRounds,
+                      "Stage 1 Round Robin - Chọn trọng tài",
+                    )}
+                    {renderKnockoutPreview(
+                      stageRows.knockOutRounds,
+                      "Stage 2 Knock Out - Chọn trọng tài",
+                    )}
+                  </>
                 )}
               </div>
-
-              {effectiveFormat === "RoundRobin" &&
-                renderRoundRobinPreview(
-                  stageRows.nativeRounds,
-                  "Round Robin rounds",
-                )}
-
-              {effectiveFormat === "KnockOut" &&
-                renderKnockoutPreview(
-                  stageRows.nativeRounds,
-                  "Knock Out bracket",
-                )}
-
-              {effectiveFormat === "Hybrid" && (
-                <>
-                  {renderRoundRobinPreview(
-                    stageRows.roundRobinRounds,
-                    "Stage 1 - Round Robin",
+            ) : (
+              <div className="tsu-schedule-wrap">
+                <div className="tsu-preview-head">
+                  <div>
+                    <h3>Schedule Preview</h3>
+                    <p>
+                      {laneStep === "structure" &&
+                        "Bước Structure: chỉ dựng bracket (round, board, số match)."}
+                      {laneStep === "players" &&
+                        "Bước Add Players: dùng structure đã dựng để gán player vào từng match."}
+                      {laneStep === "schedule" && (
+                        <>
+                          Bước Schedule: thêm thời gian thi đấu cho từng match.
+                          {scheduleInputHint && (
+                            <span className="tsu-schedule-hint-inline">
+                              {" "}
+                              {scheduleInputHint}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  {laneStep === "structure" && (
+                    <div className="tsu-preview-head-actions">
+                      {(effectiveFormat === "RoundRobin" ||
+                        effectiveFormat === "Hybrid") && (
+                        <button
+                          className="tsu-round-add-btn"
+                          onClick={() => addInlineRound("RoundRobin")}
+                        >
+                          + Thêm round RoundRobin
+                        </button>
+                      )}
+                      {(effectiveFormat === "KnockOut" ||
+                        effectiveFormat === "Hybrid") && (
+                        <button
+                          className="tsu-round-add-btn"
+                          onClick={() => addInlineRound("KnockOut")}
+                        >
+                          + Thêm round KnockOut
+                        </button>
+                      )}
+                    </div>
                   )}
-                  {renderKnockoutPreview(
-                    stageRows.knockOutRounds,
-                    "Stage 2 - Knock Out bracket",
+                </div>
+
+                {effectiveFormat === "RoundRobin" &&
+                  renderRoundRobinPreview(
+                    stageRows.nativeRounds,
+                    "Round Robin rounds",
                   )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </>
-    )}
-  </div>
-);
+
+                {effectiveFormat === "KnockOut" &&
+                  renderKnockoutPreview(
+                    stageRows.nativeRounds,
+                    "Knock Out bracket",
+                  )}
+
+                {effectiveFormat === "Hybrid" && (
+                  <>
+                    {renderRoundRobinPreview(
+                      stageRows.roundRobinRounds,
+                      "Stage 1 - Round Robin",
+                    )}
+                    {renderKnockoutPreview(
+                      stageRows.knockOutRounds,
+                      "Stage 2 - Knock Out bracket",
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
 };
 
 const RefereeTab = ({ tournamentId }) => {
@@ -2957,7 +3382,9 @@ const RefereeTab = ({ tournamentId }) => {
 
   // Tính năng mời trọng tài qua email hiện tạm thời tắt – các handler chỉ hiển thị thông báo.
   const handleInviteByEmail = () => {
-    alert("Tính năng mời trọng tài qua email hiện không được sử dụng. Hãy chọn trọng tài trong danh sách để gán trực tiếp.");
+    alert(
+      "Tính năng mời trọng tài qua email hiện không được sử dụng. Hãy chọn trọng tài trong danh sách để gán trực tiếp.",
+    );
   };
 
   const handleReplaceInvite = () => {
@@ -2972,10 +3399,17 @@ const RefereeTab = ({ tournamentId }) => {
     setLoading(true);
     try {
       const [assignedRes, allRes] = await Promise.all([
-        axios.get(`${API_BASE}/api/tournaments?action=referees&id=${tournamentId}`, { withCredentials: true }),
-        axios.get(`${API_BASE}/api/tournaments?action=allReferees`, { withCredentials: true }),
+        axios.get(
+          `${API_BASE}/api/tournaments?action=referees&id=${tournamentId}`,
+          { withCredentials: true },
+        ),
+        axios.get(`${API_BASE}/api/tournaments?action=allReferees`, {
+          withCredentials: true,
+        }),
       ]);
-      setAssignedReferees(Array.isArray(assignedRes?.data) ? assignedRes.data : []);
+      setAssignedReferees(
+        Array.isArray(assignedRes?.data) ? assignedRes.data : [],
+      );
       setAllReferees(Array.isArray(allRes?.data) ? allRes.data : []);
     } catch (err) {
       console.error("Load referees error:", err);
@@ -3008,7 +3442,7 @@ const RefereeTab = ({ tournamentId }) => {
       const res = await axios.post(
         `${API_BASE}/api/tournaments?action=inviteReferee&id=${tournamentId}`,
         payload,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       const message =
         res?.data?.message ||
@@ -3025,11 +3459,15 @@ const RefereeTab = ({ tournamentId }) => {
   };
 
   const handleRemove = async (refereeId) => {
-    if (!tournamentId || !confirm("Bạn có chắc muốn gỡ trọng tài này khỏi giải?")) return;
+    if (
+      !tournamentId ||
+      !confirm("Bạn có chắc muốn gỡ trọng tài này khỏi giải?")
+    )
+      return;
     try {
       await axios.delete(
         `${API_BASE}/api/tournaments?action=removeReferee&id=${tournamentId}&refereeId=${refereeId}`,
-        { withCredentials: true }
+        { withCredentials: true },
       );
       await fetchReferees();
     } catch (err) {
@@ -3039,7 +3477,12 @@ const RefereeTab = ({ tournamentId }) => {
 
   const handleCreateReferee = async () => {
     const { firstName, lastName, email, phoneNumber } = createForm;
-    if (!firstName?.trim() || !lastName?.trim() || !email?.trim() || !phoneNumber?.trim()) {
+    if (
+      !firstName?.trim() ||
+      !lastName?.trim() ||
+      !email?.trim() ||
+      !phoneNumber?.trim()
+    ) {
       alert("Vui lòng điền đầy đủ Họ, Tên, Email và Số điện thoại.");
       return;
     }
@@ -3054,13 +3497,25 @@ const RefereeTab = ({ tournamentId }) => {
           phoneNumber: phoneNumber.trim(),
           address: (createForm.address || "").trim() || null,
         },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       const created = res?.data?.referee;
       setShowCreateModal(false);
-      setCreateForm({ firstName: "", lastName: "", email: "", phoneNumber: "", address: "" });
+      setCreateForm({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phoneNumber: "",
+        address: "",
+      });
       await fetchReferees();
-      if (created?.email && tournamentId && confirm("Tạo trọng tài thành công. Bạn có muốn gửi lời mời tham gia giải này không?")) {
+      if (
+        created?.email &&
+        tournamentId &&
+        confirm(
+          "Tạo trọng tài thành công. Bạn có muốn gửi lời mời tham gia giải này không?",
+        )
+      ) {
         try {
           const invitePayload = {
             email: String(created.email).trim(),
@@ -3069,11 +3524,14 @@ const RefereeTab = ({ tournamentId }) => {
           const inviteRes = await axios.post(
             `${API_BASE}/api/tournaments?action=inviteReferee&id=${tournamentId}`,
             invitePayload,
-            { withCredentials: true }
+            { withCredentials: true },
           );
           alert(inviteRes?.data?.message || "Đã gửi lời mời cho trọng tài.");
         } catch (inviteErr) {
-          alert(inviteErr?.response?.data?.message || "Gửi lời mời trọng tài thất bại.");
+          alert(
+            inviteErr?.response?.data?.message ||
+              "Gửi lời mời trọng tài thất bại.",
+          );
         }
       }
     } catch (err) {
@@ -3083,14 +3541,20 @@ const RefereeTab = ({ tournamentId }) => {
     }
   };
 
-
   const assignedIds = new Set(assignedReferees.map((r) => r.refereeId));
-  const availableToAssign = allReferees.filter((r) => !assignedIds.has(r.refereeId));
+  const availableToAssign = allReferees.filter(
+    (r) => !assignedIds.has(r.refereeId),
+  );
 
   const resolveAvatar = (avatar) => {
     if (!avatar) return "";
     const raw = String(avatar).trim();
-    if (raw.startsWith("http") || raw.startsWith("data:") || raw.startsWith("blob:")) return raw;
+    if (
+      raw.startsWith("http") ||
+      raw.startsWith("data:") ||
+      raw.startsWith("blob:")
+    )
+      return raw;
     if (raw.startsWith("/")) return `${API_BASE}${raw}`;
     return `${API_BASE}/${raw}`;
   };
@@ -3102,7 +3566,9 @@ const RefereeTab = ({ tournamentId }) => {
       </div>
 
       {loading ? (
-        <div className="td-referee-loading">Đang tải danh sách trọng tài...</div>
+        <div className="td-referee-loading">
+          Đang tải danh sách trọng tài...
+        </div>
       ) : (
         <div className="td-referee-grid">
           {assignedReferees.map((r) => (
@@ -3114,7 +3580,7 @@ const RefereeTab = ({ tournamentId }) => {
                       <img src={resolveAvatar(r.avatar)} alt="" />
                     ) : (
                       <div className="referee-avatar-placeholder">
-                        {(r.firstName?.[0] || r.lastName?.[0] || "?")}
+                        {r.firstName?.[0] || r.lastName?.[0] || "?"}
                       </div>
                     )}
                     <span className={`status-dot active`} />
@@ -3131,9 +3597,13 @@ const RefereeTab = ({ tournamentId }) => {
                     <Trash2 size={18} />
                   </button>
                 </div>
-                <h4 className="referee-name">{[r.firstName, r.lastName].filter(Boolean).join(" ") || "—"}</h4>
+                <h4 className="referee-name">
+                  {[r.firstName, r.lastName].filter(Boolean).join(" ") || "—"}
+                </h4>
                 <p className="referee-email">{r.email || "—"}</p>
-                <span className="referee-role-badge">{r.refereeRole || "Assistant"}</span>
+                <span className="referee-role-badge">
+                  {r.refereeRole || "Assistant"}
+                </span>
               </div>
             </div>
           ))}
@@ -3156,7 +3626,13 @@ const RefereeTab = ({ tournamentId }) => {
           <div
             className="td-referee-add td-referee-create"
             onClick={() => {
-              setCreateForm({ firstName: "", lastName: "", email: "", phoneNumber: "", address: "" });
+              setCreateForm({
+                firstName: "",
+                lastName: "",
+                email: "",
+                phoneNumber: "",
+                address: "",
+              });
               setShowCreateModal(true);
             }}
           >
@@ -3170,16 +3646,23 @@ const RefereeTab = ({ tournamentId }) => {
       )}
 
       {showAssignModal && (
-        <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => setShowAssignModal(false)}
+        >
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>Mời trọng tài vào giải</h3>
             <p className="td-modal-desc">
-              Chọn một trọng tài trong hệ thống và gửi lời mời. Trọng tài chỉ được gán vào giải sau khi họ chấp nhận lời mời.
+              Chọn một trọng tài trong hệ thống và gửi lời mời. Trọng tài chỉ
+              được gán vào giải sau khi họ chấp nhận lời mời.
             </p>
             <div className="td-modal-body">
               <div className="td-referee-field">
                 <label>Vai trò</label>
-                <select value={assignRole} onChange={(e) => setAssignRole(e.target.value)}>
+                <select
+                  value={assignRole}
+                  onChange={(e) => setAssignRole(e.target.value)}
+                >
                   <option value="Chief">Chief</option>
                   <option value="Assistant">Assistant</option>
                 </select>
@@ -3196,14 +3679,19 @@ const RefereeTab = ({ tournamentId }) => {
                   <option value="">Chọn trọng tài</option>
                   {availableToAssign.map((r) => (
                     <option key={r.refereeId} value={r.refereeId}>
-                      {[r.firstName, r.lastName].filter(Boolean).join(" ") || "—"} - {r.email}
+                      {[r.firstName, r.lastName].filter(Boolean).join(" ") ||
+                        "—"}{" "}
+                      - {r.email}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
             <div className="modal-actions">
-              <button className="btn-cancel ui-btn ui-btn-secondary" onClick={() => setShowAssignModal(false)}>
+              <button
+                className="btn-cancel ui-btn ui-btn-secondary"
+                onClick={() => setShowAssignModal(false)}
+              >
                 Hủy
               </button>
               <button
@@ -3219,46 +3707,76 @@ const RefereeTab = ({ tournamentId }) => {
       )}
 
       {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="modal td-modal-wide" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="modal-overlay"
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div
+            className="modal td-modal-wide"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3>Tạo trọng tài mới</h3>
-            <p className="td-modal-desc">Điền thông tin để tạo tài khoản trọng tài mới trong hệ thống.</p>
+            <p className="td-modal-desc">
+              Điền thông tin để tạo tài khoản trọng tài mới trong hệ thống.
+            </p>
             <div className="td-modal-body">
               <div className="td-referee-form">
                 <div className="td-referee-field">
-                  <label>Họ <span className="req">*</span></label>
+                  <label>
+                    Họ <span className="req">*</span>
+                  </label>
                   <input
                     type="text"
                     placeholder="Nguyễn"
                     value={createForm.firstName}
-                    onChange={(e) => setCreateForm((p) => ({ ...p, firstName: e.target.value }))}
+                    onChange={(e) =>
+                      setCreateForm((p) => ({
+                        ...p,
+                        firstName: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div className="td-referee-field">
-                  <label>Tên <span className="req">*</span></label>
+                  <label>
+                    Tên <span className="req">*</span>
+                  </label>
                   <input
                     type="text"
                     placeholder="Văn A"
                     value={createForm.lastName}
-                    onChange={(e) => setCreateForm((p) => ({ ...p, lastName: e.target.value }))}
+                    onChange={(e) =>
+                      setCreateForm((p) => ({ ...p, lastName: e.target.value }))
+                    }
                   />
                 </div>
                 <div className="td-referee-field">
-                  <label>Email <span className="req">*</span></label>
+                  <label>
+                    Email <span className="req">*</span>
+                  </label>
                   <input
                     type="email"
                     placeholder="referee@example.com"
                     value={createForm.email}
-                    onChange={(e) => setCreateForm((p) => ({ ...p, email: e.target.value }))}
+                    onChange={(e) =>
+                      setCreateForm((p) => ({ ...p, email: e.target.value }))
+                    }
                   />
                 </div>
                 <div className="td-referee-field">
-                  <label>Số điện thoại <span className="req">*</span></label>
+                  <label>
+                    Số điện thoại <span className="req">*</span>
+                  </label>
                   <input
                     type="tel"
                     placeholder="0901234567"
                     value={createForm.phoneNumber}
-                    onChange={(e) => setCreateForm((p) => ({ ...p, phoneNumber: e.target.value }))}
+                    onChange={(e) =>
+                      setCreateForm((p) => ({
+                        ...p,
+                        phoneNumber: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div className="td-referee-field td-referee-field-full">
@@ -3267,13 +3785,18 @@ const RefereeTab = ({ tournamentId }) => {
                     type="text"
                     placeholder="Địa chỉ (không bắt buộc)"
                     value={createForm.address}
-                    onChange={(e) => setCreateForm((p) => ({ ...p, address: e.target.value }))}
+                    onChange={(e) =>
+                      setCreateForm((p) => ({ ...p, address: e.target.value }))
+                    }
                   />
                 </div>
               </div>
             </div>
             <div className="modal-actions">
-              <button className="btn-cancel ui-btn ui-btn-secondary" onClick={() => setShowCreateModal(false)}>
+              <button
+                className="btn-cancel ui-btn ui-btn-secondary"
+                onClick={() => setShowCreateModal(false)}
+              >
                 Hủy
               </button>
               <button
@@ -3289,13 +3812,21 @@ const RefereeTab = ({ tournamentId }) => {
       )}
 
       {showInviteModal && (
-        <div className="modal-overlay" onClick={() => setShowInviteModal(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => setShowInviteModal(false)}
+        >
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>Mời trọng tài qua email</h3>
-            <p className="td-modal-desc">Nhập email để gửi thư mời tham gia giải với vai trò trọng tài. (Pending sau 7 ngày sẽ tự động Expired)</p>
+            <p className="td-modal-desc">
+              Nhập email để gửi thư mời tham gia giải với vai trò trọng tài.
+              (Pending sau 7 ngày sẽ tự động Expired)
+            </p>
             <div className="td-modal-body">
               <div className="td-referee-field">
-                <label>Email <span className="req">*</span></label>
+                <label>
+                  Email <span className="req">*</span>
+                </label>
                 <input
                   type="email"
                   placeholder="referee@example.com"
@@ -3305,14 +3836,20 @@ const RefereeTab = ({ tournamentId }) => {
               </div>
               <div className="td-referee-field">
                 <label>Vai trò</label>
-                <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value)}
+                >
                   <option value="Chief">Chief</option>
                   <option value="Assistant">Assistant</option>
                 </select>
               </div>
             </div>
             <div className="modal-actions">
-              <button className="btn-cancel ui-btn ui-btn-secondary" onClick={() => setShowInviteModal(false)}>
+              <button
+                className="btn-cancel ui-btn ui-btn-secondary"
+                onClick={() => setShowInviteModal(false)}
+              >
                 Hủy
               </button>
               <button
@@ -3340,7 +3877,9 @@ const RefereeTab = ({ tournamentId }) => {
 
 const ReplaceInviteModal = ({ invitation, onClose, onReplace }) => {
   const [newEmail, setNewEmail] = useState(invitation?.invitedEmail || "");
-  const [refereeRole, setRefereeRole] = useState(invitation?.refereeRole || "Assistant");
+  const [refereeRole, setRefereeRole] = useState(
+    invitation?.refereeRole || "Assistant",
+  );
   const [submitting, setSubmitting] = useState(false);
   const handleSubmit = async () => {
     if (!newEmail?.trim() || !invitation?.invitationId) return;
@@ -3357,11 +3896,14 @@ const ReplaceInviteModal = ({ invitation, onClose, onReplace }) => {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h3>Thay thế trọng tài</h3>
         <p className="td-modal-desc">
-          Nhập email mới để thay thế lượt mời hiện tại ({invitation?.invitedEmail}).
+          Nhập email mới để thay thế lượt mời hiện tại (
+          {invitation?.invitedEmail}).
         </p>
         <div className="td-modal-body">
           <div className="td-referee-field">
-            <label>Email mới <span className="req">*</span></label>
+            <label>
+              Email mới <span className="req">*</span>
+            </label>
             <input
               type="email"
               placeholder="new-referee@example.com"
@@ -3371,14 +3913,22 @@ const ReplaceInviteModal = ({ invitation, onClose, onReplace }) => {
           </div>
           <div className="td-referee-field">
             <label>Vai trò</label>
-            <select value={refereeRole} onChange={(e) => setRefereeRole(e.target.value)}>
+            <select
+              value={refereeRole}
+              onChange={(e) => setRefereeRole(e.target.value)}
+            >
               <option value="Chief">Chief</option>
               <option value="Assistant">Assistant</option>
             </select>
           </div>
         </div>
         <div className="modal-actions">
-          <button className="btn-cancel ui-btn ui-btn-secondary" onClick={onClose}>Hủy</button>
+          <button
+            className="btn-cancel ui-btn ui-btn-secondary"
+            onClick={onClose}
+          >
+            Hủy
+          </button>
           <button
             className="ui-btn ui-btn-primary"
             onClick={handleSubmit}
@@ -3440,7 +3990,7 @@ const ReportsTab = ({ tournamentId }) => {
     const note = window.prompt(
       valid
         ? "Nhập ghi chú/hình phạt (bắt buộc, hiển thị trong phản hồi cho player):"
-        : "Nhập lý do từ chối report (bắt buộc):",
+        : "Nhập lý do xác nhận KHÔNG VI PHẠM (bắt buộc):",
       "",
     );
     if (!note || !note.trim()) {
@@ -3522,10 +4072,10 @@ const ReportsTab = ({ tournamentId }) => {
               <tr>
                 <th>ID</th>
                 <th>Loại</th>
-                <th>Reporter</th>
-                <th>Match</th>
+                <th>Người tố cáo</th>
+                <th>Trận</th>
                 <th>Mô tả</th>
-                <th>Evidence</th>
+                <th>Bằng chứng</th>
                 <th>Trạng thái</th>
                 <th>Tạo lúc</th>
                 <th className="right">Action</th>
@@ -3545,11 +4095,7 @@ const ReportsTab = ({ tournamentId }) => {
                   </td>
                   <td>
                     {r.evidenceUrl ? (
-                      <a
-                        href={r.evidenceUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
+                      <a href={r.evidenceUrl} target="_blank" rel="noreferrer">
                         Xem
                       </a>
                     ) : (
@@ -3573,7 +4119,7 @@ const ReportsTab = ({ tournamentId }) => {
                           className="td-btn-small td-btn-danger"
                           onClick={() => handleDecision(r.reportId, false)}
                         >
-                          Từ chối
+                          Xác nhận không vi phạm
                         </button>
                       </div>
                     ) : (

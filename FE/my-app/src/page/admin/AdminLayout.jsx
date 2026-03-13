@@ -8,6 +8,7 @@ import AccountListScreen from "../../component/admin/Accounlist";
 import UserProfile from "../../component/admin/UserProfile";
 import EditProfile from "../../component/admin/EditProfile";
 import EditRole from "../../component/admin/EditRole";
+import AdminSystemReports from "../../component/admin/AdminSystemReports";
 
 export const AdminLayout = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -19,6 +20,7 @@ export const AdminLayout = () => {
     if (activeTab === "user_profile") return "Thông tin tài khoản";
     if (activeTab === "edit_user") return "Sửa hồ sơ người dùng";
     if (activeTab === "edit_role") return "Phân quyền người dùng";
+    if (activeTab === "reports") return "System report (Admin)";
 
     const item = NAVIGATION_ITEMS.find((x) => x.id === activeTab);
     return item?.label || "Bảng điều khiển";
@@ -70,6 +72,9 @@ export const AdminLayout = () => {
             onBack={() => setActiveTab("accounts")}
           />
         );
+
+      case "reports":
+        return <AdminSystemReports />;
 
       default:
         return <Dashboard />;

@@ -150,6 +150,63 @@
   background: #ff4655;
 }
 
+.main-header .notification-wrapper {
+  position: relative;
+}
+
+.main-header .notification-dropdown {
+  position: absolute;
+  right: 0;
+  top: 120%;
+  min-width: 260px;
+  max-width: 320px;
+  background: #0f172a;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.6);
+  padding: 8px 0;
+  z-index: 50;
+}
+
+.main-header .notification-empty {
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #cbd5f5;
+}
+
+.main-header .notification-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.main-header .notification-item {
+  padding: 8px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.main-header .notification-item:last-child {
+  border-bottom: none;
+}
+
+.main-header .notification-item.unread {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.main-header .notification-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e5e7eb;
+  margin-bottom: 2px;
+}
+
+.main-header .notification-message {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
 .main-header .user-btn {
   width: 32px;
   height: 32px;

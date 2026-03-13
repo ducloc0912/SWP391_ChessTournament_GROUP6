@@ -3,17 +3,21 @@ package com.example.service.user;
 
 import com.example.DAO.FeedbackDAO;
 import com.example.DAO.ParticipantDAO;
+import com.example.DAO.TournamentDAO;
 import com.example.model.dto.FeedbackDTO;
+import com.example.model.dto.TournamentDTO;
 
 import java.util.List;
 
 public class FeedbackService {
     private FeedbackDAO feedbackDAO;
     private ParticipantDAO participantDAO;
+    private TournamentDAO tournamentDAO;
 
     public FeedbackService() {
         this.feedbackDAO = new FeedbackDAO();
         this.participantDAO = new ParticipantDAO();
+        this.tournamentDAO = new TournamentDAO();
     }
     
     // 1. Lấy feedback cho trang chủ
@@ -51,6 +55,16 @@ public class FeedbackService {
             }
             if (feedback.getComment() == null || feedback.getComment().trim().isEmpty()) {
                 throw new IllegalArgumentException("Comment cannot be empty");
+            }
+
+            // Chỉ cho phép feedback khi giải đang thi đấu hoặc đã kết thúc
+            TournamentDTO tournament = tournamentDAO.getTournamentById(feedback.getTournamentId());
+            if (tournament == null) {
+                throw new IllegalArgumentException("Tournament not found");
+            }
+            String status = tournament.getStatus() != null ? tournament.getStatus().trim() : "";
+            if (!"Ongoing".equalsIgnoreCase(status) && !"Completed".equalsIgnoreCase(status)) {
+                throw new IllegalArgumentException("Bạn chỉ có thể đánh giá khi giải đang diễn ra hoặc đã kết thúc.");
             }
 
             // Chỉ cho phép user đã tham gia (Participant Active) đánh giá giải

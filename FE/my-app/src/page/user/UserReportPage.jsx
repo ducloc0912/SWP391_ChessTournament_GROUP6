@@ -36,6 +36,12 @@ export default function UserReportPage() {
     }
   });
 
+  const normalizedRole = (role || "")
+    .toString()
+    .toUpperCase()
+    .replace(/[\s_]/g, "");
+  const isPlayer = !normalizedRole || normalizedRole === "PLAYER";
+
   const loadReports = async () => {
     try {
       setLoadingList(true);
@@ -245,41 +251,32 @@ export default function UserReportPage() {
               >
                 Loại report
               </label>
-              <select
-                value={kind}
-                onChange={(e) => setKind(e.target.value)}
-                style={{ padding: 8, width: "100%" }}
-              >
-                {(() => {
-                  const normalizedRole = (role || "")
-                    .toString()
-                    .toUpperCase()
-                    .replace(/[\s_]/g, "");
-                  const isPlayer =
-                    !normalizedRole || normalizedRole === "PLAYER";
-                  if (isPlayer) {
-                    return (
-                      <>
-                        <option value="VIOLATION">
-                          Violation (tố cáo người chơi)
-                        </option>
-                        <option value="SYSTEM">
-                          System (lỗi hệ thống)
-                        </option>
-                      </>
-                    );
-                  }
-                  // Các role khác chỉ được gửi system report
-                  if (kind !== "SYSTEM") {
-                    setKind("SYSTEM");
-                  }
-                  return (
-                    <option value="SYSTEM">
-                      System (lỗi hệ thống)
-                    </option>
-                  );
-                })()}
-              </select>
+              {isPlayer ? (
+                <select
+                  value={kind}
+                  onChange={(e) => setKind(e.target.value)}
+                  style={{ padding: 8, width: "100%" }}
+                >
+                  <option value="VIOLATION">Violation (tố cáo người chơi)</option>
+                  <option value="SYSTEM">System (lỗi hệ thống)</option>
+                </select>
+              ) : (
+                <>
+                  {kind !== "SYSTEM" && setKind("SYSTEM")}
+                  <div
+                    style={{
+                      padding: 8,
+                      width: "100%",
+                      background: "#f9fafb",
+                      borderRadius: 4,
+                      fontSize: 13,
+                      color: "#374151",
+                    }}
+                  >
+                    System (lỗi hệ thống)
+                  </div>
+                </>
+              )}
             </div>
 
             {kind === "VIOLATION" && (
