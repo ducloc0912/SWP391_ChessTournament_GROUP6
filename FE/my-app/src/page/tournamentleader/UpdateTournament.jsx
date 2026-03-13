@@ -231,7 +231,7 @@ export default function UpdateTournamentPage() {
         { withCredentials: true }
       );
       alert("Cập nhật giải đấu thành công!");
-      navigate(`/tournaments/${id}`);
+      navigate(`/leader/tournaments/${id}`);
     } catch (err) {
       console.error("Error updating tournament:", err);
       alert("Cập nhật giải đấu thất bại!");
@@ -339,7 +339,7 @@ export default function UpdateTournamentPage() {
                 <>
                   <button
                     className="cw-btn cw-btn-danger"
-                    onClick={() => navigate(`/tournaments/${id}`)}
+                    onClick={() => navigate(`/leader/tournaments/${id}`)}
                   >
                     Hủy
                   </button>

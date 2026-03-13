@@ -357,7 +357,7 @@ export default function PlayerTournamentList() {
                       ${featuredTournament.prizePool.toLocaleString()}
                     </span>
                   </div>
-                  <button onClick={() => navigate(`/tournaments/${featuredTournament.id}`)}>
+                  <button onClick={() => navigate(`/tournaments/public/${featuredTournament.id}`)}>
                     View Details
                   </button>
                 </div>
@@ -431,7 +431,7 @@ export default function PlayerTournamentList() {
                             return (
                               <button
                                 className="action secondary"
-                                onClick={() => navigate(`/tournaments/${t.id}`)}
+                                onClick={() => navigate(`/tournaments/public/${t.id}`)}
                               >
                                 Đã đăng ký
                               </button>

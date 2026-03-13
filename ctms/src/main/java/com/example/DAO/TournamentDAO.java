@@ -150,6 +150,26 @@ public class TournamentDAO extends DBContext {
         return list;
     }
 
+    public List<TournamentDTO> getTournamentsByCreator(int creatorId) {
+        List<TournamentDTO> list = new ArrayList<>();
+        String sql = "SELECT * FROM Tournaments WHERE create_by = ? ORDER BY create_at DESC, tournament_id DESC";
+
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, creatorId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapResultSetToTournament(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
     // =========================
     // UPDATE TOURNAMENT
     // =========================

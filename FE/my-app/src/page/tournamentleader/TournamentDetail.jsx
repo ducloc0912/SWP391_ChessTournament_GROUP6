@@ -203,7 +203,7 @@ const TournamentDetail = () => {
 
   const menuItems = [
     { to: "/home", label: "Home" },
-    { to: "/tournaments", label: "Quản lý giải" },
+    { to: "/leader/tournaments", label: "Quản lý giải" },
   ];
 
   const tabs = [
@@ -242,7 +242,7 @@ const TournamentDetail = () => {
     <div className="tdp-page td-page-wrapper hpv-page">
       <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} menuItems={menuItems} />
       <div className="tdp-container">
-        <button type="button" className="tdp-back-btn" onClick={() => navigate("/tournaments")}>
+        <button type="button" className="tdp-back-btn" onClick={() => navigate("/leader/tournaments")}>
           <ArrowLeft size={16} /> Quay lại danh sách giải
         </button>
 
@@ -277,7 +277,7 @@ const TournamentDetail = () => {
             <button
               type="button"
               className="tdp-register-btn"
-              onClick={() => navigate(`/tournaments/edit/${tournament.tournamentId ?? id}`)}
+              onClick={() => navigate(`/leader/tournaments/edit/${tournament.tournamentId ?? id}`)}
             >
               <Edit2 size={18} />
               Chỉnh sửa giải đấu

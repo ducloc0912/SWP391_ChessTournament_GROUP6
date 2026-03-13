@@ -287,9 +287,13 @@ public class TournamentController extends HttpServlet {
         }
 
         String idParam = request.getParameter("id");
+        Integer currentUserId = getUserIdFromSession(request);
+        boolean isTournamentLeader = isTournamentLeader(request);
 
         if (idParam == null) {
-            List<TournamentDTO> list = tournamentService.getAllTournamentsWithCurrentPlayers();
+            List<TournamentDTO> list = isTournamentLeader && currentUserId != null
+                    ? tournamentService.getTournamentsByCreatorWithCurrentPlayers(currentUserId)
+                    : tournamentService.getAllTournamentsWithCurrentPlayers();
             response.getWriter().write(gson.toJson(list));
         } else {
             try {
@@ -299,6 +303,9 @@ public class TournamentController extends HttpServlet {
                 if (t == null) {
                     response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                     response.getWriter().write("{\"message\":\"Tournament not found\"}");
+                } else if (isTournamentLeader && currentUserId != null && t.getCreateBy() != currentUserId) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.getWriter().write("{\"message\":\"Chỉ được xem giải đấu do bạn tạo.\"}");
                 } else {
                     response.getWriter().write(gson.toJson(t));
                 }
@@ -920,6 +927,13 @@ throws ServletException, IOException {
             return;
         }
 
+        Integer currentUserId = getUserIdFromSession(request);
+        if (isTournamentLeader(request) && (currentUserId == null || !tournamentService.isTournamentOwnedBy(id, currentUserId))) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.getWriter().write("{\"success\": false, \"message\": \"Chỉ được cập nhật giải đấu do bạn tạo.\"}");
+            return;
+        }
+
         TournamentDTO tournament =
                 gson.fromJson(request.getReader(), TournamentDTO.class);
 
@@ -1001,6 +1015,13 @@ throws ServletException, IOException {
         } catch (NumberFormatException e) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             response.getWriter().write("{\"success\": false, \"message\": \"Invalid id\"}");
+            return;
+        }
+
+        Integer currentUserId = getUserIdFromSession(request);
+        if (isTournamentLeader(request) && (currentUserId == null || !tournamentService.isTournamentOwnedBy(id, currentUserId))) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.getWriter().write("{\"success\": false, \"message\": \"Chỉ được xử lý giải đấu do bạn tạo.\"}");
             return;
         }
 
@@ -1116,5 +1137,12 @@ throws ServletException, IOException {
             return u.getUserId();
         }
         return null;
+    }
+
+    private boolean isTournamentLeader(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) return false;
+        Object roleObj = session.getAttribute("role");
+        return roleObj != null && "TOURNAMENTLEADER".equalsIgnoreCase(String.valueOf(roleObj));
     }
 }

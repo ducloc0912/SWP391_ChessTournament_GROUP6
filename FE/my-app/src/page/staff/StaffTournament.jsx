@@ -495,6 +495,12 @@ const StaffTournament = ({ currentUser }) => {
                                         {selectedTournament.description}
                                     </div>
                                 )}
+                                {selectedTournament.rules && (
+                                    <div className="content-preview">
+                                        <strong>Rule:</strong><br />
+                                        {selectedTournament.rules}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="modal-section update-status-area">
