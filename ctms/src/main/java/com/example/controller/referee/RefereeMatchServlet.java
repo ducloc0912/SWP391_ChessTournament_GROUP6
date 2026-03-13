@@ -52,9 +52,13 @@ public class RefereeMatchServlet extends HttpServlet {
             List<Map<String, Object>> matches = new java.util.ArrayList<>();
             for (Map<String, Object> t : tournaments) {
                 Object tidObj = t.get("tournamentId");
-                if (tidObj instanceof Number) {
-                    int tid = ((Number) tidObj).intValue();
+                int tid = tidObj instanceof Number ? ((Number) tidObj).intValue() : -1;
+                if (tid <= 0) continue;
+                try {
                     matches.addAll(refereeMatchDAO.getMatchesOfTournamentForReferee(tid, userId));
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    // Không làm fail cả request; giải này sẽ không có trận trong danh sách
                 }
             }
             Map<String, Object> payload = new HashMap<>();
@@ -105,9 +109,10 @@ public class RefereeMatchServlet extends HttpServlet {
         }
 
         switch (action) {
-            case "start" -> handleStartMatch(response, userId, matchId);
-            case "finish" -> handleFinishMatch(request, response, userId, matchId);
+            case "start" -> handleStartGame(request, response, userId, matchId);
+            case "finishGame" -> handleFinishGame(request, response, userId, matchId);
             case "attendance" -> handleAttendance(request, response, userId, matchId);
+            case "createTiebreak" -> handleCreateTiebreak(response, userId, matchId);
             default -> {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 writeJson(response, false, "Action không hợp lệ.");
@@ -122,8 +127,17 @@ public class RefereeMatchServlet extends HttpServlet {
         } catch (Exception e) {
             body = null;
         }
-        boolean whitePresent = body != null && Boolean.TRUE.equals(body.get("whitePresent"));
-        boolean blackPresent = body != null && Boolean.TRUE.equals(body.get("blackPresent"));
+        String gameNumberParam = request.getParameter("gameNumber");
+        int gameNumber = 1;
+        try {
+            if (gameNumberParam != null && !gameNumberParam.isBlank()) {
+                gameNumber = Integer.parseInt(gameNumberParam);
+            }
+        } catch (NumberFormatException ignored) {
+            gameNumber = 1;
+        }
+        boolean whitePresent = body != null && Boolean.parseBoolean(String.valueOf(body.get("whitePresent")));
+        boolean blackPresent = body != null && Boolean.parseBoolean(String.valueOf(body.get("blackPresent")));
         String whiteStatus = whitePresent ? "Present" : "Absent";
         String blackStatus = blackPresent ? "Present" : "Absent";
 
@@ -133,10 +147,8 @@ public class RefereeMatchServlet extends HttpServlet {
             writeJson(response, false, "Bạn không được phân công trận này.");
             return;
         }
-        Integer whitePlayerId = match.get("whitePlayerId") != null ? ((Number) match.get("whitePlayerId")).intValue() : null;
-        Integer blackPlayerId = match.get("blackPlayerId") != null ? ((Number) match.get("blackPlayerId")).intValue() : null;
 
-        boolean ok = refereeMatchDAO.recordAttendance(matchId, refereeId, whitePlayerId, blackPlayerId, whiteStatus, blackStatus);
+        boolean ok = refereeMatchDAO.recordAttendanceForGame(matchId, gameNumber, refereeId, whiteStatus, blackStatus);
         if (!ok) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             writeJson(response, false, "Không thể lưu điểm danh.");
@@ -145,34 +157,54 @@ public class RefereeMatchServlet extends HttpServlet {
         writeJson(response, true, "Đã lưu điểm danh.");
     }
 
-    private void handleStartMatch(HttpServletResponse response, int refereeId, int matchId) throws IOException {
-        boolean ok = refereeMatchDAO.startMatch(matchId, refereeId);
-        if (!ok) {
+    private void handleStartGame(HttpServletRequest request, HttpServletResponse response, int refereeId, int matchId) throws IOException {
+
+        String gameNumberParam = request.getParameter("gameNumber");
+
+        int gameNumber;
+        try {
+            gameNumber = Integer.parseInt(gameNumberParam);
+        } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, false, "Không thể bắt đầu trận. Kiểm tra trạng thái trận hoặc phân công trọng tài.");
+            writeJson(response, false, "gameNumber không hợp lệ.");
             return;
         }
-        writeJson(response, true, "Đã bắt đầu trận đấu.");
+
+        boolean ok = refereeMatchDAO.startGame(matchId, gameNumber, refereeId);
+
+        if (!ok) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            writeJson(response, false, "Không thể bắt đầu ván.");
+            return;
+        }
+
+        writeJson(response, true, "Đã bắt đầu ván.");
     }
 
-    private void handleFinishMatch(HttpServletRequest request, HttpServletResponse response, int refereeId, int matchId) throws IOException {
-        Map<?, ?> body = gson.fromJson(request.getReader(), Map.class);
-        String result = body != null && body.get("result") != null ? String.valueOf(body.get("result")) : null;
-        String termination = body != null && body.get("termination") != null ? String.valueOf(body.get("termination")) : null;
-
-        if (result == null || result.isBlank()) {
+    private void handleFinishGame(HttpServletRequest request, HttpServletResponse response, int refereeId, int matchId) throws IOException {
+        String gameNumberParam = request.getParameter("gameNumber");
+        int gameNumber;
+        try {
+            gameNumber = Integer.parseInt(gameNumberParam);
+        } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, false, "Thiếu kết quả trận (result).");
+            writeJson(response, false, "gameNumber không hợp lệ.");
             return;
         }
-
-        boolean ok = refereeMatchDAO.finishMatch(matchId, refereeId, result, termination);
+        Map<?, ?> body = gson.fromJson(request.getReader(), Map.class);
+        String gameResult = body != null && body.get("result") != null ? String.valueOf(body.get("result")) : null;
+        if (gameResult == null || gameResult.isBlank()) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            writeJson(response, false, "Thiếu kết quả ván (result).");
+            return;
+        }
+        boolean ok = refereeMatchDAO.finishGame(matchId, gameNumber, refereeId, gameResult);
         if (!ok) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            writeJson(response, false, "Không thể lưu kết quả trận. Kiểm tra trạng thái trận hoặc phân công trọng tài.");
+            writeJson(response, false, "Không thể lưu kết quả ván. Kiểm tra trạng thái ván hoặc phân công trọng tài.");
             return;
         }
-        writeJson(response, true, "Đã lưu kết quả và kết thúc trận đấu.");
+        writeJson(response, true, "Đã lưu kết quả ván và cập nhật kết quả trận.");
     }
 
     private User getAuthenticatedUser(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -190,6 +222,16 @@ public class RefereeMatchServlet extends HttpServlet {
         payload.put("success", success);
         payload.put("message", message);
         response.getWriter().write(gson.toJson(payload));
+    }
+
+    private void handleCreateTiebreak(HttpServletResponse response, int refereeId, int matchId) throws IOException {
+        boolean ok = refereeMatchDAO.createTiebreakGame(matchId, refereeId);
+        if (!ok) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            writeJson(response, false, "Không thể tạo ván tiebreak.");
+            return;
+        }
+        writeJson(response, true, "Đã tạo ván tiebreak.");
     }
 }
 

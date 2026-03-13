@@ -241,21 +241,55 @@ CREATE TABLE Matches (
     round_id INT,
     group_id INT NULL,
     board_number INT,
-    white_player_id INT, /* người chơi 1 */
-    black_player_id INT, /* người chơi 2 */
-    result NVARCHAR(50) CHECK (result IN ('1-0','0-1','1/2-1/2','*','forfeit-w','forfeit-b')),
-    termination NVARCHAR(50) CHECK (termination IN ('Checkmate','Resignation','Timeout','Stalemate','Draw','Forfeit','Adjudication')),
-    status NVARCHAR(20) DEFAULT 'Scheduled' CHECK (status IN ('Scheduled','Ongoing','Completed','Cancelled','Postponed')),
+    player1_id INT NOT NULL,
+    player2_id INT NOT NULL,
+    player1_score DECIMAL(3,1) DEFAULT 0,
+    player2_score DECIMAL(3,1) DEFAULT 0,
+    winner_id INT NULL,
+    result NVARCHAR(20) CHECK (result IN ('player1','player2','draw','pending','none')),
+    status NVARCHAR(20) DEFAULT 'Scheduled'
+        CHECK (status IN ('Scheduled','Ongoing','Completed')),
     start_time DATETIME,
     end_time DATETIME,
-    match_group_id INT NULL,
     FOREIGN KEY (tournament_id) REFERENCES Tournaments(tournament_id) ON DELETE CASCADE,
     FOREIGN KEY (round_id) REFERENCES Round(round_id),
     FOREIGN KEY (group_id) REFERENCES Tournament_Group(group_id),
+    FOREIGN KEY (player1_id) REFERENCES Users(user_id),
+    FOREIGN KEY (player2_id) REFERENCES Users(user_id),
+    FOREIGN KEY (winner_id) REFERENCES Users(user_id),
+    CHECK (player1_id <> player2_id)
+);
+GO
+
+/* Các ván đấu trong một trận: 2 ván (mỗi bên trắng/đen 1 lần) hoặc thêm ván 3 cờ chớp khi hòa. */
+CREATE TABLE Mini_matches (
+    mini_match_id INT IDENTITY(1,1) PRIMARY KEY,
+    match_id INT NOT NULL,
+    game_number INT NOT NULL,
+    is_tiebreak BIT DEFAULT 0,
+    white_player_id INT NOT NULL,
+    black_player_id INT NOT NULL,
+    result NVARCHAR(10)
+        CHECK (result IN ('1-0','0-1','1/2-1/2','*')),
+    termination NVARCHAR(50)
+        CHECK (termination IN (
+            'Checkmate',
+            'Resignation',
+            'Timeout',
+            'Stalemate',
+            'Draw',
+            'Forfeit'
+        )),
+    status NVARCHAR(20) DEFAULT 'Scheduled'
+        CHECK (status IN ('Scheduled','Ongoing','Completed')),
+    start_time DATETIME,
+    end_time DATETIME,
+    FOREIGN KEY (match_id) REFERENCES Matches(match_id) ON DELETE CASCADE,
     FOREIGN KEY (white_player_id) REFERENCES Users(user_id),
     FOREIGN KEY (black_player_id) REFERENCES Users(user_id),
-    CHECK (white_player_id <> black_player_id OR (white_player_id IS NULL AND black_player_id IS NULL))
+    CHECK (white_player_id <> black_player_id)
 );
+GO
 
 CREATE TABLE Match_Referee (
     match_id INT,
@@ -268,15 +302,16 @@ CREATE TABLE Match_Referee (
 );
 GO
 
+/* Điểm danh theo từng ván (mini_match). Mỗi ván có 2 bản ghi: trắng + đen. */
 CREATE TABLE Match_Attendance (
-    match_id INT NOT NULL,
+    mini_match_id INT NOT NULL,
     user_id INT NOT NULL,
     status NVARCHAR(20) NOT NULL DEFAULT 'Pending'
         CHECK (status IN ('Pending','Present','Absent')),
     recorded_at DATETIME DEFAULT GETDATE(),
     recorded_by INT NULL,
-    PRIMARY KEY (match_id, user_id),
-    FOREIGN KEY (match_id) REFERENCES Matches(match_id) ON DELETE CASCADE,
+    PRIMARY KEY (mini_match_id, user_id),
+    FOREIGN KEY (mini_match_id) REFERENCES Mini_matches(mini_match_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES Users(user_id),
     FOREIGN KEY (recorded_by) REFERENCES Users(user_id)
 );
@@ -817,33 +852,74 @@ SET IDENTITY_INSERT Round OFF;
 GO
 
 SET IDENTITY_INSERT Matches ON;
-INSERT INTO Matches (match_id, tournament_id, round_id, board_number, white_player_id, black_player_id, result, status, start_time) VALUES
--- T1 Round 1
-(1,1,1,1,9,10,'1-0','Completed','2026-01-15 08:00:00'),
-(2,1,1,2,11,12,'0-1','Completed','2026-01-15 08:00:00'),
-(3,1,1,3,13,14,'1/2-1/2','Completed','2026-01-15 08:00:00'),
-(4,1,1,4,15,16,'1-0','Completed','2026-01-15 08:00:00'),
+/* Matches: player1_id, player2_id = cặp đấu (theo thứ tự ván 1 trắng/đen); result = player1|player2|draw|pending */
+INSERT INTO Matches (match_id, tournament_id, round_id, group_id, board_number, player1_id, player2_id, player1_score, player2_score, winner_id, result, status, start_time, end_time) VALUES
+-- T1 Round 1 (9-10: 1.5-0.5, 11-12: 0-2, 13-14: 1-1, 15-16: 1.5-0.5)
+(1,1,1,NULL,1,9,10,1.5,0.5,9,'player1','Completed','2026-01-15 08:00:00','2026-01-15 09:00:00'),
+(2,1,1,NULL,2,11,12,0,2,12,'player2','Completed','2026-01-15 08:00:00','2026-01-15 09:00:00'),
+(3,1,1,NULL,3,13,14,1,1,NULL,'draw','Completed','2026-01-15 08:00:00','2026-01-15 09:00:00'),
+(4,1,1,NULL,4,15,16,1.5,0.5,15,'player1','Completed','2026-01-15 08:00:00','2026-01-15 09:00:00'),
 -- T1 Round 2
-(5,1,2,1,10,11,'0-1','Completed','2026-01-16 08:00:00'),
-(6,1,2,2,12,13,'1-0','Completed','2026-01-16 08:00:00'),
-(7,1,2,3,14,15,'1/2-1/2','Completed','2026-01-16 08:00:00'),
-(8,1,2,4,16,9,'0-1','Completed','2026-01-16 08:00:00'),
+(5,1,2,NULL,1,10,11,0,2,11,'player2','Completed','2026-01-16 08:00:00','2026-01-16 09:00:00'),
+(6,1,2,NULL,2,12,13,1.5,0.5,12,'player1','Completed','2026-01-16 08:00:00','2026-01-16 09:00:00'),
+(7,1,2,NULL,3,14,15,1,1,NULL,'draw','Completed','2026-01-16 08:00:00','2026-01-16 09:00:00'),
+(8,1,2,NULL,4,16,9,0,2,9,'player2','Completed','2026-01-16 08:00:00','2026-01-16 09:00:00'),
 -- T2 Round 1
-(9,2,6,1,9,10,'1-0','Completed','2026-02-15 08:00:00'),
-(10,2,6,2,11,12,'0-1','Completed','2026-02-15 08:00:00'),
-(11,2,6,3,13,14,'1/2-1/2','Completed','2026-02-15 08:00:00'),
-(12,2,6,4,15,16,'1-0','Completed','2026-02-15 08:00:00'),
--- T2 Round 2 (ongoing)
-(13,2,7,1,10,11,NULL,'Scheduled','2026-02-16 08:00:00'),
-(14,2,7,2,12,13,NULL,'Scheduled','2026-02-16 08:00:00'),
-(15,2,7,3,14,15,NULL,'Scheduled','2026-02-16 08:00:00'),
-(16,2,7,4,16,9,NULL,'Scheduled','2026-02-16 08:00:00');
+(9,2,6,NULL,1,9,10,1.5,0.5,9,'player1','Completed','2026-02-15 08:00:00','2026-02-15 09:00:00'),
+(10,2,6,NULL,2,11,12,0,2,12,'player2','Completed','2026-02-15 08:00:00','2026-02-15 09:00:00'),
+(11,2,6,NULL,3,13,14,1,1,NULL,'draw','Completed','2026-02-15 08:00:00','2026-02-15 09:00:00'),
+(12,2,6,NULL,4,15,16,1.5,0.5,15,'player1','Completed','2026-02-15 08:00:00','2026-02-15 09:00:00'),
+-- T2 Round 2 (Scheduled)
+(13,2,7,NULL,1,10,11,0,0,NULL,'pending','Scheduled','2026-02-16 08:00:00',NULL),
+(14,2,7,NULL,2,12,13,0,0,NULL,'pending','Scheduled','2026-02-16 08:00:00',NULL),
+(15,2,7,NULL,3,14,15,0,0,NULL,'pending','Scheduled','2026-02-16 08:00:00',NULL),
+(16,2,7,NULL,4,16,9,0,0,NULL,'pending','Scheduled','2026-02-16 08:00:00',NULL);
 SET IDENTITY_INSERT Matches OFF;
 GO
 
 INSERT INTO Match_Referee (match_id, referee_id, role) VALUES
 (1,7,'Main'),(2,8,'Main'),(3,7,'Main'),(4,8,'Main'),(5,7,'Main'),(6,8,'Main'),(7,7,'Main'),(8,8,'Main'),
 (9,7,'Main'),(10,8,'Main'),(11,7,'Main'),(12,8,'Main'),(13,7,'Main'),(14,8,'Main'),(15,7,'Main'),(16,8,'Main');
+GO
+
+/* Mini_matches: T1/T2 Round Robin – 2 ván/trận (ván 2 đổi màu). result: 1-0|0-1|1/2-1/2|* ; NULL → dùng '*' cho Scheduled. */
+INSERT INTO Mini_matches (match_id, game_number, is_tiebreak, white_player_id, black_player_id, result, termination, status, start_time, end_time) VALUES
+-- T1 Round 1
+(1,1,0,9,10,'1-0',NULL,'Completed','2026-01-15 08:00:00','2026-01-15 08:30:00'),
+(1,2,0,10,9,'1/2-1/2',NULL,'Completed','2026-01-15 08:30:00','2026-01-15 09:00:00'),
+(2,1,0,11,12,'0-1',NULL,'Completed','2026-01-15 08:00:00','2026-01-15 08:30:00'),
+(2,2,0,12,11,'0-1',NULL,'Completed','2026-01-15 08:30:00','2026-01-15 09:00:00'),
+(3,1,0,13,14,'1/2-1/2',NULL,'Completed','2026-01-15 08:00:00','2026-01-15 08:30:00'),
+(3,2,0,14,13,'1/2-1/2',NULL,'Completed','2026-01-15 08:30:00','2026-01-15 09:00:00'),
+(4,1,0,15,16,'1-0',NULL,'Completed','2026-01-15 08:00:00','2026-01-15 08:30:00'),
+(4,2,0,16,15,'1/2-1/2',NULL,'Completed','2026-01-15 08:30:00','2026-01-15 09:00:00'),
+-- T1 Round 2
+(5,1,0,10,11,'0-1',NULL,'Completed','2026-01-16 08:00:00','2026-01-16 08:30:00'),
+(5,2,0,11,10,'0-1',NULL,'Completed','2026-01-16 08:30:00','2026-01-16 09:00:00'),
+(6,1,0,12,13,'1-0',NULL,'Completed','2026-01-16 08:00:00','2026-01-16 08:30:00'),
+(6,2,0,13,12,'1/2-1/2',NULL,'Completed','2026-01-16 08:30:00','2026-01-16 09:00:00'),
+(7,1,0,14,15,'1/2-1/2',NULL,'Completed','2026-01-16 08:00:00','2026-01-16 08:30:00'),
+(7,2,0,15,14,'1/2-1/2',NULL,'Completed','2026-01-16 08:30:00','2026-01-16 09:00:00'),
+(8,1,0,16,9,'0-1',NULL,'Completed','2026-01-16 08:00:00','2026-01-16 08:30:00'),
+(8,2,0,9,16,'0-1',NULL,'Completed','2026-01-16 08:30:00','2026-01-16 09:00:00'),
+-- T2 Round 1
+(9,1,0,9,10,'1-0',NULL,'Completed','2026-02-15 08:00:00','2026-02-15 08:30:00'),
+(9,2,0,10,9,'1/2-1/2',NULL,'Completed','2026-02-15 08:30:00','2026-02-15 09:00:00'),
+(10,1,0,11,12,'0-1',NULL,'Completed','2026-02-15 08:00:00','2026-02-15 08:30:00'),
+(10,2,0,12,11,'0-1',NULL,'Completed','2026-02-15 08:30:00','2026-02-15 09:00:00'),
+(11,1,0,13,14,'1/2-1/2',NULL,'Completed','2026-02-15 08:00:00','2026-02-15 08:30:00'),
+(11,2,0,14,13,'1/2-1/2',NULL,'Completed','2026-02-15 08:30:00','2026-02-15 09:00:00'),
+(12,1,0,15,16,'1-0',NULL,'Completed','2026-02-15 08:00:00','2026-02-15 08:30:00'),
+(12,2,0,16,15,'1/2-1/2',NULL,'Completed','2026-02-15 08:30:00','2026-02-15 09:00:00'),
+-- T2 Round 2 (Scheduled): result = '*' chưa có kết quả
+(13,1,0,10,11,'*',NULL,'Scheduled','2026-02-16 08:00:00',NULL),
+(13,2,0,11,10,'*',NULL,'Scheduled','2026-02-16 08:30:00',NULL),
+(14,1,0,12,13,'*',NULL,'Scheduled','2026-02-16 08:00:00',NULL),
+(14,2,0,13,12,'*',NULL,'Scheduled','2026-02-16 08:30:00',NULL),
+(15,1,0,14,15,'*',NULL,'Scheduled','2026-02-16 08:00:00',NULL),
+(15,2,0,15,14,'*',NULL,'Scheduled','2026-02-16 08:30:00',NULL),
+(16,1,0,16,9,'*',NULL,'Scheduled','2026-02-16 08:00:00',NULL),
+(16,2,0,9,16,'*',NULL,'Scheduled','2026-02-16 08:30:00',NULL);
 GO
 
 INSERT INTO Standing (tournament_id, user_id, matches_played, won, drawn, lost, point, current_rank) VALUES
@@ -902,20 +978,41 @@ SET IDENTITY_INSERT Round OFF;
 GO
 
 SET IDENTITY_INSERT Matches ON;
-INSERT INTO Matches (match_id, tournament_id, round_id, board_number, white_player_id, black_player_id, result, status, start_time) VALUES
-(17, 6, 8, 1, 9, 10, '1-0', 'Completed', '2026-03-05 08:00:00'),
-(18, 6, 8, 2, 11, 12, '0-1', 'Completed', '2026-03-05 08:30:00'),
-(19, 6, 8, 3, 13, 14, NULL, 'Scheduled', '2026-03-05 09:00:00'),
-(20, 6, 8, 4, 15, 16, NULL, 'Scheduled', '2026-03-05 09:30:00'),
-(21, 6, 9, 1, 9, 12, NULL, 'Scheduled', '2026-03-08 08:00:00'),
-(22, 6, 9, 2, 13, 15, NULL, 'Scheduled', '2026-03-08 08:30:00'),
-(23, 6, 10, 1, 9, 13, NULL, 'Scheduled', '2026-03-12 09:00:00');
+INSERT INTO Matches (match_id, tournament_id, round_id, group_id, board_number, player1_id, player2_id, player1_score, player2_score, winner_id, result, status, start_time, end_time) VALUES
+(17, 6, 8, NULL, 1, 9, 10, 1.5, 0.5, 9, 'player1', 'Completed', '2026-03-05 08:00:00', '2026-03-05 09:00:00'),
+(18, 6, 8, NULL, 2, 11, 12, 0, 2, 12, 'player2', 'Completed', '2026-03-05 08:30:00', '2026-03-05 09:30:00'),
+(19, 6, 8, NULL, 3, 13, 14, 0, 0, NULL, 'pending', 'Scheduled', '2026-03-05 09:00:00', NULL),
+(20, 6, 8, NULL, 4, 15, 16, 0, 0, NULL, 'pending', 'Scheduled', '2026-03-05 09:30:00', NULL),
+(21, 6, 9, NULL, 1, 9, 12, 0, 0, NULL, 'pending', 'Scheduled', '2026-03-08 08:00:00', NULL),
+(22, 6, 9, NULL, 2, 13, 15, 0, 0, NULL, 'pending', 'Scheduled', '2026-03-08 08:30:00', NULL),
+(23, 6, 10, NULL, 1, 9, 13, 0, 0, NULL, 'pending', 'Scheduled', '2026-03-12 09:00:00', NULL);
 SET IDENTITY_INSERT Matches OFF;
 GO
 
 INSERT INTO Match_Referee (match_id, referee_id, role) VALUES
 (17, 7, 'Main'),(18, 8, 'Main'),(19, 7, 'Main'),(20, 8, 'Main'),
 (21, 7, 'Main'),(22, 8, 'Main'),(23, 7, 'Main');
+GO
+
+/* Mini_matches: T6 KnockOut – 2 ván/trận (ván 1 + ván 2 đổi màu). Trận 17–18 đã có kết quả; 19–23 Scheduled (result='*'). */
+INSERT INTO Mini_matches (match_id, game_number, is_tiebreak, white_player_id, black_player_id, result, termination, status, start_time, end_time) VALUES
+-- Match 17 (9 vs 10): ván 1 9 trắng 10 đen 1-0, ván 2 10 trắng 9 đen hòa → 9 thắng 1.5-0.5
+(17,1,0,9,10,'1-0',NULL,'Completed','2026-03-05 08:00:00','2026-03-05 08:30:00'),
+(17,2,0,10,9,'1/2-1/2',NULL,'Completed','2026-03-05 08:30:00','2026-03-05 09:00:00'),
+-- Match 18 (11 vs 12): ván 1 và 2 đều 12 thắng → 12 thắng 2-0
+(18,1,0,11,12,'0-1',NULL,'Completed','2026-03-05 08:30:00','2026-03-05 09:00:00'),
+(18,2,0,12,11,'0-1',NULL,'Completed','2026-03-05 09:00:00','2026-03-05 09:30:00'),
+-- Match 19–23: Scheduled
+(19,1,0,13,14,'*',NULL,'Scheduled','2026-03-05 09:00:00',NULL),
+(19,2,0,14,13,'*',NULL,'Scheduled','2026-03-05 09:30:00',NULL),
+(20,1,0,15,16,'*',NULL,'Scheduled','2026-03-05 09:30:00',NULL),
+(20,2,0,16,15,'*',NULL,'Scheduled','2026-03-05 10:00:00',NULL),
+(21,1,0,9,12,'*',NULL,'Scheduled','2026-03-08 08:00:00',NULL),
+(21,2,0,12,9,'*',NULL,'Scheduled','2026-03-08 08:30:00',NULL),
+(22,1,0,13,15,'*',NULL,'Scheduled','2026-03-08 08:30:00',NULL),
+(22,2,0,15,13,'*',NULL,'Scheduled','2026-03-08 09:00:00',NULL),
+(23,1,0,9,13,'*',NULL,'Scheduled','2026-03-12 09:00:00',NULL),
+(23,2,0,13,9,'*',NULL,'Scheduled','2026-03-12 09:30:00',NULL);
 GO
 
 INSERT INTO Prize_Template (tournament_id, rank_position, percentage, label) VALUES
