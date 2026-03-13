@@ -79,6 +79,19 @@ public class TournamentService {
         return list;
     }
 
+    public List<TournamentDTO> getTournamentsByCreatorWithCurrentPlayers(int creatorId) {
+        if (creatorId <= 0) return List.of();
+
+        List<TournamentDTO> list = tournamentDAO.getTournamentsByCreator(creatorId);
+
+        for (TournamentDTO t : list) {
+            int count = participantDAO.countParticipantsByTournament(t.getTournamentId());
+            t.setCurrentPlayers(count);
+        }
+
+        return list;
+    }
+
     public TournamentDTO getTournamentByIdWithCurrentPlayers(int id) {
         if (id <= 0) return null;
         TournamentDTO t = tournamentDAO.getTournamentById(id);
@@ -509,6 +522,12 @@ public class TournamentService {
     public TournamentDTO getTournamentById(int id) {
         if (id <= 0) return null;
         return tournamentDAO.getTournamentById(id);
+    }
+
+    public boolean isTournamentOwnedBy(int tournamentId, int creatorId) {
+        if (tournamentId <= 0 || creatorId <= 0) return false;
+        TournamentDTO tournament = tournamentDAO.getTournamentById(tournamentId);
+        return tournament != null && creatorId == tournament.getCreateBy();
     }
 
     public List<TournamentDTO> getAllTournaments() {

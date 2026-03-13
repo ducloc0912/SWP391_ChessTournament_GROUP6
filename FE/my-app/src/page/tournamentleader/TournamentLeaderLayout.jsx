@@ -38,7 +38,7 @@ export default function TournamentLeaderLayout() {
 
   const handleSidebarNavigate = (tabId) => {
     if (tabId === "create-tournament") {
-      navigate("/tournaments/create");
+      navigate("/leader/tournaments/create");
       return;
     }
     setActiveTab(tabId);

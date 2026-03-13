@@ -202,8 +202,7 @@ export default function MainHeader({
                   let dashboardPath = null;
                   if (normalizedRole === "ADMIN") dashboardPath = "/admin/dashboard";
                   if (normalizedRole === "STAFF") dashboardPath = "/staff/dashboard";
-                  if (normalizedRole === "TOURNAMENTLEADER") dashboardPath = "/tournaments";
-                  if (normalizedRole === "REFEREE") dashboardPath = "/home"; // TODO: nếu có dashboard riêng cho referee, đổi path tại đây
+                  if (normalizedRole === "TOURNAMENTLEADER") dashboardPath = "/leader/tournaments";
 
                   return dashboardPath ? (
                     <button
@@ -341,3 +340,4 @@ export default function MainHeader({
     </header>
   );
 }
+

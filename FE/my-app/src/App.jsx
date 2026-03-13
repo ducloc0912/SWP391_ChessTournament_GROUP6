@@ -45,12 +45,13 @@ export default function App() {
           element={<PendingTournamentRegistrations />}
         />
         <Route path="/admin/dashboard" element={<AdminLayout />} />
-        <Route path="/tournaments" element={<TournamentList />} />
+        <Route path="/tournaments" element={<TournamentPublic />} />
         <Route path="/tournaments/public" element={<TournamentPublic />} />
         <Route path="/tournaments/public/:id" element={<TournamentDetailPublic />} />
-        <Route path="/tournaments/:id" element={<TournamentDetailLeader />} />
-        <Route path="/tournaments/create" element={<CreateTournament />} />
-        <Route path="/tournaments/edit/:id" element={<UpdateTournament />} />
+        <Route path="/leader/tournaments" element={<TournamentList />} />
+        <Route path="/leader/tournaments/:id" element={<TournamentDetailLeader />} />
+        <Route path="/leader/tournaments/create" element={<CreateTournament />} />
+        <Route path="/leader/tournaments/edit/:id" element={<UpdateTournament />} />
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/blog/:id" element={<BlogDetails />} />
         <Route path="/blog/manage" element={<BlogManagePage />} />

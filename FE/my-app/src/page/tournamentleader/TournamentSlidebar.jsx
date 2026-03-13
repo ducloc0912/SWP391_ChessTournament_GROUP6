@@ -13,20 +13,20 @@ const MENU_ITEMS = [
     id: "tournament-list",
     label: "Danh sách giải đấu",
     icon: <Trophy size={18} />,
-    path: "/tournaments",
+    path: "/leader/tournaments",
   },
   {
     id: "create-tournament",
     label: "Tạo giải đấu",
     icon: <PlusCircle size={18} />,
-    path: "/tournaments/create",
+    path: "/leader/tournaments/create",
   },
   { id: "reports", label: "Báo cáo", icon: <FileText size={18} /> },
 ];
 
 const getTabFromPath = (pathname) => {
-  if (pathname === "/tournaments/create") return "create-tournament";
-  if (pathname.startsWith("/tournaments")) return "tournament-list";
+  if (pathname === "/leader/tournaments/create") return "create-tournament";
+  if (pathname.startsWith("/leader/tournaments")) return "tournament-list";
   return "dashboard";
 };
 
