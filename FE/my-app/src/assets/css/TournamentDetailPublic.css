@@ -60,7 +60,12 @@
 .tdp-hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(8, 13, 20, 0.84) 0%, rgba(8, 13, 20, 0.54) 45%, rgba(8, 13, 20, 0.3) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(8, 13, 20, 0.84) 0%,
+    rgba(8, 13, 20, 0.54) 45%,
+    rgba(8, 13, 20, 0.3) 100%
+  );
 }
 
 .tdp-hero-content {
@@ -217,7 +222,10 @@
   border: none;
   border-bottom: 3px solid transparent;
   cursor: pointer;
-  transition: color 0.2s, background 0.2s, border-color 0.2s;
+  transition:
+    color 0.2s,
+    background 0.2s,
+    border-color 0.2s;
 }
 
 .tdp-tab:hover {
@@ -251,6 +259,385 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+/* Feedback & Reviews block (public tournament detail) */
+.tdp-feedback-wrapper {
+  margin-top: 20px;
+}
+
+.tdp-feedback-header-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.tdp-feedback-header-inline h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #111827;
+}
+
+.tdp-feedback-summary-inline {
+  display: grid;
+  grid-template-columns: 220px 1fr auto;
+  column-gap: 24px;
+  row-gap: 16px;
+  align-items: center;
+}
+
+.tdp-feedback-score-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.tdp-feedback-score-value {
+  font-size: 36px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.tdp-feedback-stars-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #facc15;
+}
+
+.tdp-feedback-stars-row.selectable .tdp-star-button {
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tdp-star-filled {
+  color: #facc15;
+}
+
+.tdp-star-empty {
+  color: #d1d5db;
+}
+
+.tdp-feedback-total {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.tdp-feedback-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tdp-feedback-dist-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.tdp-feedback-dist-label {
+  text-align: right;
+}
+
+.tdp-feedback-dist-bar-wrap {
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  height: 6px;
+}
+
+.tdp-feedback-dist-bar {
+  height: 100%;
+  background: #facc15;
+}
+
+.tdp-feedback-dist-count {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.tdp-feedback-write-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: #ff4655;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(248, 113, 113, 0.4);
+}
+
+.tdp-feedback-write-btn:hover {
+  background: #f73748;
+}
+
+.tdp-feedback-list-inline {
+  margin-top: 18px;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+  padding-top: 16px;
+}
+
+.tdp-feedback-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tdp-feedback-see-all {
+  margin-bottom: 4px;
+}
+
+.tdp-feedback-see-all button {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tdp-feedback-item {
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 4px 8px rgba(15, 23, 42, 0.04);
+}
+
+.tdp-feedback-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.tdp-feedback-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tdp-avatar-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #4b5563;
+}
+
+.tdp-feedback-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.tdp-feedback-meta {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.tdp-feedback-comment {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.tdp-feedback-reply {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.tdp-feedback-reply-label {
+  font-weight: 600;
+  color: #111827;
+}
+
+.tdp-feedback-reply-block {
+  margin-top: 6px;
+}
+
+.tdp-feedback-reply-input {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  padding: 8px 10px;
+  font-size: 12px;
+  resize: vertical;
+}
+
+.tdp-feedback-reply-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.tdp-feedback-reply-edit-btn,
+.tdp-feedback-edit-own {
+  margin-top: 6px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.tdp-feedback-empty {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.tdp-feedback-not-participant {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.tdp-feedback-state {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Feedback modal (share your experience) */
+.tdp-feedback-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+}
+
+.tdp-feedback-modal {
+  width: 520px;
+  max-width: 90vw;
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px 22px 18px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.35);
+}
+
+.tdp-feedback-modal h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.tdp-feedback-modal-rating {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.tdp-feedback-modal-field {
+  margin-bottom: 10px;
+}
+
+.tdp-feedback-modal-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.tdp-feedback-modal-field textarea {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  padding: 10px 12px;
+  font-size: 13px;
+  resize: vertical;
+  min-height: 96px;
+}
+
+.tdp-feedback-error {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #b91c1c;
+}
+
+.tdp-feedback-modal-actions {
+  margin-top: 4px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tdp-btn-secondary,
+.tdp-btn-primary {
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.tdp-btn-secondary {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.tdp-btn-primary {
+  background: #ff4655;
+  color: #fff;
+}
+
+.tdp-btn-primary[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.tdp-feedback-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #ffffff;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.35);
+  z-index: 50;
+}
+
+.tdp-feedback-toast-success {
+  background: #16a34a;
+}
+
+.tdp-feedback-toast-error {
+  background: #dc2626;
 }
 
 .tdp-overview-card h2 {
@@ -805,4 +1192,151 @@
   margin: 0;
   color: #166534;
   font-weight: 500;
+}
+
+/* ── Feedback: shared buttons ─────────────────────────────── */
+.tdp-btn-primary {
+  padding: 8px 18px;
+  background: #ff4655;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tdp-btn-primary:hover:not(:disabled) { background: #e02d3c; }
+.tdp-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.tdp-btn-secondary {
+  padding: 8px 16px;
+  background: transparent;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tdp-btn-secondary:hover { background: #f3f4f6; }
+
+/* ── Feedback: edit own button ────────────────────────────── */
+.tdp-feedback-edit-own {
+  margin-top: 6px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1d4ed8; /* xanh biển đậm cho chữ */
+  background: transparent;
+  border: none; /* bỏ hình chữ nhật xung quanh */
+  border-radius: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.tdp-feedback-edit-own:hover {
+  color: #1e40af;
+  text-decoration: underline;
+}
+
+/* ── Feedback: reply block (leader) ───────────────────────── */
+.tdp-feedback-reply-block {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.tdp-feedback-reply {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #374151;
+  font-style: italic;
+}
+
+.tdp-feedback-reply-label {
+  font-weight: 700;
+  font-style: normal;
+  color: #111827;
+}
+
+.tdp-feedback-reply-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  resize: vertical;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+.tdp-feedback-reply-input:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+.tdp-feedback-reply-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+
+.tdp-feedback-reply-edit-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6366f1;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.tdp-feedback-reply-edit-btn:hover { color: #4f46e5; }
+
+/* ── Avatar circle ────────────────────────────────────────── */
+.tdp-avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* ── Star button (modal) ──────────────────────────────────── */
+.tdp-star-button {
+  background: transparent;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  line-height: 0;
+}
+
+/* ── Toast notification ───────────────────────────────────── */
+.tdp-feedback-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(15,23,42,0.18);
+  animation: tdp-toast-in 0.25s ease;
+}
+.tdp-feedback-toast-success { background: #f0fdf4; color: #166534; border: 1px solid #86efac; }
+.tdp-feedback-toast-error   { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+
+@keyframes tdp-toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
