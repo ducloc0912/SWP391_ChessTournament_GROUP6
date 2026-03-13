@@ -3,11 +3,10 @@ package com.example.service.leader;
 import com.example.model.dto.TournamentSetupMatchDTO;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
- * Generates matches for Round Robin, Knock Out, and Hybrid (RR + KO) formats.
+ * Generates matches for Round Robin and Knock Out formats.
  * Players are identified by user_id (Integer). Seeding order: index 0 = seed 1, etc.
  */
 public class MatchGenerationService {
@@ -125,25 +124,5 @@ public class MatchGenerationService {
             return matchIndex < right.length ? right[matchIndex] : matchIndex * 2 + 1;
         }
         return matchIndex * 2 + 1;
-    }
-
-    /**
-     * Hybrid: Bracket 1 = Round Robin (all players), Bracket 2 = Knock Out (top N from RR by ranking).
-     * Config: topNForKo = e.g. 4 or 8. KO bracket is generated with placeholder slots (no player ids) since ranking is after RR.
-     */
-    public static List<TournamentSetupMatchDTO> generateHybridMatches(List<Integer> playerIds, int topNForKo) {
-        if (playerIds == null || playerIds.size() < 2) return List.of();
-        List<TournamentSetupMatchDTO> rr = generateRoundRobinMatches(playerIds, false);
-        int koSize = nextPowerOf2(Math.min(topNForKo, 32));
-        if (koSize < 2) koSize = 2;
-        List<Integer> placeholders = Collections.nCopies(koSize, (Integer) null);
-        List<TournamentSetupMatchDTO> ko = generateKnockoutMatches(placeholders, placeholders);
-        for (TournamentSetupMatchDTO m : ko) {
-            m.setWhitePlayerId(null);
-            m.setBlackPlayerId(null);
-        }
-        List<TournamentSetupMatchDTO> out = new ArrayList<>(rr);
-        out.addAll(ko);
-        return out;
     }
 }

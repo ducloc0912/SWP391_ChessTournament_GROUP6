@@ -14,6 +14,13 @@ public class TournamentSetupMatchDTO {
     private String blackPlayerName;
     private Timestamp startTime;
     private Integer refereeId;
+    private Integer groupId;
+    private String groupName;
+
+    public Integer getGroupId() { return groupId; }
+    public void setGroupId(Integer groupId) { this.groupId = groupId; }
+    public String getGroupName() { return groupName; }
+    public void setGroupName(String groupName) { this.groupName = groupName; }
 
     public Integer getRefereeId() {
         return refereeId;

@@ -15,6 +15,13 @@ public class TournamentPlayerDTO {
     private Boolean isPaid;
     private Integer seed;
     private String titleAtRegistration;
+    private Integer groupId;
+    private String groupName;
+
+    public Integer getGroupId() { return groupId; }
+    public void setGroupId(Integer groupId) { this.groupId = groupId; }
+    public String getGroupName() { return groupName; }
+    public void setGroupName(String groupName) { this.groupName = groupName; }
 
     public int getParticipantId() { return participantId; }
     public void setParticipantId(int participantId) { this.participantId = participantId; }

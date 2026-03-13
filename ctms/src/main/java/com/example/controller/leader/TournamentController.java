@@ -15,8 +15,16 @@ import com.example.model.enums.TournamentStatus;
 import com.example.service.leader.TournamentService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 
 import jakarta.servlet.ServletException;
+
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 
@@ -28,12 +36,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * API controller cho giải đấu: CRUD, players, referees, setup wizard.
+ * Setup: setupState, schedule, autoSetup, autoFillPlayers, manualSetup, finalizeStep, unlockStep, saveRefereeAssignments.
+ */
 @WebServlet("/api/tournaments")
 public class TournamentController extends HttpServlet {
 
@@ -50,6 +63,38 @@ public class TournamentController extends HttpServlet {
 
         gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd HH:mm:ss")
+                .registerTypeAdapter(Timestamp.class, new TypeAdapter<Timestamp>() {
+                    private final String[] dateFormats = {
+                        "yyyy-MM-dd HH:mm:ss",
+                        "yyyy-MM-dd HH:mm",
+                        "yyyy-MM-dd'T'HH:mm:ss",
+                        "yyyy-MM-dd'T'HH:mm"
+                    };
+                    @Override
+                    public void write(JsonWriter out, Timestamp value) throws IOException {
+                        if (value == null) out.nullValue();
+                        else out.value(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(value));
+                    }
+                    @Override
+                    public Timestamp read(JsonReader in) throws IOException {
+                        if (in.peek() == JsonToken.NULL) {
+                            in.nextNull();
+                            return null;
+                        }
+                        String s = in.nextString();
+                        if (s == null || s.isBlank()) return null;
+                        s = s.trim().replace('T', ' ');
+                        for (String fmtStr : dateFormats) {
+                            try {
+                                SimpleDateFormat fmt = new SimpleDateFormat(fmtStr);
+                                fmt.setLenient(false);
+                                Date d = fmt.parse(s);
+                                if (d != null) return new Timestamp(d.getTime());
+                            } catch (Exception ignored) {}
+                        }
+                        return null;
+                    }
+                })
                 .create();
     }
 
@@ -73,7 +118,7 @@ public class TournamentController extends HttpServlet {
         if ("filters".equals(action)) {
             Map<String, Object> data = new HashMap<>();
             data.put("statuses", Arrays.stream(TournamentStatus.values()).map(Enum::name).toList());
-            data.put("formats", Arrays.stream(TournamentFormat.values()).map(Enum::name).toList());
+            data.put("formats", Arrays.stream(TournamentFormat.values()).filter(f -> f != TournamentFormat.Hybrid).map(Enum::name).toList());
             response.getWriter().write(gson.toJson(data));
             return;
         }
@@ -185,6 +230,7 @@ public class TournamentController extends HttpServlet {
             return;
         }
 
+        /* GET setupState: trạng thái wizard (current_step, stepStatuses) */
         if ("setupState".equals(action) || "setup-state".equals(action)) {
             String tid = request.getParameter("id");
             if (tid == null) {
@@ -214,6 +260,32 @@ public class TournamentController extends HttpServlet {
             return;
         }
 
+        if ("autoSetup".equalsIgnoreCase(action) || "auto-setup".equalsIgnoreCase(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(tid);
+                TournamentService.AutoSetupResult result = tournamentService.generateAutoSetup(tournamentId);
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("success", result.isSuccess());
+                payload.put("message", result.getMessage());
+                payload.put("matches", result.getMatches());
+                payload.put("warnings", result.getWarnings());
+                if (!result.isSuccess()) {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                }
+                response.getWriter().write(gson.toJson(payload));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+            }
+            return;
+        }
+
         String idParam = request.getParameter("id");
 
         if (idParam == null) {
@@ -237,9 +309,7 @@ public class TournamentController extends HttpServlet {
         }
     }
 
-    // =======================
-    // POST: CREATE
-    // =======================
+    // ======================= POST =======================
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -248,6 +318,33 @@ public class TournamentController extends HttpServlet {
         response.setCharacterEncoding("UTF-8");
 
         String action = request.getParameter("action");
+        /* POST autoSetup: tránh cache GET, đảm bảo trả về matches */
+        if ("autoSetup".equalsIgnoreCase(action) || "auto-setup".equalsIgnoreCase(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(tid);
+                TournamentService.AutoSetupResult result = tournamentService.generateAutoSetup(tournamentId);
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("success", result.isSuccess());
+                payload.put("message", result.getMessage());
+                payload.put("matches", result.getMatches());
+                payload.put("warnings", result.getWarnings());
+                if (!result.isSuccess()) {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                }
+                response.getWriter().write(gson.toJson(payload));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+            }
+            return;
+        }
+
         if ("uploadImageFile".equals(action)) {
             try {
                 Part filePart;
@@ -524,6 +621,40 @@ public class TournamentController extends HttpServlet {
             return;
         }
 
+        if ("autoFillPlayers".equals(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+                return;
+            }
+            int tournamentId;
+            try {
+                tournamentId = Integer.parseInt(tid);
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+                return;
+            }
+            TournamentManualSetupRequestDTO body = null;
+            try {
+                body = gson.fromJson(request.getReader(), TournamentManualSetupRequestDTO.class);
+            } catch (Exception ignored) {}
+            List<TournamentSetupMatchDTO> structureMatches = (body != null && body.getMatches() != null) ? body.getMatches() : List.of();
+            TournamentService.AutoSetupResult result = tournamentService.autoFillPlayers(tournamentId, structureMatches);
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("success", result.isSuccess());
+            payload.put("message", result.getMessage());
+            payload.put("matches", result.getMatches());
+            payload.put("warnings", result.getWarnings());
+            if (!result.isSuccess()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
+            response.getWriter().write(gson.toJson(payload));
+            return;
+        }
+
+        /* POST manualSetup: lưu Schedule (legacy), advance step REFEREE */
         if ("manualSetup".equals(action)) {
             String tid = request.getParameter("id");
             if (tid == null) {
@@ -557,7 +688,7 @@ public class TournamentController extends HttpServlet {
             String tid = request.getParameter("id");
             if (tid == null) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+                response.getWriter().write("{\"success\": false, \"message\": \"Thiếu tournament id.\"}");
                 return;
             }
             int tournamentId;
@@ -565,22 +696,30 @@ public class TournamentController extends HttpServlet {
                 tournamentId = Integer.parseInt(tid);
             } catch (NumberFormatException e) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+                response.getWriter().write("{\"success\": false, \"message\": \"Tournament id không hợp lệ.\"}");
                 return;
             }
-            TournamentManualSetupRequestDTO body = gson.fromJson(request.getReader(), TournamentManualSetupRequestDTO.class);
+            TournamentManualSetupRequestDTO body = null;
+            try {
+                body = gson.fromJson(request.getReader(), TournamentManualSetupRequestDTO.class);
+            } catch (Exception e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Dữ liệu gửi lên không hợp lệ. Kiểm tra format JSON.\"}");
+                return;
+            }
             List<TournamentSetupMatchDTO> matches = body != null && body.getMatches() != null ? body.getMatches() : List.of();
             TournamentService.SetupValidationResult result = tournamentService.saveRefereeAssignments(tournamentId, matches);
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("success", result.isValid());
+            payload.put("message", result.getMessage() != null ? result.getMessage() : (result.isValid() ? "Lưu thành công." : "Lưu thất bại."));
             if (!result.isValid()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("success", result.isValid());
-            payload.put("message", result.getMessage());
             response.getWriter().write(gson.toJson(payload));
             return;
         }
 
+        /* POST setupStep: advance step (legacy) Structure→Players hoặc Players→Schedule */
         if ("setupStep".equals(action)) {
             String tid = request.getParameter("id");
             if (tid == null) {
@@ -650,7 +789,14 @@ public class TournamentController extends HttpServlet {
                 if (bodyStr != null && !bodyStr.isBlank()) {
                     body = gson.fromJson(bodyStr, TournamentManualSetupRequestDTO.class);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                // Log parse failure; finalizeStep with null body will return validation error
+            }
+            if (body == null && (step == SetupStep.BRACKET || step == SetupStep.PLAYERS || step == SetupStep.SCHEDULE)) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Request body thiếu hoặc JSON không hợp lệ. Gửi đúng format và matches (Content-Type: application/json).\"}");
+                return;
+            }
             TournamentSetupService.ValidationResult result = setupService.finalizeStep(tournamentId, step, body, userId);
             if (!result.isValid()) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -662,6 +808,7 @@ public class TournamentController extends HttpServlet {
             return;
         }
 
+        /* POST unlockStep: set step và các bước sau về DRAFT */
         if ("unlockStep".equals(action)) {
             String tid = request.getParameter("id");
             String stepParam = request.getParameter("step");
@@ -696,12 +843,55 @@ public class TournamentController extends HttpServlet {
             return;
         }
 
-        TournamentDTO tournament =
-                gson.fromJson(request.getReader(), TournamentDTO.class);
-
-        boolean success = tournamentService.createTournament(tournament);
-
-        response.getWriter().write("{\"success\": " + success + "}");
+        java.io.BufferedReader reader = request.getReader();
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) sb.append(line);
+        com.google.gson.JsonObject root = gson.fromJson(sb.toString(), com.google.gson.JsonObject.class);
+        if (root == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("{\"success\": false, \"message\": \"Invalid body\"}");
+            return;
+        }
+        TournamentDTO tournament = gson.fromJson(root.get("tournament"), TournamentDTO.class);
+        if (tournament == null) {
+            tournament = gson.fromJson(sb.toString(), TournamentDTO.class);
+        }
+        if (tournament == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament\"}");
+            return;
+        }
+        Integer tournamentId = tournamentService.createTournament(tournament);
+        boolean success = tournamentId != null;
+        if (success && root.has("prizeTemplates")) {
+            try {
+                com.google.gson.JsonArray arr = root.getAsJsonArray("prizeTemplates");
+                if (arr != null && arr.size() > 0) {
+                    java.util.List<com.example.model.entity.PrizeTemplate> templates = new java.util.ArrayList<>();
+                    for (com.google.gson.JsonElement el : arr) {
+                        com.google.gson.JsonObject o = el.getAsJsonObject();
+                        com.example.model.entity.PrizeTemplate pt = new com.example.model.entity.PrizeTemplate();
+                        pt.setRankPosition(o.has("rankPosition") ? o.get("rankPosition").getAsInt() : 1);
+                        pt.setPercentage(java.math.BigDecimal.ZERO);
+                        if (o.has("fixedAmount") && !o.get("fixedAmount").isJsonNull()) {
+                            pt.setFixedAmount(java.math.BigDecimal.valueOf(o.get("fixedAmount").getAsDouble()));
+                        } else {
+                            pt.setFixedAmount(java.math.BigDecimal.ZERO);
+                        }
+                        pt.setLabel(o.has("label") && !o.get("label").isJsonNull() ? o.get("label").getAsString() : null);
+                        templates.add(pt);
+                    }
+                    tournamentService.savePrizeTemplates(tournamentId, templates);
+                }
+            } catch (Exception e) {
+                // ignore prize template errors
+            }
+        }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("success", success);
+        if (success) payload.put("tournamentId", tournamentId);
+        response.getWriter().write(gson.toJson(payload));
     }
 
     // =======================

@@ -36,11 +36,7 @@ function getStatusLabel(status) {
 }
 
 function getFormatLabel(format) {
-  const map = {
-    RoundRobin: "Vòng tròn",
-    KnockOut: "Loại trực tiếp",
-    Hybrid: "Kết hợp",
-  };
+  const map = { RoundRobin: "Vòng tròn", KnockOut: "Loại trực tiếp" };
   return map[format] || format || "—";
 }
 

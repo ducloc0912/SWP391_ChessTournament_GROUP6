@@ -21,9 +21,11 @@ public enum SetupStep {
         return null;
     }
 
-    /** DB column value (STRUCTURE for step 1 to keep compatibility). */
+    /** DB column value: STRUCTURE/REFEREE for compatibility with DB CHECK constraint (STRUCTURE, PLAYERS, SCHEDULE, REFEREE, COMPLETED). */
     public String toDbValue() {
-        return this == BRACKET ? "STRUCTURE" : name();
+        if (this == BRACKET) return "STRUCTURE";
+        if (this == REFEREES) return "REFEREE";
+        return name();
     }
 
     public static SetupStep fromDbValue(String db) {

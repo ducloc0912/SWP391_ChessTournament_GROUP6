@@ -69,7 +69,13 @@ public class HomeServlet extends HttpServlet {
 
         } catch (Exception e) {
             e.printStackTrace();
+            addCors(req, resp);
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.setContentType("application/json");
+            resp.setCharacterEncoding("UTF-8");
+            try {
+                resp.getWriter().write("{\"error\":\"Internal server error\"}");
+            } catch (IOException ignored) {}
         }
     }
 }

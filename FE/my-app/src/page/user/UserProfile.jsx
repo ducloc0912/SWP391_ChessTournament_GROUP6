@@ -1604,19 +1604,13 @@ export default function UserProfile() {
                               </span>
                             </div>
                           )}
-                          {(selectedTournamentForDetail.format ||
-                            selectedTournamentForDetail.categories) && (
+                          {selectedTournamentForDetail.format && (
                             <div className="up-tournament-detail__row">
                               <span className="up-tournament-detail__label">
-                                Format / Thể loại:
+                                Format:
                               </span>
                               <span>
-                                {[
-                                  selectedTournamentForDetail.format,
-                                  selectedTournamentForDetail.categories,
-                                ]
-                                  .filter(Boolean)
-                                  .join(" · ")}
+                                {selectedTournamentForDetail.format}
                               </span>
                             </div>
                           )}
