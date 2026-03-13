@@ -183,7 +183,7 @@ export default function TournamentDashboard() {
             <ActionButton
               label="Tạo giải đấu"
               icon={<Plus size={16} />}
-              onClick={() => navigate("/tournaments/create")}
+              onClick={() => navigate("/leader/tournaments/create")}
               primary
             />
           </div>
@@ -279,7 +279,7 @@ export default function TournamentDashboard() {
                 <button
                   key={t.tournamentId}
                   type="button"
-                  onClick={() => navigate(`/tournaments/${t.tournamentId}`)}
+                  onClick={() => navigate(`/leader/tournaments/${t.tournamentId}`)}
                   style={{
                     border: "1px solid #e2e8f0",
                     borderRadius: 12,
@@ -314,7 +314,7 @@ export default function TournamentDashboard() {
           <h3 style={sectionTitle}>Lịch giải đấu sắp diễn ra</h3>
           <button
             type="button"
-            onClick={() => navigate("/tournaments?tab=tournament-list")}
+            onClick={() => navigate("/leader/tournaments")}
             style={{
               border: "none",
               background: "transparent",
@@ -366,7 +366,7 @@ export default function TournamentDashboard() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => navigate(`/tournaments/${t.tournamentId}`)}
+                  onClick={() => navigate(`/leader/tournaments/${t.tournamentId}`)}
                   style={{
                     border: "1px solid #e2e8f0",
                     borderRadius: 10,

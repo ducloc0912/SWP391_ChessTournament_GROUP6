@@ -130,7 +130,7 @@ public class TournamentStaffDAO extends DBContext {
 
     public List<TournamentApprovalLog> getApprovalLogsByTournament(int tournamentId) {
         List<TournamentApprovalLog> list = new ArrayList<>();
-        String sql = "SELECT * FROM Tournament_Approval_Log WHERE tournament_id = ? ORDER BY created_at DESC";
+        String sql = "SELECT * FROM Tournament_Approval_Log WHERE tournament_id = ? ORDER BY create_at DESC";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, tournamentId);
@@ -434,6 +434,8 @@ public class TournamentStaffDAO extends DBContext {
         t.setTournamentId(rs.getInt("tournament_id"));
         t.setTournamentName(rs.getString("tournament_name"));
         t.setDescription(rs.getString("description"));
+        t.setTournamentImage(rs.getString("tournament_image"));
+        t.setRules(rs.getString("rules"));
         t.setLocation(rs.getString("location"));
         t.setFormat(parseFormat(rs.getString("format")));
         t.setMaxPlayer(rs.getInt("max_player"));
@@ -463,7 +465,7 @@ public class TournamentStaffDAO extends DBContext {
         log.setFromStatus(rs.getString("from_status") != null ? parseStatus(rs.getString("from_status")) : null);
         log.setToStatus(rs.getString("to_status") != null ? parseStatus(rs.getString("to_status")) : null);
         log.setNote(rs.getString("note"));
-        log.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+        log.setCreatedAt(rs.getTimestamp("create_at").toLocalDateTime());
         return log;
     }
 

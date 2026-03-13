@@ -216,9 +216,9 @@ export default function CreateTournamentPage() {
       if (data?.success) {
         alert("Tạo giải đấu thành công!");
         if (data.tournamentId) {
-          navigate(`/tournaments/${data.tournamentId}`);
+          navigate(`/leader/tournaments/${data.tournamentId}`);
         } else {
-          navigate("/tournaments");
+          navigate("/leader/tournaments");
         }
       } else {
         alert("Tạo giải đấu thất bại!");
@@ -308,7 +308,7 @@ export default function CreateTournamentPage() {
                 <>
                   <button
                     className="cw-btn cw-btn-danger"
-                    onClick={() => navigate("/tournaments")}
+                    onClick={() => navigate("/leader/tournaments")}
                   >
                     Hủy
                   </button>

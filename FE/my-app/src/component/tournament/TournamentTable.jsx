@@ -73,7 +73,7 @@ const TournamentTable = ({ tournaments = [], refresh }) => {
         </div>
         <h3>No tournaments found</h3>
         <p>You haven't created any tournaments yet.</p>
-        <button onClick={() => navigate("/tournaments/create")}>
+        <button onClick={() => navigate("/leader/tournaments/create")}>
           Create Tournament
         </button>
       </div>
@@ -132,7 +132,7 @@ const TournamentTable = ({ tournaments = [], refresh }) => {
                       size={16}
                       style={{ cursor: "pointer" }}
                       onClick={() =>
-                        navigate(`/tournaments/${t.tournamentId}`)
+                        navigate(`/leader/tournaments/${t.tournamentId}`)
                       }
                     />
 
@@ -141,7 +141,7 @@ const TournamentTable = ({ tournaments = [], refresh }) => {
                         size={16}
                         style={{ cursor: "pointer" }}
                         onClick={() =>
-                          navigate(`/tournaments/edit/${t.tournamentId}`)
+                          navigate(`/leader/tournaments/edit/${t.tournamentId}`)
                         }
                       />
                     )}

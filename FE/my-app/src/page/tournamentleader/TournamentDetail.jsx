@@ -213,7 +213,7 @@ const TournamentDetail = () => {
 
   const menuItems = [
     { to: "/home", label: "Home" },
-    { to: "/tournaments", label: "Quản lý giải" },
+    { to: "/leader/tournaments", label: "Quản lý giải" },
   ];
 
   const tabs = [
@@ -269,11 +269,7 @@ const TournamentDetail = () => {
         menuItems={menuItems}
       />
       <div className="tdp-container">
-        <button
-          type="button"
-          className="tdp-back-btn"
-          onClick={() => navigate("/tournaments")}
-        >
+        <button type="button" className="tdp-back-btn" onClick={() => navigate("/leader/tournaments")}>
           <ArrowLeft size={16} /> Quay lại danh sách giải
         </button>
 
@@ -308,9 +304,7 @@ const TournamentDetail = () => {
             <button
               type="button"
               className="tdp-register-btn"
-              onClick={() =>
-                navigate(`/tournaments/edit/${tournament.tournamentId ?? id}`)
-              }
+              onClick={() => navigate(`/leader/tournaments/edit/${tournament.tournamentId ?? id}`)}
             >
               <Edit2 size={18} />
               Chỉnh sửa giải đấu
@@ -3197,12 +3191,17 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
             {laneStep === "referee" ? (
               <>
                 <div className="tsu-referee-step">
-                  <div className="tsu-preview-head">
-                    <div>
-                      <h3>4. Select Referee</h3>
-                      <p>
-                        Gán trọng tài cho từng ván đấu. Trọng tài phải được thêm
-                        vào giải trước (tab Referees).
+                <div className="tsu-preview-head">
+                  <div>
+                    <h3>4. Select Referee</h3>
+                    <p>
+                      Gán trọng tài cho từng ván đấu. Trọng tài phải được thêm
+                      vào giải trước (tab Referees).
+                    </p>
+                    {tournamentReferees.length === 0 && (
+                      <p className="tsu-referee-empty-hint">
+                        Chưa có trọng tài nào. Vào tab Referees để thêm trọng
+                        tài vào giải trước.
                       </p>
                       {tournamentReferees.length === 0 && (
                         <p className="tsu-referee-empty-hint">
@@ -3213,18 +3212,19 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                     </div>
                   </div>
                 </div>
-                {effectiveFormat === "RoundRobin" &&
-                  renderRoundRobinPreview(
-                    stageRows.nativeRounds,
-                    "Round Robin - Chọn trọng tài",
-                  )}
-                {effectiveFormat === "KnockOut" &&
-                  renderKnockoutPreview(
-                    stageRows.nativeRounds,
-                    "Knock Out - Chọn trọng tài",
-                  )}
+              </div>
+              {effectiveFormat === "RoundRobin" &&
+                renderRoundRobinPreview(
+                  stageRows.nativeRounds,
+                  "Round Robin - Chọn trọng tài",
+                )}
+              {effectiveFormat === "KnockOut" &&
+                renderKnockoutPreview(
+                  stageRows.nativeRounds,
+                  "Knock Out - Chọn trọng tài",
+                )}
               </>
-            ) : (
+          ) : (
               <div className="tsu-schedule-wrap">
                 <div className="tsu-preview-head">
                   <div>

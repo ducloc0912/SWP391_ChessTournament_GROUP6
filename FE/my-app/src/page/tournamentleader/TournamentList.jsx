@@ -224,7 +224,7 @@ const TournamentList = () => {
             <h1>Giải đấu của tôi</h1>
             <p>Quản lý và theo dõi các giải cờ vua của bạn. Lọc theo trạng thái và thể thức bên dưới.</p>
           </div>
-          <button type="button" className="tp-all-btn tl-create-btn-inline" onClick={() => navigate("/tournaments/create")}>
+          <button type="button" className="tp-all-btn tl-create-btn-inline" onClick={() => navigate("/leader/tournaments/create")}>
             <Plus size={18} />
             Tạo giải đấu
           </button>
@@ -333,7 +333,7 @@ const TournamentList = () => {
 
                           <button
                             className="tl-card-cta-btn"
-                            onClick={() => navigate(`/tournaments/${t.tournamentId}`)}
+                            onClick={() => navigate(`/leader/tournaments/${t.tournamentId}`)}
                           >
                             QUẢN LÝ
                           </button>
@@ -395,7 +395,7 @@ const TournamentList = () => {
                 <p>Bạn chưa tạo giải đấu nào hoặc bộ lọc đang quá chặt.</p>
                 <button
                   className="tl-empty-create-btn"
-                  onClick={() => navigate("/tournaments/create")}
+                  onClick={() => navigate("/leader/tournaments/create")}
                 >
                   Tạo giải đấu
                 </button>
