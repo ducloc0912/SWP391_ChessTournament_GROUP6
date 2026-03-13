@@ -256,7 +256,14 @@ export default function MainHeader({
                   )}
                 </div>
                 <div className="user-dropdown" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <span style={{ color: "white", fontWeight: "600", fontSize: "14px" }}>
+                  <div 
+                    title="Ví của tôi"
+                    style={{ background: 'rgba(255,255,255,0.2)', padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold', fontSize: '14px', border: '1px solid rgba(255,255,255,0.3)' }}
+                    onClick={() => navigate('/wallet')}
+                  >
+                    💳 {user.balance ? user.balance.toLocaleString() : "0"}đ
+                  </div>
+                  <span style={{ color: "white", fontWeight: "600", fontSize: "14px", marginLeft: "4px" }}>
                     Hi, {user.firstName}
                   </span>
                   <button

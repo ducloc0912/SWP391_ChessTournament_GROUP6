@@ -3203,7 +3203,13 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                         Chưa có trọng tài nào. Vào tab Referees để thêm trọng
                         tài vào giải trước.
                       </p>
-                    )}
+                      {tournamentReferees.length === 0 && (
+                        <p className="tsu-referee-empty-hint">
+                          Chưa có trọng tài nào. Vào tab Referees để thêm trọng
+                          tài vào giải trước.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3241,10 +3247,44 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                       )}
                     </p>
                   </div>
+                  {laneStep === "schedule" && (
+                    <div className="tsu-preview-head-actions">
+                      <button
+                        type="button"
+                        className="tsu-round-add-btn"
+                        onClick={() => {
+                          if (!tournamentStartDate || !tournamentEndDate || rows.length === 0) {
+                            setServerBanner({ type: "error", text: "Cần có khoảng thời gian giải (start/end) để auto lịch." });
+                            return;
+                          }
+                          const start = new Date(tournamentStartDate).getTime();
+                          const end = new Date(tournamentEndDate).getTime();
+                          if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
+                            setServerBanner({ type: "error", text: "Ngày bắt đầu/kết thúc giải không hợp lệ." });
+                            return;
+                          }
+                          const step = (end - start) / Math.max(rows.length, 1);
+                          const toLocal = (d) => {
+                            const x = new Date(d);
+                            const local = new Date(x.getTime() - x.getTimezoneOffset() * 60000);
+                            return local.toISOString().slice(0, 16);
+                          };
+                          setRows((prev) =>
+                            prev.map((row, i) => ({
+                              ...row,
+                              startTime: toLocal(new Date(start + step * i)),
+                            })),
+                          );
+                          setServerBanner({ type: "success", text: `Đã tự gán lịch cho ${rows.length} trận trong khoảng thời gian giải.` });
+                        }}
+                      >
+                        Auto schedule
+                      </button>
+                    </div>
+                  )}
                   {laneStep === "structure" && (
                     <div className="tsu-preview-head-actions">
-                      {(effectiveFormat === "RoundRobin" ||
-                        effectiveFormat === "Hybrid") && (
+                      {(effectiveFormat === "RoundRobin" || effectiveFormat === "Hybrid") && (
                         <button
                           className="tsu-round-add-btn"
                           onClick={() => addInlineRound("RoundRobin")}
@@ -3252,8 +3292,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                           + Thêm round RoundRobin
                         </button>
                       )}
-                      {(effectiveFormat === "KnockOut" ||
-                        effectiveFormat === "Hybrid") && (
+                      {(effectiveFormat === "KnockOut" || effectiveFormat === "Hybrid") && (
                         <button
                           className="tsu-round-add-btn"
                           onClick={() => addInlineRound("KnockOut")}
@@ -3265,20 +3304,21 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                   )}
                 </div>
 
-              {effectiveFormat === "RoundRobin" &&
-                renderRoundRobinPreview(
-                  stageRows.nativeRounds,
-                  "Round Robin rounds",
-                )}
+                {effectiveFormat === "RoundRobin" &&
+                  renderRoundRobinPreview(
+                    stageRows.nativeRounds,
+                    "Round Robin rounds",
+                  )}
 
-              {effectiveFormat === "KnockOut" &&
-                renderKnockoutPreview(
-                  stageRows.nativeRounds,
-                  "Knock Out bracket",
-                )}
-            </div>
-          )}
-        </div>
+                {effectiveFormat === "KnockOut" &&
+                  renderKnockoutPreview(
+                    stageRows.nativeRounds,
+                    "Knock Out bracket",
+                  )}
+              </div>
+            )}
+          </div>
+
       </>
     )}
     {toast && <div className="ti-toast">{toast}</div>}

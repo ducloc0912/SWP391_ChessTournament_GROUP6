@@ -798,6 +798,20 @@ public UserRole findUserWithRole(String email, String password) {
         return false;
     }
 
+    public boolean addBalance(int userId, BigDecimal amount) {
+        String sql = "UPDATE Users SET balance = ISNULL(balance, 0) + ? WHERE user_id = ?";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setBigDecimal(1, amount);
+            ps.setInt(2, userId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
     public int countAllUsers() {
         String sql = "SELECT COUNT(*) AS total FROM Users";
         try (Connection conn = getConnection();

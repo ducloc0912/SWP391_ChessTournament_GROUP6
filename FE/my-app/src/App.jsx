@@ -24,7 +24,7 @@ import BlogDetails from "./page/blog/BlogDetails";
 import BlogManagePage from "./page/blog/BlogManagePage";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PaymentPage from "./page/payment/PaymentPage";
-import PaymentResult from "./page/payment/PaymentResult";
+import WalletPage from "./page/payment/WalletPage";
 
 export default function App() {
   return (
@@ -59,7 +59,7 @@ export default function App() {
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
         <Route path="/staff/reports" element={<StaffSystemReportPage />} />
         <Route path="/payment" element={<PaymentPage />} />
-        <Route path="/payment-result" element={<PaymentResult />} />
+        <Route path="/wallet" element={<WalletPage />} />
         <Route path="/referee/invitations" element={<RefereeInvitationsPage />} />
       </Routes>
     </BrowserRouter>

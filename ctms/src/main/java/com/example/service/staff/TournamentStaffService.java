@@ -70,4 +70,8 @@ public class TournamentStaffService {
     public boolean markWithdrawalCompleted(int withdrawalId, int staffId, String transferRef) {
         return tournamentStaffDAO.markWithdrawalCompleted(withdrawalId, staffId, transferRef);
     }
+
+    public boolean rejectWithdrawal(int withdrawalId, int staffId, String reason) {
+        return tournamentStaffDAO.rejectWithdrawal(withdrawalId, staffId, reason);
+    }
 }

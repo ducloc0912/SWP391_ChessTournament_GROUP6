@@ -20,7 +20,7 @@ public class CORSFilter implements Filter {
             "http://localhost:5175",
             "http://localhost:3000",
             "http://localhost:5174",
-            // FE được expose qua ngrok (VNPay redirect, người dùng truy cập)
+            // FE được expose qua ngrok
             "https://nonsubjective-mayola-radiosymmetrical.ngrok-free.dev"
     );
 

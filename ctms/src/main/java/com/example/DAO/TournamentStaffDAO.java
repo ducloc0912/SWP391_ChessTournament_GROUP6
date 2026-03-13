@@ -359,6 +359,76 @@ public class TournamentStaffDAO extends DBContext {
         return false;
     }
 
+    public boolean rejectWithdrawal(int withdrawalId, int staffId, String reason) {
+        String queryWithdrawal = "SELECT user_id, amount FROM Withdrawal WHERE withdrawal_id = ? AND status = 'Pending'";
+        String updateWithdrawal = "UPDATE Withdrawal SET status = 'Rejected', approved_by = ?, approved_at = GETDATE(), rejection_reason = ? WHERE withdrawal_id = ?";
+        String updateUser = "UPDATE Users SET balance = balance + ? WHERE user_id = ?";
+        String insertTx = "INSERT INTO Payment_Transaction (user_id, type, amount, description, create_at) VALUES (?, 'Refund', ?, ?, GETDATE())";
+
+        Connection conn = null;
+        try {
+            conn = getConnection();
+            conn.setAutoCommit(false);
+
+            int userId = -1;
+            java.math.BigDecimal amount = java.math.BigDecimal.ZERO;
+
+            try (PreparedStatement psQ = conn.prepareStatement(queryWithdrawal)) {
+                psQ.setInt(1, withdrawalId);
+                try (ResultSet rs = psQ.executeQuery()) {
+                    if (rs.next()) {
+                        userId = rs.getInt("user_id");
+                        amount = rs.getBigDecimal("amount");
+                    } else {
+                        conn.rollback();
+                        return false;
+                    }
+                }
+            }
+
+            try (PreparedStatement psU1 = conn.prepareStatement(updateWithdrawal)) {
+                psU1.setInt(1, staffId);
+                psU1.setString(2, reason);
+                psU1.setInt(3, withdrawalId);
+                if (psU1.executeUpdate() == 0) {
+                    conn.rollback();
+                    return false;
+                }
+            }
+
+            try (PreparedStatement psU2 = conn.prepareStatement(updateUser)) {
+                psU2.setBigDecimal(1, amount);
+                psU2.setInt(2, userId);
+                psU2.executeUpdate();
+            }
+
+            try (PreparedStatement psI = conn.prepareStatement(insertTx)) {
+                psI.setInt(1, userId);
+                psI.setBigDecimal(2, amount);
+                psI.setString(3, "Hoàn tiền từ chối rút: " + reason);
+                psI.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            e.printStackTrace();
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return false;
+    }
+
     private Tournament mapResultSetToTournament(ResultSet rs) throws SQLException {
         Tournament t = new Tournament();
         t.setTournamentId(rs.getInt("tournament_id"));
