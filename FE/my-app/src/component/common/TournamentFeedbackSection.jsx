@@ -207,8 +207,8 @@ export default function TournamentFeedbackSection({ tournamentId, user, role, is
               })}
             </div>
 
-            {/* Write button — only for participants */}
-            {isParticipant && (
+            {/* Write button — only for participants who haven't submitted feedback yet */}
+            {isParticipant && !feedbackItems.some((fb) => user?.userId != null && fb.userId === user.userId) && (
               <button type="button" className="tdp-feedback-write-btn" onClick={handleOpenWrite}>
                 VIẾT ĐÁNH GIÁ
               </button>

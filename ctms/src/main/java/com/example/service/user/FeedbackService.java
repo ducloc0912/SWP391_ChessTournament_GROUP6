@@ -76,6 +76,15 @@ public class FeedbackService {
                 throw new IllegalArgumentException("Bạn cần tham gia giải đấu trước khi viết đánh giá.");
             }
 
+            // Mỗi người chơi chỉ được feedback một lần cho mỗi giải đấu
+            boolean alreadySubmitted = feedbackDAO.hasUserFeedbackForTournament(
+                    feedback.getUserId(),
+                    feedback.getTournamentId()
+            );
+            if (alreadySubmitted) {
+                throw new IllegalArgumentException("Bạn đã gửi đánh giá cho giải đấu này rồi.");
+            }
+
             feedbackDAO.addFeedback(feedback);
             return true;
         } catch (Exception e) {
