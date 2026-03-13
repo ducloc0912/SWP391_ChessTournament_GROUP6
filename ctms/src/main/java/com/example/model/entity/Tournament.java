@@ -14,7 +14,6 @@ public class Tournament {
     private String rules;
     private String location;
     private TournamentFormat format;
-    private String categories;
     private Integer maxPlayer;
     private Integer minPlayer;
     private BigDecimal entryFee;
@@ -72,14 +71,6 @@ public class Tournament {
 
     public void setFormat(TournamentFormat format) {
         this.format = format;
-    }
-
-    public String getCategories() {
-        return categories;
-    }
-
-    public void setCategories(String categories) {
-        this.categories = categories;
     }
 
     public Integer getMaxPlayer() {
@@ -182,7 +173,7 @@ public class Tournament {
 
     public Tournament(Integer tournamentId, String tournamentName, String description,
                       String tournamentImage, String rules, String location,
-                      TournamentFormat format, String categories, Integer maxPlayer, Integer minPlayer,
+                      TournamentFormat format, Integer maxPlayer, Integer minPlayer,
                       BigDecimal entryFee, BigDecimal prizePool, TournamentStatus status,
                       LocalDateTime registrationDeadline, LocalDateTime startDate, LocalDateTime endDate,
                       Integer createBy, LocalDateTime createAt, String notes) {
@@ -193,7 +184,6 @@ public class Tournament {
         this.rules = rules;
         this.location = location;
         this.format = format;
-        this.categories = categories;
         this.maxPlayer = maxPlayer;
         this.minPlayer = minPlayer;
         this.entryFee = entryFee;

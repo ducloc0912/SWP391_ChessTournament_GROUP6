@@ -17,6 +17,8 @@ import TournamentDetailPublic from "./component/common/TournamentDetail";
 import CreateTournament from "./page/tournamentleader/CreateTournament";
 import UpdateTournament from "./page/tournamentleader/UpdateTournament";
 import StaffDashboard from "./page/staff/StaffDashboard";
+import StaffSystemReportPage from "./page/staff/StaffSystemReportPage";
+import UserReportPage from "./page/user/UserReportPage";
 import BlogPage from "./page/blog/BlogPage";
 import BlogDetails from "./page/blog/BlogDetails";
 import BlogManagePage from "./page/blog/BlogManagePage";
@@ -36,6 +38,7 @@ export default function App() {
         <Route path="/verify-otp" element={<Verify />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/user/reports" element={<UserReportPage />} />
         <Route path="/player/tournaments" element={<PlayerTournamentList />} />
         <Route
           path="/player/pending-registrations"
@@ -53,6 +56,7 @@ export default function App() {
         <Route path="/blog/manage" element={<BlogManagePage />} />
         <Route path="/staff" element={<Navigate to="/staff/dashboard" />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
+        <Route path="/staff/reports" element={<StaffSystemReportPage />} />
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/wallet" element={<WalletPage />} />
         <Route path="/referee/invitations" element={<RefereeInvitationsPage />} />

@@ -386,6 +386,14 @@ CREATE TABLE Feedback (
 );
 GO
 
+/* Seed sample matches for tournament_id = 1 (for testing report flow) */
+INSERT INTO Matches (tournament_id, board_number, white_player_id, black_player_id, result, status, start_time)
+VALUES
+(1, 1, 1, 2, NULL, 'Ongoing', GETDATE()),
+(1, 2, 3, 4, NULL, 'Ongoing', GETDATE()),
+(1, 1, 1, 3, NULL, 'Scheduled', DATEADD(hour, 2, GETDATE()));
+GO
+
 /* =========================
    BLOG & NOTIFICATION (GIU NGUYEN + them Blog_Image + IDENTITY cho Notification)
    ========================= */

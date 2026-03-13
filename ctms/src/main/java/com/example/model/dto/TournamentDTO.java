@@ -16,7 +16,6 @@ public class TournamentDTO {
     private String rules;
     private String location;
     private String format;
-    private String categories;
     private Integer maxPlayer;
     private Integer minPlayer;
     private BigDecimal entryFee;
@@ -45,8 +44,6 @@ public class TournamentDTO {
     public void setLocation(String location) { this.location = location; }
     public String getFormat() { return format; }
     public void setFormat(String format) { this.format = format; }
-    public String getCategories() { return categories; }
-    public void setCategories(String categories) { this.categories = categories; }
     public Integer getMaxPlayer() { return maxPlayer; }
     public void setMaxPlayer(Integer maxPlayer) { this.maxPlayer = maxPlayer; }
     public Integer getMinPlayer() { return minPlayer; }

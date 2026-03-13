@@ -149,11 +149,6 @@ const PaymentPage = () => {
   const hasFee = entryFeeNum > 0;
   const actualFee = entryFeeNum || 500000;
 
-  const handleFormChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-    setSubmitError('');
-  };
-
   const getNormalizedForm = () => ({
     ...form,
     fullName: form.fullName.trim(),
@@ -368,6 +363,9 @@ const PaymentPage = () => {
 
           <div className="payment-card slide-up delay-2">
             <h2>Thông tin kỳ thủ</h2>
+            <p className="text-xs text-gray" style={{ marginBottom: 12 }}>
+              Thông tin lấy từ hồ sơ cá nhân (chỉ xem). Muốn thay đổi, vui lòng cập nhật tại trang Profile.
+            </p>
             {submitError && (
               <>
                 <div className="payment-form-error">{submitError}</div>
@@ -387,27 +385,27 @@ const PaymentPage = () => {
             <div className="grid-2">
               <div>
                 <label className="text-xs font-semibold text-gray">HỌ VÀ TÊN</label>
-                <input type="text" className="input-premium" value={form.fullName} onChange={e => handleFormChange('fullName', e.target.value)} placeholder="Họ và tên" />
+                <div className="input-premium input-readonly" style={{ background: '#f8fafc', cursor: 'default' }}>{form.fullName || "—"}</div>
                 {formErrors.fullName && <span className="payment-field-error">{formErrors.fullName}</span>}
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray">USERNAME / TÊN IN-GAME</label>
-                <input type="text" className="input-premium" value={form.username} onChange={e => handleFormChange('username', e.target.value)} placeholder="Username" />
+                <div className="input-premium input-readonly" style={{ background: '#f8fafc', cursor: 'default' }}>{form.username || "—"}</div>
                 {formErrors.username && <span className="payment-field-error">{formErrors.username}</span>}
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray">SỐ ĐIỆN THOẠI</label>
-                <input type="text" className="input-premium" value={form.phone} onChange={e => handleFormChange('phone', e.target.value)} placeholder="SĐT" />
+                <div className="input-premium input-readonly" style={{ background: '#f8fafc', cursor: 'default' }}>{form.phone || "—"}</div>
                 {formErrors.phone && <span className="payment-field-error">{formErrors.phone}</span>}
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray">EMAIL</label>
-                <input type="email" className="input-premium" value={form.email} onChange={e => handleFormChange('email', e.target.value)} placeholder="Email" />
+                <div className="input-premium input-readonly" style={{ background: '#f8fafc', cursor: 'default' }}>{form.email || "—"}</div>
                 {formErrors.email && <span className="payment-field-error">{formErrors.email}</span>}
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray">BẬC RANK</label>
-                <input type="number" min="0" className="input-premium" value={form.rankAtRegistration} onChange={e => handleFormChange('rankAtRegistration', e.target.value)} placeholder="Rank" />
+                <div className="input-premium input-readonly" style={{ background: '#f8fafc', cursor: 'default' }}>{form.rankAtRegistration !== "" && form.rankAtRegistration != null ? form.rankAtRegistration : "—"}</div>
                 {formErrors.rankAtRegistration && <span className="payment-field-error">{formErrors.rankAtRegistration}</span>}
               </div>
             </div>

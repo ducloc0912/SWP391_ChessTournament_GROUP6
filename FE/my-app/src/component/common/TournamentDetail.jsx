@@ -1,18 +1,30 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Clock3, Globe, MapPin, Trophy, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  Clock3,
+  Globe,
+  MapPin,
+  Trophy,
+  Users,
+} from "lucide-react";
 import MainHeader from "./MainHeader";
 import "../../assets/css/TournamentDetailPublic.css";
 
 import { API_BASE } from "../../config/api";
+import TournamentFeedbackSection from "./TournamentFeedbackSection";
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1528819622765-d6bcf132f793?auto=format&fit=crop&w=1200&q=80";
 
 function normalizeStatus(status) {
-  const s = String(status || "").trim().toLowerCase();
+  const s = String(status || "")
+    .trim()
+    .toLowerCase();
   if (s === "ongoing") return "ongoing";
-  if (["completed", "finished", "cancelled", "rejected"].includes(s)) return "finished";
+  if (["completed", "finished", "cancelled", "rejected"].includes(s))
+    return "finished";
   return "registering";
 }
 
@@ -24,7 +36,7 @@ function getStatusLabel(status) {
 }
 
 function getFormatLabel(format) {
-  const map = { RoundRobin: "Vòng tròn", KnockOut: "Loại trực tiếp", Hybrid: "Kết hợp" };
+  const map = { RoundRobin: "Vòng tròn", KnockOut: "Loại trực tiếp" };
   return map[format] || format || "—";
 }
 
@@ -60,7 +72,8 @@ function parseResult(str) {
 function resolveImageUrl(rawImage) {
   const src = String(rawImage || "").trim();
   if (!src) return FALLBACK_IMAGE;
-  if (/^(https?:)?\/\//i.test(src)) return src.startsWith("//") ? `${window.location.protocol}${src}` : src;
+  if (/^(https?:)?\/\//i.test(src))
+    return src.startsWith("//") ? `${window.location.protocol}${src}` : src;
   if (/^(data:|blob:)/i.test(src)) return src;
   const apiOrigin = (() => {
     try {
@@ -83,7 +96,10 @@ export default function TournamentDetail() {
   const [isJoined, setIsJoined] = useState(false);
   const [upcomingMatches, setUpcomingMatches] = useState([]);
   const [completedMatches, setCompletedMatches] = useState([]);
-  const [podium, setPodium] = useState({ championName: null, runnerUpName: null });
+  const [podium, setPodium] = useState({
+    championName: null,
+    runnerUpName: null,
+  });
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -110,27 +126,11 @@ export default function TournamentDetail() {
     setLoading(true);
     setError("");
     try {
-      const detailRes = await axios.get(`${API_BASE}/api/public/tournaments?action=detail&id=${id}`);
+      const detailRes = await axios.get(
+        `${API_BASE}/api/public/tournaments?action=detail&id=${id}`,
+      );
       const detailData = detailRes?.data || null;
       setTournament(detailData);
-
-      // Nếu đang đăng nhập, kiểm tra xem user đã tham gia giải này chưa
-      if (detailData?.tournamentId && user?.userId) {
-        try {
-          const res = await axios.get(
-            `${API_BASE}/api/participants?userId=me&activeOnly=true`,
-            { withCredentials: true },
-          );
-          const list = Array.isArray(res?.data) ? res.data : [];
-          const joined = list.some((p) => p.tournamentId === detailData.tournamentId || p.tournament_id === detailData.tournamentId);
-          setIsJoined(joined);
-        } catch {
-          setIsJoined(false);
-        }
-      } else {
-        setIsJoined(false);
-      }
-
       const detailStatus = normalizeStatus(detailData?.status);
       if (detailStatus === "finished") {
         const podiumRes = await axios
@@ -147,15 +147,34 @@ export default function TournamentDetail() {
       const matchesRes = await axios
         .get(`${API_BASE}/api/public/tournaments?action=matches&id=${id}`)
         .catch(() => null);
-      setUpcomingMatches(Array.isArray(matchesRes?.data?.upcomingMatches) ? matchesRes.data.upcomingMatches : []);
+      setUpcomingMatches(
+        Array.isArray(matchesRes?.data?.upcomingMatches)
+          ? matchesRes.data.upcomingMatches
+          : [],
+      );
       setCompletedMatches(
-        Array.isArray(matchesRes?.data?.completedMatches) ? matchesRes.data.completedMatches : [],
+        Array.isArray(matchesRes?.data?.completedMatches)
+          ? matchesRes.data.completedMatches
+          : [],
       );
 
       const participantsRes = await axios
         .get(`${API_BASE}/api/public/tournaments?action=participants&id=${id}`)
         .catch(() => null);
-      setParticipants(Array.isArray(participantsRes?.data) ? participantsRes.data : []);
+      const participantList = Array.isArray(participantsRes?.data)
+        ? participantsRes.data
+        : [];
+      setParticipants(participantList);
+
+      // Xác định user đã tham gia giải hay chưa dựa trên danh sách participant của giải hiện tại
+      if (detailData?.tournamentId && user?.userId) {
+        const joined = participantList.some(
+          (p) => Number(p.userId ?? p.user_id) === Number(user.userId),
+        );
+        setIsJoined(joined);
+      } else {
+        setIsJoined(false);
+      }
     } catch (err) {
       console.error("Load tournament detail failed:", err);
       setError("Không thể tải chi tiết giải đấu.");
@@ -179,12 +198,24 @@ export default function TournamentDetail() {
     return () => window.removeEventListener("focus", onFocus);
   }, [id, fetchDetail]);
 
-  const statusKey = useMemo(() => normalizeStatus(tournament?.status), [tournament?.status]);
+  const role =
+    typeof window !== "undefined"
+      ? localStorage.getItem("role") || ""
+      : "";
+
+  const statusKey = useMemo(
+    () => normalizeStatus(tournament?.status),
+    [tournament?.status],
+  );
   const showMatches = statusKey === "ongoing" || statusKey === "finished";
   const canRegisterByStatus = statusKey === "registering";
 
   const statusPillLabel = useMemo(() => {
-    const m = { registering: "REGISTERING", ongoing: "IN PROGRESS", finished: "FINISHED" };
+    const m = {
+      registering: "REGISTERING",
+      ongoing: "IN PROGRESS",
+      finished: "FINISHED",
+    };
     return m[statusKey] ?? "";
   }, [statusKey]);
 
@@ -246,10 +277,18 @@ export default function TournamentDetail() {
 
   return (
     <div className="tdp-page">
-      <MainHeader user={user} onLogout={handleLogout} currentPath={location.pathname} />
+      <MainHeader
+        user={user}
+        onLogout={handleLogout}
+        currentPath={location.pathname}
+      />
 
       <div className="tdp-container">
-        <button type="button" className="tdp-back-btn" onClick={() => navigate("/tournaments/public")}>
+        <button
+          type="button"
+          className="tdp-back-btn"
+          onClick={() => navigate("/tournaments/public")}
+        >
           <ArrowLeft size={16} /> Quay lại danh sách giải
         </button>
 
@@ -275,7 +314,9 @@ export default function TournamentDetail() {
                 <h1>{tournament.tournamentName || "Tournament"}</h1>
                 <div className="tdp-hero-meta">
                   {statusPillLabel && (
-                    <span className={`tdp-status-pill tdp-status-${statusKey}`}>{statusPillLabel}</span>
+                    <span className={`tdp-status-pill tdp-status-${statusKey}`}>
+                      {statusPillLabel}
+                    </span>
                   )}
                   <span className="tdp-meta-item">
                     <Calendar size={14} />
@@ -288,12 +329,18 @@ export default function TournamentDetail() {
                 </div>
                 <div className="tdp-register-cta">
                   {canRegisterByStatus && !isJoined && (
-                    <button type="button" className="tdp-register-btn" onClick={handleRegisterTournament}>
+                    <button
+                      type="button"
+                      className="tdp-register-btn"
+                      onClick={handleRegisterTournament}
+                    >
                       Đăng ký giải
                     </button>
                   )}
                   {canRegisterByStatus && isJoined && (
-                    <span className="tdp-register-text-joined">Bạn đã đăng ký giải này</span>
+                    <span className="tdp-register-text-joined">
+                      Bạn đã đăng ký giải này
+                    </span>
                   )}
                 </div>
               </div>
@@ -301,7 +348,9 @@ export default function TournamentDetail() {
                 {Number(tournament?.entryFee ?? 0) > 0 ? (
                   <>
                     <span className="tdp-hero-fee-label">Phí tham gia</span>
-                    <span className="tdp-hero-fee-value">{formatMoney(tournament.entryFee)} VND</span>
+                    <span className="tdp-hero-fee-value">
+                      {formatMoney(tournament.entryFee)} VND
+                    </span>
                   </>
                 ) : (
                   <span className="tdp-hero-fee-free">Miễn phí tham gia</span>
@@ -354,15 +403,29 @@ export default function TournamentDetail() {
                           </tr>
                         ) : (
                           participants.map((row) => {
-                            const regDate = row.registrationDate ?? row.registration_date;
+                            const regDate =
+                              row.registrationDate ?? row.registration_date;
                             return (
-                              <tr key={row.participantId ?? row.participant_id ?? row.userId ?? row.user_id}>
+                              <tr
+                                key={
+                                  row.participantId ??
+                                  row.participant_id ??
+                                  row.userId ??
+                                  row.user_id
+                                }
+                              >
                                 <td>{participantFullName(row)}</td>
-                                <td>{row.titleAtRegistration ?? row.title_at_registration ?? "—"}</td>
+                                <td>
+                                  {row.titleAtRegistration ??
+                                    row.title_at_registration ??
+                                    "—"}
+                                </td>
                                 <td>{row.email ?? "—"}</td>
                                 <td>{row.rank ?? "—"}</td>
                                 <td>
-                                  {regDate ? new Date(regDate).toLocaleString("vi-VN") : "—"}
+                                  {regDate
+                                    ? new Date(regDate).toLocaleString("vi-VN")
+                                    : "—"}
                                 </td>
                               </tr>
                             );
@@ -380,8 +443,13 @@ export default function TournamentDetail() {
                 <div className="tdp-overview-grid">
                   <div className="tdp-overview-left">
                     <article className="tdp-card tdp-overview-card">
-                      <h2>{tournament.tournamentName || "Tournament"} overview</h2>
-                      <p className="tdp-desc">{tournament.description || "Chưa có mô tả cho giải đấu này."}</p>
+                      <h2>
+                        {tournament.tournamentName || "Tournament"} overview
+                      </h2>
+                      <p className="tdp-desc">
+                        {tournament.description ||
+                          "Chưa có mô tả cho giải đấu này."}
+                      </p>
                       <div className="tdp-placement-rewards">
                         <h4>Giải thưởng theo thứ hạng</h4>
                         <ul>
@@ -389,21 +457,50 @@ export default function TournamentDetail() {
                             <span className="tdp-medal tdp-medal-gold" />
                             <div>
                               <strong>1st Place</strong>
-                              <span>{statusKey === "finished" && podium.championName ? podium.championName : "—"} · {formatMoney(tournament.prizePool ? Math.round(tournament.prizePool * 0.5) : 0)} VND</span>
+                              <span>
+                                {statusKey === "finished" && podium.championName
+                                  ? podium.championName
+                                  : "—"}{" "}
+                                ·{" "}
+                                {formatMoney(
+                                  tournament.prizePool
+                                    ? Math.round(tournament.prizePool * 0.5)
+                                    : 0,
+                                )}{" "}
+                                VND
+                              </span>
                             </div>
                           </li>
                           <li>
                             <span className="tdp-medal tdp-medal-silver" />
                             <div>
                               <strong>2nd Place</strong>
-                              <span>{statusKey === "finished" && podium.runnerUpName ? podium.runnerUpName : "—"} · {formatMoney(tournament.prizePool ? Math.round(tournament.prizePool * 0.3) : 0)} VND</span>
+                              <span>
+                                {statusKey === "finished" && podium.runnerUpName
+                                  ? podium.runnerUpName
+                                  : "—"}{" "}
+                                ·{" "}
+                                {formatMoney(
+                                  tournament.prizePool
+                                    ? Math.round(tournament.prizePool * 0.3)
+                                    : 0,
+                                )}{" "}
+                                VND
+                              </span>
                             </div>
                           </li>
                           <li>
                             <span className="tdp-medal tdp-medal-bronze" />
                             <div>
                               <strong>3rd Place</strong>
-                              <span>{formatMoney(tournament.prizePool ? Math.round(tournament.prizePool * 0.2) : 0)} VND</span>
+                              <span>
+                                {formatMoney(
+                                  tournament.prizePool
+                                    ? Math.round(tournament.prizePool * 0.2)
+                                    : 0,
+                                )}{" "}
+                                VND
+                              </span>
                             </div>
                           </li>
                         </ul>
@@ -412,15 +509,17 @@ export default function TournamentDetail() {
 
                     <article className="tdp-card tdp-event-phases">
                       <h3>Event Phases</h3>
-                      <p>{tournament.rules || "Chưa có thông tin luật thi đấu."}</p>
+                      <p>
+                        {tournament.rules || "Chưa có thông tin luật thi đấu."}
+                      </p>
                       <div className="tdp-phase-block">
                         <h4>Giai đoạn thi đấu</h4>
                         <p>
                           {tournament.format === "RoundRobin"
                             ? "Thi đấu vòng tròn tính điểm. Mỗi người chơi đấu với tất cả người chơi khác."
                             : tournament.format === "KnockOut"
-                            ? "Thi đấu loại trực tiếp. Thua một trận sẽ bị loại khỏi giải."
-                            : "Thi đấu kết hợp: vòng tròn để chọn top, sau đó loại trực tiếp cho vòng chung kết."}
+                              ? "Thi đấu loại trực tiếp. Thua một trận sẽ bị loại khỏi giải."
+                              : "Thi đấu kết hợp: vòng tròn để chọn top, sau đó loại trực tiếp cho vòng chung kết."}
                         </p>
                       </div>
                       {tournament.notes && (
@@ -430,27 +529,65 @@ export default function TournamentDetail() {
                         </div>
                       )}
                     </article>
+
+                    <article className="tdp-card tdp-feedback-wrapper">
+                      <div className="tdp-feedback-header-inline">
+                        <h3>Feedback &amp; Reviews</h3>
+                      </div>
+                      <TournamentFeedbackSection
+                        tournamentId={tournament.tournamentId}
+                        user={user}
+                        role={role}
+                        isParticipant={isJoined}
+                      />
+                    </article>
                   </div>
 
                   <div className="tdp-overview-right">
                     <article className="tdp-card tdp-participants-card">
                       <h3>Người tham gia</h3>
                       <p className="tdp-participants-intro">
-                        {Number(tournament.currentPlayers ?? tournament.current_players ?? 0)}/{Number(tournament.maxPlayer ?? tournament.max_player ?? 0)} người đã đăng ký
+                        {Number(
+                          tournament.currentPlayers ??
+                            tournament.current_players ??
+                            0,
+                        )}
+                        /
+                        {Number(
+                          tournament.maxPlayer ?? tournament.max_player ?? 0,
+                        )}{" "}
+                        người đã đăng ký
                       </p>
                       <ul className="tdp-participants-list">
                         {participantsPreview.length === 0 ? (
-                          <li key="empty" className="tdp-participant-item tdp-participant-empty">Chưa có người tham gia.</li>
+                          <li
+                            key="empty"
+                            className="tdp-participant-item tdp-participant-empty"
+                          >
+                            Chưa có người tham gia.
+                          </li>
                         ) : (
                           participantsPreview.map((p, index) => (
-                            <li key={p.participantId ?? p.participant_id ?? p.userId ?? p.user_id ?? `p-${index}`} className="tdp-participant-item">
+                            <li
+                              key={
+                                p.participantId ??
+                                p.participant_id ??
+                                p.userId ??
+                                p.user_id ??
+                                `p-${index}`
+                              }
+                              className="tdp-participant-item"
+                            >
                               <span className="tdp-player-avatar" />
                               <span>{participantFullName(p)}</span>
                             </li>
                           ))
                         )}
                         {hasMoreParticipants && (
-                          <li key="show-all" className="tdp-participant-item tdp-participants-show-all-wrap">
+                          <li
+                            key="show-all"
+                            className="tdp-participant-item tdp-participants-show-all-wrap"
+                          >
                             <button
                               type="button"
                               className="tdp-participants-show-all"
@@ -462,12 +599,22 @@ export default function TournamentDetail() {
                         )}
                       </ul>
                       <div className="tdp-participants-info">
-                        <p><MapPin size={14} /> {tournament.location || "Online"}</p>
-                        <p><Calendar size={14} /> {dateRangeStr}</p>
+                        <p>
+                          <MapPin size={14} /> {tournament.location || "Online"}
+                        </p>
+                        <p>
+                          <Calendar size={14} /> {dateRangeStr}
+                        </p>
                         {canRegisterByStatus && (
-                          <p><Clock3 size={14} /> Hạn đăng ký: {formatDateTime(tournament.registrationDeadline)}</p>
+                          <p>
+                            <Clock3 size={14} /> Hạn đăng ký:{" "}
+                            {formatDateTime(tournament.registrationDeadline)}
+                          </p>
                         )}
-                        <p><Trophy size={14} /> Quỹ thưởng: {formatMoney(tournament.prizePool)} VND</p>
+                        <p>
+                          <Trophy size={14} /> Quỹ thưởng:{" "}
+                          {formatMoney(tournament.prizePool)} VND
+                        </p>
                       </div>
                     </article>
                   </div>
@@ -481,7 +628,9 @@ export default function TournamentDetail() {
                   <div className="tdp-rounds">
                     {roundsMap.length === 0 ? (
                       <div className="tdp-empty-bracket">
-                        {showMatches ? "Chưa có trận đấu nào." : "Bracket sẽ hiển thị khi giải bắt đầu."}
+                        {showMatches
+                          ? "Chưa có trận đấu nào."
+                          : "Bracket sẽ hiển thị khi giải bắt đầu."}
                       </div>
                     ) : (
                       roundsMap.map(({ round, matches }) => (
@@ -489,21 +638,37 @@ export default function TournamentDetail() {
                           <div className="tdp-round-header">ROUND {round}</div>
                           <div className="tdp-round-matches">
                             {matches.map((m) => {
-                              const scores = m.result ? parseResult(m.result) : { white: "—", black: "—" };
+                              const scores = m.result
+                                ? parseResult(m.result)
+                                : { white: "—", black: "—" };
                               return (
-                                <div key={m.matchId} className="tdp-match-card-item">
+                                <div
+                                  key={m.matchId}
+                                  className="tdp-match-card-item"
+                                >
                                   <div className="tdp-match-row">
                                     <span className="tdp-player-avatar" />
-                                    <span className="tdp-player-name">{m.whitePlayerName || "TBD"}</span>
-                                    <span className="tdp-score">{scores.white}</span>
+                                    <span className="tdp-player-name">
+                                      {m.whitePlayerName || "TBD"}
+                                    </span>
+                                    <span className="tdp-score">
+                                      {scores.white}
+                                    </span>
                                   </div>
                                   <div className="tdp-match-divider" />
                                   <div className="tdp-match-row">
                                     <span className="tdp-player-avatar" />
-                                    <span className="tdp-player-name">{m.blackPlayerName || "TBD"}</span>
-                                    <span className="tdp-score">{scores.black}</span>
+                                    <span className="tdp-player-name">
+                                      {m.blackPlayerName || "TBD"}
+                                    </span>
+                                    <span className="tdp-score">
+                                      {scores.black}
+                                    </span>
                                   </div>
-                                  <p className="tdp-match-meta">Bàn {m.boardNumber ?? "—"} · {formatDateTime(m.startTime)}</p>
+                                  <p className="tdp-match-meta">
+                                    Bàn {m.boardNumber ?? "—"} ·{" "}
+                                    {formatDateTime(m.startTime)}
+                                  </p>
                                 </div>
                               );
                             })}
@@ -543,10 +708,11 @@ export default function TournamentDetail() {
                 </div>
               </section>
             )}
+
+
           </>
         )}
       </div>
-
     </div>
   );
 }

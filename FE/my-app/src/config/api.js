@@ -1,8 +1,11 @@
 /**
  * Shared API configuration for the Chess Tournament app.
- * Use VITE_API_BASE in .env to override (e.g. VITE_API_BASE=http://localhost:8080/ctms)
+ * - Dev: dùng /ctms (proxy Vite → backend 8080) để tránh CORS và đảm bảo query params đúng
+ * - Prod: VITE_API_BASE hoặc http://localhost:8080/ctms
  */
-export const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080/ctms";
+export const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  (import.meta.env.DEV ? "/ctms" : "http://localhost:8080/ctms");
 
 /**
  * Resolve avatar/image URL - handles relative paths with correct API origin.

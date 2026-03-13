@@ -1,7 +1,9 @@
 import React from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Bell, Crown, LogOut, Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import axios from "axios";
 import "./MainHeader.css";
+import { API_BASE } from "../../config/api";
 
 function ImageWithFallback({ src, alt = "", className = "", fallback = "https://ui-avatars.com/api/?name=User&background=random" }) {
   const [imgSrc, setImgSrc] = React.useState(src);
@@ -30,6 +32,8 @@ export default function MainHeader({
 }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [notifications, setNotifications] = React.useState([]);
+  const [notifOpen, setNotifOpen] = React.useState(false);
 
   const defaultMenuItems = [
     { to: "/home", label: "Home" },
@@ -50,6 +54,39 @@ export default function MainHeader({
   const avatarUrl = user?.avatar;
   const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=6366f1&color=fff&size=64`;
 
+  const unreadCount = React.useMemo(
+    () => notifications.filter((n) => n && n.isRead === false).length,
+    [notifications],
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const loadNotifications = async () => {
+      if (!user) {
+        setNotifications([]);
+        return;
+      }
+      try {
+        const res = await axios
+          .get(`${API_BASE}/api/notifications?onlyUnread=false`, {
+            withCredentials: true,
+          })
+          .catch(() => null);
+        if (!cancelled) {
+          setNotifications(Array.isArray(res?.data) ? res.data : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setNotifications([]);
+        }
+      }
+    };
+    loadNotifications();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const handleMenuAction = (item) => {
     if (item.to) {
       navigate(item.to);
@@ -67,11 +104,22 @@ export default function MainHeader({
   try {
     const rawRole = localStorage.getItem("role");
     const normalizedRole = (rawRole || "").toString().toUpperCase().replace(/[\s_]/g, "");
+
+    // Link riêng cho referee
     if (normalizedRole === "REFEREE") {
-      extraItems = [{ to: "/referee/invitations", label: "Invitations" }];
+      extraItems.push({ to: "/referee/invitations", label: "Invitations" });
+    }
+
+    // Nút Report trên header:
+    // - STAFF: dẫn tới trang xử lý system report
+    // - Các role còn lại: dẫn tới trang user gửi/lịch sử report
+    if (normalizedRole === "STAFF") {
+      extraItems.push({ to: "/staff/reports", label: "Report" });
+    } else {
+      extraItems.push({ to: "/user/reports", label: "Report" });
     }
   } catch {
-    extraItems = [];
+    extraItems = [{ to: "/user/reports", label: "Report" }];
   }
 
   const fullNavItems = React.useMemo(() => {
@@ -168,10 +216,46 @@ export default function MainHeader({
                     </button>
                   ) : null;
                 })()}
-                <button type="button" className="icon-btn" aria-label="Thông báo">
-                  <Bell size={18} />
-                  <span className="notification-dot" />
-                </button>
+                <div className="notification-wrapper">
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label="Thông báo"
+                    onClick={() => setNotifOpen((prev) => !prev)}
+                  >
+                    <Bell size={18} />
+                    {unreadCount > 0 && <span className="notification-dot" />}
+                  </button>
+                  {notifOpen && (
+                    <div className="notification-dropdown">
+                      {notifications.length === 0 ? (
+                        <div className="notification-empty">Không có thông báo.</div>
+                      ) : (
+                        <ul className="notification-list">
+                          {notifications.slice(0, 6).map((n) => (
+                            <li
+                              key={n.notificationId}
+                              className={`notification-item ${n.isRead ? "read" : "unread"}`}
+                              onClick={() => {
+                                if (n.actionUrl) {
+                                  navigate(n.actionUrl);
+                                  setNotifOpen(false);
+                                }
+                              }}
+                            >
+                              <div className="notification-title">{n.title}</div>
+                              {n.message && (
+                                <div className="notification-message">
+                                  {n.message.length > 80 ? `${n.message.slice(0, 80)}…` : n.message}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <div className="user-dropdown" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                   <div 
                     title="Ví của tôi"

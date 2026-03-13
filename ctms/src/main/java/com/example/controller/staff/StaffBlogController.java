@@ -80,10 +80,8 @@ public class StaffBlogController extends HttpServlet {
         try {
             HttpSession session = req.getSession(false);
             User user = session != null && session.getAttribute("user") instanceof User
-                    ? (User) session.getAttribute("user")
-                    : null;
+                    ? (User) session.getAttribute("user") : null;
             String role = session != null ? (String) session.getAttribute("role") : null;
-
             if (user == null) {
                 resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 resp.getWriter().write("{\"success\":false,\"message\":\"Unauthorized\"}");
