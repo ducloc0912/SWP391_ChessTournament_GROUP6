@@ -75,7 +75,9 @@ public class StaffBlogController extends HttpServlet {
         Map<String, Object> responseMap = new HashMap<>();
 
         try {
-            User user = (User) req.getSession().getAttribute("user");
+            HttpSession session = req.getSession(false);
+            User user = session != null && session.getAttribute("user") instanceof User
+                    ? (User) session.getAttribute("user") : null;
             if (user == null) {
                 resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 resp.getWriter().write("{\"success\":false,\"message\":\"Unauthorized\"}");
