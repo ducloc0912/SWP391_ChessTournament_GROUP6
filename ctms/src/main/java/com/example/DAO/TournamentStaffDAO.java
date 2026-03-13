@@ -15,17 +15,30 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TournamentStaffDAO extends DBContext {
-
-    // =========================================================================
-    // TOURNAMENT OPERATIONS FOR STAFF
-    // =========================================================================
 
     public List<Tournament> getAllTournamentsForStaff() {
         List<Tournament> list = new ArrayList<>();
         String sql = "SELECT * FROM Tournaments ORDER BY create_at DESC";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(mapResultSetToTournament(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<Tournament> getPendingTournamentsForStaff() {
+        List<Tournament> list = new ArrayList<>();
+        String sql = "SELECT * FROM Tournaments WHERE status = 'Pending' ORDER BY create_at DESC";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -54,17 +67,9 @@ public class TournamentStaffDAO extends DBContext {
         return null;
     }
 
-    // =========================================================================
-    // APPROVAL LOG & STATUS UPDATE
-    // =========================================================================
-
-    /**
-     * Updates tournament status and logs the action in Tournament_Approval_Log.
-     * Use transaction to ensure consistency.
-     */
     public boolean updateTournamentStatusAndLog(int tournamentId, int staffId,
-                                                 TournamentStatus oldStatus, TournamentStatus newStatus,
-                                                 ApprovalAction action, String note) {
+                                                TournamentStatus oldStatus, TournamentStatus newStatus,
+                                                ApprovalAction action, String note) {
         String updateSql = "UPDATE Tournaments SET status = ? WHERE tournament_id = ?";
         String logSql = """
             INSERT INTO Tournament_Approval_Log (tournament_id, staff_id, action, from_status, to_status, note, created_at)
@@ -77,9 +82,8 @@ public class TournamentStaffDAO extends DBContext {
 
         try {
             conn = getConnection();
-            conn.setAutoCommit(false); // Start transaction
+            conn.setAutoCommit(false);
 
-            // 1. Update Tournament Status
             psUpdate = conn.prepareStatement(updateSql);
             psUpdate.setString(1, newStatus.name());
             psUpdate.setInt(2, tournamentId);
@@ -89,7 +93,6 @@ public class TournamentStaffDAO extends DBContext {
                 return false;
             }
 
-            // 2. Insert into Approval Log
             psLog = conn.prepareStatement(logSql);
             psLog.setInt(1, tournamentId);
             psLog.setInt(2, staffId);
@@ -99,9 +102,8 @@ public class TournamentStaffDAO extends DBContext {
             psLog.setString(6, note);
             psLog.executeUpdate();
 
-            conn.commit(); // Commit transaction
+            conn.commit();
             return true;
-
         } catch (SQLException e) {
             if (conn != null) {
                 try {
@@ -142,10 +144,6 @@ public class TournamentStaffDAO extends DBContext {
         }
         return list;
     }
-
-    // =========================================================================
-    // STAFF ASSIGNMENT
-    // =========================================================================
 
     public boolean assignStaffToTournament(TournamentStaff assignments) {
         String sql = """
@@ -190,9 +188,176 @@ public class TournamentStaffDAO extends DBContext {
         return list;
     }
 
-    // =========================================================================
-    // MAPPERS
-    // =========================================================================
+    public List<Map<String, Object>> getTournamentTransactionSummary() {
+        List<Map<String, Object>> list = new ArrayList<>();
+        String sql = """
+            SELECT t.tournament_id,
+                   t.tournament_name,
+                   t.location,
+                   t.format,
+                   t.status,
+                   COUNT(pt.transaction_id) AS transaction_count,
+                   COALESCE(SUM(CASE WHEN pt.type = 'EntryFee' THEN pt.amount ELSE 0 END), 0) AS total_entry_fee,
+                   COALESCE(SUM(CASE WHEN pt.type = 'Refund' THEN ABS(pt.amount) ELSE 0 END), 0) AS total_refund,
+                   COALESCE(SUM(pt.amount), 0) AS net_amount
+            FROM Tournaments t
+            LEFT JOIN Payment_Transaction pt ON pt.tournament_id = t.tournament_id
+            GROUP BY t.tournament_id, t.tournament_name, t.location, t.format, t.status
+            ORDER BY t.create_at DESC
+        """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("tournamentId", rs.getInt("tournament_id"));
+                row.put("tournamentName", rs.getString("tournament_name"));
+                row.put("location", rs.getString("location"));
+                row.put("format", rs.getString("format"));
+                row.put("status", rs.getString("status"));
+                row.put("transactionCount", rs.getInt("transaction_count"));
+                row.put("totalEntryFee", rs.getBigDecimal("total_entry_fee"));
+                row.put("totalRefund", rs.getBigDecimal("total_refund"));
+                row.put("netAmount", rs.getBigDecimal("net_amount"));
+                list.add(row);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<Map<String, Object>> getTransactionsByTournament(int tournamentId) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        String sql = """
+            SELECT pt.transaction_id,
+                   pt.user_id,
+                   u.username,
+                   u.first_name,
+                   u.last_name,
+                   pt.tournament_id,
+                   pt.type,
+                   pt.amount,
+                   pt.balance_after,
+                   pt.description,
+                   pt.reference_id,
+                   pt.create_at
+            FROM Payment_Transaction pt
+            INNER JOIN Users u ON u.user_id = pt.user_id
+            WHERE pt.tournament_id = ?
+            ORDER BY pt.create_at DESC
+        """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("transactionId", rs.getInt("transaction_id"));
+                    row.put("userId", rs.getInt("user_id"));
+                    row.put("username", rs.getString("username"));
+                    row.put("firstName", rs.getString("first_name"));
+                    row.put("lastName", rs.getString("last_name"));
+                    row.put("tournamentId", rs.getInt("tournament_id"));
+                    row.put("type", rs.getString("type"));
+                    row.put("amount", rs.getBigDecimal("amount"));
+                    row.put("balanceAfter", rs.getBigDecimal("balance_after"));
+                    row.put("description", rs.getString("description"));
+                    row.put("referenceId", rs.getObject("reference_id"));
+                    row.put("createAt", rs.getTimestamp("create_at") != null
+                            ? rs.getTimestamp("create_at").toLocalDateTime()
+                            : null);
+                    list.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<Map<String, Object>> getAllWithdrawals() {
+        List<Map<String, Object>> list = new ArrayList<>();
+        String sql = """
+            SELECT w.withdrawal_id,
+                   w.user_id,
+                   u.username,
+                   u.first_name,
+                   u.last_name,
+                   u.email,
+                   u.phone_number,
+                   w.amount,
+                   w.bank_name,
+                   w.bank_account_number,
+                   w.bank_account_name,
+                   w.status,
+                   w.rejection_reason,
+                   w.approved_by,
+                   w.approved_at,
+                   w.bank_transfer_ref,
+                   w.create_at
+            FROM Withdrawal w
+            INNER JOIN Users u ON u.user_id = w.user_id
+            ORDER BY CASE WHEN w.status = 'Pending' THEN 0
+                          WHEN w.status = 'Approved' THEN 1
+                          WHEN w.status = 'Rejected' THEN 2
+                          ELSE 3 END,
+                     w.create_at DESC
+        """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("withdrawalId", rs.getInt("withdrawal_id"));
+                row.put("userId", rs.getInt("user_id"));
+                row.put("username", rs.getString("username"));
+                row.put("firstName", rs.getString("first_name"));
+                row.put("lastName", rs.getString("last_name"));
+                row.put("email", rs.getString("email"));
+                row.put("phoneNumber", rs.getString("phone_number"));
+                row.put("amount", rs.getBigDecimal("amount"));
+                row.put("bankName", rs.getString("bank_name"));
+                row.put("bankAccountNumber", rs.getString("bank_account_number"));
+                row.put("bankAccountName", rs.getString("bank_account_name"));
+                row.put("status", rs.getString("status"));
+                row.put("rejectionReason", rs.getString("rejection_reason"));
+                row.put("approvedBy", rs.getObject("approved_by"));
+                row.put("approvedAt", rs.getTimestamp("approved_at") != null
+                        ? rs.getTimestamp("approved_at").toLocalDateTime()
+                        : null);
+                row.put("bankTransferRef", rs.getString("bank_transfer_ref"));
+                row.put("createAt", rs.getTimestamp("create_at") != null
+                        ? rs.getTimestamp("create_at").toLocalDateTime()
+                        : null);
+                list.add(row);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public boolean markWithdrawalCompleted(int withdrawalId, int staffId, String transferRef) {
+        String sql = """
+            UPDATE Withdrawal
+            SET status = 'Completed',
+                approved_by = ?,
+                approved_at = GETDATE(),
+                bank_transfer_ref = ?
+            WHERE withdrawal_id = ?
+        """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, staffId);
+            ps.setString(2, transferRef);
+            ps.setInt(3, withdrawalId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 
     private Tournament mapResultSetToTournament(ResultSet rs) throws SQLException {
         Tournament t = new Tournament();
@@ -232,18 +397,8 @@ public class TournamentStaffDAO extends DBContext {
         return log;
     }
 
-    // =========================================================================
-    // HELPER METHODS - Case-insensitive enum parsing
-    // =========================================================================
-
     private TournamentStatus parseStatus(String value) {
-        if (value == null) return null;
-        for (TournamentStatus status : TournamentStatus.values()) {
-            if (status.name().equalsIgnoreCase(value)) {
-                return status;
-            }
-        }
-        return TournamentStatus.valueOf(value); // fallback, will throw if not found
+        return TournamentStatus.fromValue(value);
     }
 
     private TournamentFormat parseFormat(String value) {
@@ -253,7 +408,7 @@ public class TournamentStaffDAO extends DBContext {
                 return format;
             }
         }
-        return TournamentFormat.valueOf(value); // fallback
+        return TournamentFormat.valueOf(value);
     }
 
     private ApprovalAction parseAction(String value) {
@@ -263,7 +418,7 @@ public class TournamentStaffDAO extends DBContext {
                 return action;
             }
         }
-        return ApprovalAction.valueOf(value); // fallback
+        return ApprovalAction.valueOf(value);
     }
 
     private TournamentStaffRole parseStaffRole(String value) {
@@ -273,6 +428,6 @@ public class TournamentStaffDAO extends DBContext {
                 return role;
             }
         }
-        return TournamentStaffRole.valueOf(value); // fallback
+        return TournamentStaffRole.valueOf(value);
     }
 }

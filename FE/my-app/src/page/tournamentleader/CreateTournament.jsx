@@ -37,7 +37,7 @@ const FORMAT_LABELS = {
 };
 
 const FORMAT_PLAYER_LIMITS = {
-  RoundRobin: { min: 4, max: 12 },
+  RoundRobin: { min: 4, max: 8 },
   KnockOut: { min: 8, max: 32 },
 };
 
@@ -55,7 +55,7 @@ export default function CreateTournamentPage() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState(null);
-  const [formats, setFormats] = useState([]);
+  const [formats, setFormats] = useState(Object.keys(FORMAT_LABELS));
 
   const [formData, setFormData] = useState({
     tournamentName: "",
@@ -645,19 +645,6 @@ const ScheduleRulesStep = ({ data, update }) => {
         />
       </div>
     </div>
-
-    <div className="cw-form-row">
-      <div className="cw-field full">
-        <label className="cw-label">Ghi chú thêm</label>
-        <textarea
-          className="cw-textarea"
-          placeholder="Thông tin địa điểm, hướng dẫn đặc biệt…"
-          value={data.notes}
-          onChange={(e) => update({ notes: e.target.value })}
-          style={{ minHeight: 80 }}
-        />
-      </div>
-    </div>
   </div>
   );
 };
@@ -713,26 +700,6 @@ const RegistrationStep = ({ data, update }) => {
       </div>
     </div>
 
-    <div className="cw-divider" />
-
-    <div className="cw-form-row cols-2">
-      <div className="cw-toggle-card">
-        <div className="cw-toggle-row">
-          <div className="cw-toggle-info">
-            <h4>Tự động duyệt</h4>
-            <p>Tự động chấp nhận người chơi đủ điều kiện</p>
-          </div>
-          <label className="cw-switch">
-            <input
-              type="checkbox"
-              checked={data.autoApprove}
-              onChange={(e) => update({ autoApprove: e.target.checked })}
-            />
-            <span className="cw-switch-track" />
-          </label>
-        </div>
-      </div>
-    </div>
   </div>
   );
 };

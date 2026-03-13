@@ -55,7 +55,6 @@ public class TournamentService {
     public TournamentService() {
         this.tournamentDAO = new TournamentDAO();
         this.participantDAO = new ParticipantDAO();
-        this.prizeTemplateDAO = new PrizeTemplateDAO();
         this.refereeDAO = new TournamentRefereeDAO();
         this.invitationDAO = new RefereeInvitationDAO();
         this.reportDAO = new ReportDAO();
@@ -471,8 +470,21 @@ public class TournamentService {
         if (isBlank(t.getFormat())) return null;
 
         // ---- PLAYER VALIDATION ----
+        if (t.getMinPlayer() == null || t.getMaxPlayer() == null) return null;
         if (t.getMinPlayer() < 0 || t.getMaxPlayer() < 0) return null;
         if (t.getMinPlayer() > t.getMaxPlayer()) return null;
+
+        String normalizedFormat = normalizeFormat(t.getFormat());
+        if (normalizedFormat == null) return null;
+        int min = t.getMinPlayer();
+        int max = t.getMaxPlayer();
+        if ("RoundRobin".equals(normalizedFormat)) {
+            // Round robin: 4–8 players
+            if (min < 4 || max > 8) return null;
+        } else if ("KnockOut".equals(normalizedFormat)) {
+            // Knockout: 8–32 players
+            if (min < 8 || max > 32) return null;
+        }
 
         // ---- DEFAULT VALUES ----
         if (t.getEntryFee() == null) {
@@ -511,6 +523,7 @@ public class TournamentService {
         if (t == null) return false;
         if (t.getTournamentId() <= 0) return false;
 if (isBlank(t.getTournamentName())) return false;
+        if (t.getMinPlayer() == null || t.getMaxPlayer() == null) return false;
         if (t.getMinPlayer() > t.getMaxPlayer()) return false;
 
         return tournamentDAO.updateTournament(t);
@@ -737,7 +750,7 @@ if (isBlank(t.getTournamentName())) return false;
 
     private boolean checkPlayerCountByFormat(String format, int count) {
         if ("RoundRobin".equals(format)) {
-            return count >= 4 && count <= 10;
+            return count >= 4 && count <= 8;
         }
         if ("KnockOut".equals(format)) {
             return count >= 8 && count <= 32;
@@ -747,7 +760,7 @@ if (isBlank(t.getTournamentName())) return false;
 
     private String playerCountErrorMessage(String format) {
         if ("RoundRobin".equals(format)) {
-            return "Round Robin yêu cầu tối thiểu 4 và tối đa 10 người chơi đã duyệt.";
+            return "Round Robin yêu cầu tối thiểu 4 và tối đa 8 người chơi đã duyệt.";
         }
         if ("KnockOut".equals(format)) {
             return "Knock Out yêu cầu tối thiểu 8 và tối đa 32 người chơi đã duyệt.";
