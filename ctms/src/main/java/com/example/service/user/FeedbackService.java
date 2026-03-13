@@ -1,14 +1,23 @@
 // FeedbackService.java
 package com.example.service.user;
+
 import com.example.DAO.FeedbackDAO;
+import com.example.DAO.ParticipantDAO;
+import com.example.DAO.TournamentDAO;
 import com.example.model.dto.FeedbackDTO;
+import com.example.model.dto.TournamentDTO;
+
 import java.util.List;
 
 public class FeedbackService {
-    private  FeedbackDAO feedbackDAO;
-    
-    public  FeedbackService() {
+    private FeedbackDAO feedbackDAO;
+    private ParticipantDAO participantDAO;
+    private TournamentDAO tournamentDAO;
+
+    public FeedbackService() {
         this.feedbackDAO = new FeedbackDAO();
+        this.participantDAO = new ParticipantDAO();
+        this.tournamentDAO = new TournamentDAO();
     }
     
     // 1. Lấy feedback cho trang chủ
@@ -34,9 +43,12 @@ public class FeedbackService {
     // 3. Thêm feedback mới
     public boolean addFeedback(FeedbackDTO feedback) {
         try {
-            // Validate dữ liệu
+            // Validate dữ liệu cơ bản
             if (feedback.getUserId() == null) {
                 throw new IllegalArgumentException("User ID is required");
+            }
+            if (feedback.getTournamentId() == null) {
+                throw new IllegalArgumentException("Tournament ID is required");
             }
             if (feedback.getStarRating() == null || feedback.getStarRating() < 1 || feedback.getStarRating() > 5) {
                 throw new IllegalArgumentException("Star rating must be between 1 and 5");
@@ -44,7 +56,26 @@ public class FeedbackService {
             if (feedback.getComment() == null || feedback.getComment().trim().isEmpty()) {
                 throw new IllegalArgumentException("Comment cannot be empty");
             }
-            
+
+            // Chỉ cho phép feedback khi giải đang thi đấu hoặc đã kết thúc
+            TournamentDTO tournament = tournamentDAO.getTournamentById(feedback.getTournamentId());
+            if (tournament == null) {
+                throw new IllegalArgumentException("Tournament not found");
+            }
+            String status = tournament.getStatus() != null ? tournament.getStatus().trim() : "";
+            if (!"Ongoing".equalsIgnoreCase(status) && !"Completed".equalsIgnoreCase(status)) {
+                throw new IllegalArgumentException("Bạn chỉ có thể đánh giá khi giải đang diễn ra hoặc đã kết thúc.");
+            }
+
+            // Chỉ cho phép user đã tham gia (Participant Active) đánh giá giải
+            boolean joined = participantDAO.existsActiveByTournamentAndUser(
+                    feedback.getTournamentId(),
+                    feedback.getUserId()
+            );
+            if (!joined) {
+                throw new IllegalArgumentException("Bạn cần tham gia giải đấu trước khi viết đánh giá.");
+            }
+
             feedbackDAO.addFeedback(feedback);
             return true;
         } catch (Exception e) {
@@ -76,7 +107,33 @@ public class FeedbackService {
             return false;
         }
     }
-    
+
+    // 8. Cập nhật nội dung feedback (starRating + comment) của user
+    public boolean updateFeedbackContent(int feedbackId, int userId, int starRating, String comment) {
+        try {
+            if (starRating < 1 || starRating > 5) {
+                throw new IllegalArgumentException("Star rating must be between 1 and 5");
+            }
+            if (comment == null || comment.trim().isEmpty()) {
+                throw new IllegalArgumentException("Comment cannot be empty");
+            }
+            return feedbackDAO.updateFeedbackContent(feedbackId, userId, starRating, comment.trim());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // 9. Cập nhật reply của tournament leader
+    public boolean updateFeedbackReply(int feedbackId, String reply) {
+        try {
+            return feedbackDAO.updateFeedbackReply(feedbackId, reply != null ? reply.trim() : "");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     // 6. Lấy số lượng feedback
     public int getTotalFeedbackCount() {
         try {

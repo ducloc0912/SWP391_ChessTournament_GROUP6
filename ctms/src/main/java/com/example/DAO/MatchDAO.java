@@ -39,7 +39,6 @@ public class MatchDAO extends DBContext {
                    m.start_time, m.end_time, t.tournament_name
             FROM Matches m
             JOIN Tournaments t ON t.tournament_id = m.tournament_id
-            WHERE t.status IN ('Ongoing', 'Upcoming')
             ORDER BY m.start_time
             """;
         try (Connection conn = getConnection();
