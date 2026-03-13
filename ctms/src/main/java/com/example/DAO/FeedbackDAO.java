@@ -60,6 +60,18 @@ public class FeedbackDAO {
         return feedbacks;
     }
 
+    // 3a. Kiểm tra user đã feedback giải đấu này chưa
+    public boolean hasUserFeedbackForTournament(int userId, int tournamentId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM Feedback WHERE user_id = ? AND tournament_id = ?";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            stmt.setInt(2, tournamentId);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
     // 3. Thêm feedback mới
     public int addFeedback(FeedbackDTO feedback) throws SQLException {
         String sql = "INSERT INTO Feedback (user_id, tournament_id, match_id, " +
