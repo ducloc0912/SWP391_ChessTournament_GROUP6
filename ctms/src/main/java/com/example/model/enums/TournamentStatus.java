@@ -1,8 +1,8 @@
 package com.example.model.enums;
 
 public enum TournamentStatus {
-    Pending, Rejected, Delayed, Ongoing, Completed, Cancelled;
-    
+    Pending, Rejected, Delayed, Ongoing, Completed, Cancelled, Upcoming;
+
     public static TournamentStatus getPending() {
         return Pending;
     }
@@ -25,5 +25,9 @@ public enum TournamentStatus {
 
     public static TournamentStatus getCancelled() {
         return Cancelled;
+    }
+
+    public static TournamentStatus getUpcoming() {
+        return Upcoming;
     }
 }
