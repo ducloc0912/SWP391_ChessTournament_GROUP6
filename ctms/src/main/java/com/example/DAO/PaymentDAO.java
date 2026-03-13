@@ -137,5 +137,89 @@ public class PaymentDAO {
         }
         return list;
     }
+
+    public boolean createWithdrawalRequest(int userId, java.math.BigDecimal amount, String bankName, String bankAccountNumber, String bankAccountName) {
+        String updateBalanceSql = "UPDATE Users SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
+        String insertWithdrawalSql = "INSERT INTO Withdrawal (user_id, amount, bank_name, bank_account_number, bank_account_name, status, create_at) VALUES (?, ?, ?, ?, ?, 'Pending', GETDATE())";
+        String insertTxSql = "INSERT INTO Payment_Transaction (user_id, type, amount, description, create_at) VALUES (?, 'Withdrawal', ?, ?, GETDATE())";
+
+        Connection conn = null;
+        try {
+            conn = DBContext.getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement psUpdate = conn.prepareStatement(updateBalanceSql)) {
+                psUpdate.setBigDecimal(1, amount);
+                psUpdate.setInt(2, userId);
+                psUpdate.setBigDecimal(3, amount);
+                int rows = psUpdate.executeUpdate();
+                if (rows == 0) {
+                    conn.rollback();
+                    return false;
+                }
+            }
+
+            try (PreparedStatement psInsert = conn.prepareStatement(insertWithdrawalSql)) {
+                psInsert.setInt(1, userId);
+                psInsert.setBigDecimal(2, amount);
+                psInsert.setString(3, bankName);
+                psInsert.setString(4, bankAccountNumber);
+                psInsert.setString(5, bankAccountName);
+                psInsert.executeUpdate();
+            }
+
+            try (PreparedStatement psTx = conn.prepareStatement(insertTxSql)) {
+                psTx.setInt(1, userId);
+                psTx.setBigDecimal(2, amount.negate());
+                psTx.setString(3, "Yêu cầu rút tiền về " + bankName + " (" + bankAccountNumber + ")");
+                psTx.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            e.printStackTrace();
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return false;
+    }
+
+    public java.util.List<java.util.Map<String, Object>> getWithdrawalsByUserId(int userId) {
+        java.util.List<java.util.Map<String, Object>> list = new java.util.ArrayList<>();
+        String sql = "SELECT * FROM Withdrawal WHERE user_id = ? ORDER BY create_at DESC";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    java.util.Map<String, Object> w = new java.util.HashMap<>();
+                    w.put("withdrawalId", rs.getInt("withdrawal_id"));
+                    w.put("amount", rs.getBigDecimal("amount"));
+                    w.put("bankName", rs.getString("bank_name"));
+                    w.put("bankAccountNumber", rs.getString("bank_account_number"));
+                    w.put("bankAccountName", rs.getString("bank_account_name"));
+                    w.put("status", rs.getString("status"));
+                    w.put("createAt", rs.getTimestamp("create_at"));
+                    w.put("bankTransferRef", rs.getString("bank_transfer_ref"));
+                    w.put("rejectionReason", rs.getString("rejection_reason"));
+                    list.add(w);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
 }
 

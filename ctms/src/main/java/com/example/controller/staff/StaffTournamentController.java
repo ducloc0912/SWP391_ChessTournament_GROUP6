@@ -127,6 +127,12 @@ public class StaffTournamentController extends HttpServlet {
                 boolean success = service.markWithdrawalCompleted(withdrawalId, staffId, proofUrl);
                 responseMap.put("success", success);
                 responseMap.put("proofUrl", proofUrl);
+            } else if ("rejectWithdrawal".equals(action)) {
+                int withdrawalId = parseInt(req.getParameter("withdrawalId"));
+                int staffId = parseInt(req.getParameter("staffId"));
+                String reason = req.getParameter("reason");
+                boolean success = service.rejectWithdrawal(withdrawalId, staffId, reason);
+                responseMap.put("success", success);
             } else {
                 responseMap.put("success", false);
                 responseMap.put("message", "Invalid action");

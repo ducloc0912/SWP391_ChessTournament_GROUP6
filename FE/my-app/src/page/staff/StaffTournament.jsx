@@ -74,6 +74,8 @@ const StaffTournament = ({ currentUser }) => {
 
     const [approvalNote, setApprovalNote] = useState('');
     const [withdrawalProof, setWithdrawalProof] = useState(null);
+    const [previewImage, setPreviewImage] = useState(null);
+    const [rejectReason, setRejectReason] = useState('');
     const [submittingWithdrawal, setSubmittingWithdrawal] = useState(false);
 
     useEffect(() => {
@@ -219,12 +221,60 @@ const StaffTournament = ({ currentUser }) => {
             );
             setSelectedWithdrawal(null);
             setWithdrawalProof(null);
+            setPreviewImage(null);
+            setRejectReason('');
             fetchTabData('withdrawals');
         } catch (error) {
             console.error(error);
             alert(`Loi cap nhat yeu cau rut tien: ${error.response?.data?.message || error.message}`);
         } finally {
             setSubmittingWithdrawal(false);
+        }
+    };
+
+    const submitWithdrawalReject = async () => {
+        if (!selectedWithdrawal) return;
+        if (!rejectReason.trim()) {
+            alert('Vui lòng nhập lý do từ chối');
+            return;
+        }
+
+        setSubmittingWithdrawal(true);
+        try {
+            const formData = new URLSearchParams();
+            formData.append('withdrawalId', selectedWithdrawal.withdrawalId);
+            formData.append('staffId', currentUser?.userId || 0);
+            formData.append('reason', rejectReason);
+
+            await axios.post(
+                `${API_BASE}/api/staff/tournaments?action=rejectWithdrawal`,
+                formData,
+                {
+                    withCredentials: true,
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                }
+            );
+            setSelectedWithdrawal(null);
+            setWithdrawalProof(null);
+            setPreviewImage(null);
+            setRejectReason('');
+            fetchTabData('withdrawals');
+        } catch (error) {
+            console.error(error);
+            alert(`Lỗi từ chối yêu cầu rút tiền: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setSubmittingWithdrawal(false);
+        }
+    };
+
+    const handleProofChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setWithdrawalProof(file);
+            setPreviewImage(URL.createObjectURL(file));
+        } else {
+            setWithdrawalProof(null);
+            setPreviewImage(null);
         }
     };
 
@@ -448,7 +498,7 @@ const StaffTournament = ({ currentUser }) => {
                                         <td>{currency(item.amount)}</td>
                                         <td><StatusBadge status={item.status} /></td>
                                         <td>
-                                            <button className="view-btn" onClick={() => { setSelectedWithdrawal(item); setWithdrawalProof(null); }} title="Xu ly rut tien">
+                                            <button className="view-btn" onClick={() => { setSelectedWithdrawal(item); setWithdrawalProof(null); setPreviewImage(null); setRejectReason(''); }} title="Xu ly rut tien">
                                                 <SendHorizontal size={16} />
                                             </button>
                                         </td>
@@ -562,14 +612,14 @@ const StaffTournament = ({ currentUser }) => {
             )}
 
             {selectedWithdrawal && activeTab === 'withdrawals' && (
-                <div className="modal-overlay" onClick={() => { setSelectedWithdrawal(null); setWithdrawalProof(null); }}>
+                <div className="modal-overlay" onClick={() => { setSelectedWithdrawal(null); setWithdrawalProof(null); setPreviewImage(null); setRejectReason(''); }}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
                             <div>
-                                <h3 className="modal-title">Xu ly rut tien</h3>
+                                <h3 className="modal-title">Chi tiết rút tiền</h3>
                                 <StatusBadge status={selectedWithdrawal.status} />
                             </div>
-                            <button className="close-btn" onClick={() => { setSelectedWithdrawal(null); setWithdrawalProof(null); }}>
+                            <button className="close-btn" onClick={() => { setSelectedWithdrawal(null); setWithdrawalProof(null); setPreviewImage(null); setRejectReason(''); }}>
                                 <XCircle size={24} />
                             </button>
                         </div>
@@ -589,34 +639,73 @@ const StaffTournament = ({ currentUser }) => {
                                 </div>
                                 <div className="info-row">
                                     <p><strong>Tao luc:</strong> {formatDateTime(selectedWithdrawal.createAt)}</p>
-                                    {selectedWithdrawal.bankTransferRef && (
-                                        <p>
-                                            <strong>Proof hien tai:</strong>{' '}
-                                            <a href={selectedWithdrawal.bankTransferRef} target="_blank" rel="noreferrer">Xem anh</a>
-                                        </p>
+                                    {selectedWithdrawal.status === 'Rejected' && (
+                                        <p><strong>Lý do từ chối:</strong> <span style={{color: 'red'}}>{selectedWithdrawal.rejectionReason}</span></p>
                                     )}
                                 </div>
+                                {selectedWithdrawal.bankTransferRef && (
+                                    <div style={{ marginTop: '16px' }}>
+                                        <strong>Hình ảnh chuyển khoản thành công:</strong><br />
+                                        <img src={selectedWithdrawal.bankTransferRef} alt="Proof" style={{ maxWidth: '100%', maxHeight: '200px', marginTop: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="modal-section update-status-area">
-                                <h4>Cap nhat da chuyen</h4>
-                                <div className="form-group">
-                                    <input
-                                        className="form-control"
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => setWithdrawalProof(e.target.files?.[0] || null)}
-                                    />
+                            {selectedWithdrawal.status === 'Pending' && (
+                                <div className="modal-section update-status-area">
+                                    <h4>Xử lý yêu cầu</h4>
+                                    
+                                    <div style={{ display: 'flex', gap: '20px', flexDirection: 'column' }}>
+                                        {/* Duyệt & upload proof */}
+                                        <div style={{ padding: '12px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                                            <strong style={{ display: 'block', marginBottom: '8px', color: '#16a34a' }}>Đồng ý và Upload Biên lai</strong>
+                                            <div className="form-group">
+                                                <input
+                                                    className="form-control"
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleProofChange}
+                                                />
+                                            </div>
+                                            {previewImage && (
+                                                <div style={{ margin: '12px 0' }}>
+                                                    <img src={previewImage} alt="Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                                                </div>
+                                            )}
+                                            <button
+                                                className="btn-primary"
+                                                style={{ width: '100%', backgroundColor: '#16a34a' }}
+                                                onClick={submitWithdrawalDone}
+                                                disabled={submittingWithdrawal || !withdrawalProof}
+                                            >
+                                                <CheckCircle2 size={18} /> {submittingWithdrawal ? 'Đang xử lý...' : 'Xác nhận Đã chuyển khoản'}
+                                            </button>
+                                        </div>
+
+                                        {/* Từ chối */}
+                                        <div style={{ padding: '12px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                                            <strong style={{ display: 'block', marginBottom: '8px', color: '#dc2626' }}>Từ chối Yêu cầu</strong>
+                                            <div className="form-group">
+                                                <input
+                                                    className="form-control"
+                                                    type="text"
+                                                    placeholder="Nhập lý do từ chối..."
+                                                    value={rejectReason}
+                                                    onChange={(e) => setRejectReason(e.target.value)}
+                                                />
+                                            </div>
+                                            <button
+                                                className="btn-secondary danger"
+                                                style={{ width: '100%', marginTop: '8px' }}
+                                                onClick={submitWithdrawalReject}
+                                                disabled={submittingWithdrawal || !rejectReason.trim()}
+                                            >
+                                                <XCircle size={18} /> {submittingWithdrawal ? 'Đang xử lý...' : 'Từ chối Rút tiền (Hoàn số dư)'}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <button
-                                    className="btn-primary"
-                                    style={{ width: '100%' }}
-                                    onClick={submitWithdrawalDone}
-                                    disabled={submittingWithdrawal}
-                                >
-                                    <Save size={18} /> {submittingWithdrawal ? 'Dang xu ly...' : 'Done va luu anh thanh toan'}
-                                </button>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
