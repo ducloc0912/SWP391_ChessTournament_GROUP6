@@ -160,6 +160,28 @@ const RefereeMatchListPage = () => {
     });
   };
 
+  const openEditAttendance = (match, gameNumber) => {
+
+    setAttendanceMatch(match);
+    setAttendanceGameNumber(gameNumber);
+
+    const isGame2 = gameNumber === 2;
+
+    const whiteStatus = isGame2
+      ? match.whiteAttendanceStatus2
+      : match.whiteAttendanceStatus;
+
+    const blackStatus = isGame2
+      ? match.blackAttendanceStatus2
+      : match.blackAttendanceStatus;
+
+    setAttendanceForm({
+      whitePresent: whiteStatus === "Absent" ? false : true,
+      blackPresent: blackStatus === "Absent" ? false : true
+    });
+
+  };
+
   const handleSubmitAttendance = async () => {
     if (!attendanceMatch) return;
     setSaving(true);
@@ -465,13 +487,22 @@ const RefereeMatchListPage = () => {
                         {m.game1Status === "Scheduled" &&
                           m.whiteAttendanceStatus &&
                           m.blackAttendanceStatus && (
-                            <button
-                              className="hpv-btn hpv-btn-primary"
-                              disabled={saving}
-                              onClick={() => handleStartMatch(m)}
-                            >
-                              Bắt đầu ván 1
-                            </button>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button
+                                className="hpv-btn hpv-btn-primary"
+                                onClick={() => openEditAttendance(m,1)}
+                              >
+                                Sửa điểm danh ván 1
+                              </button>
+
+                              <button
+                                className="hpv-btn hpv-btn-primary"
+                                disabled={saving}
+                                onClick={() => handleStartMatch(m)}
+                              >
+                                Bắt đầu ván 1
+                              </button>
+                            </div>
                           )}
 
                         {/* Attendance game 2 only after game1 completed */}
@@ -493,6 +524,13 @@ const RefereeMatchListPage = () => {
                           m.game2Status === "Scheduled" &&
                           m.whiteAttendanceStatus2 &&
                           m.blackAttendanceStatus2 && (
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button
+                                className="hpv-btn hpv-btn-primary"
+                                onClick={() => openEditAttendance(m,2)}
+                              >
+                                Sửa điểm danh ván 2
+                              </button>
                             <button
                               className="hpv-btn hpv-btn-primary"
                               disabled={saving}
@@ -500,6 +538,7 @@ const RefereeMatchListPage = () => {
                             >
                               Bắt đầu ván 2
                             </button>
+                            </div>
                           )}
                       </>
                     )}
