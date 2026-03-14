@@ -69,40 +69,42 @@ public class TournamentDAO extends DBContext {
     // =========================
     // CREATE TOURNAMENT
     // =========================
-    public boolean createTournament(TournamentDTO t) {
+    /** Returns the new tournament_id, or null on failure. */
+    public Integer createTournament(TournamentDTO t) {
         String sql = """
                     INSERT INTO Tournaments
-                    (tournament_name, description, location, format, categories,
+                    (tournament_name, description, location, format,
                      max_player, min_player, entry_fee, prize_pool,
                      registration_deadline, start_date, end_date,
                      create_by, notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection conn = DBContext.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
 
             ps.setString(1, t.getTournamentName());
             ps.setString(2, t.getDescription());
             ps.setString(3, t.getLocation());
             ps.setString(4, t.getFormat());
-            ps.setString(5, t.getCategories());
-            ps.setInt(6, t.getMaxPlayer());
-            ps.setInt(7, t.getMinPlayer());
-            ps.setBigDecimal(8, t.getEntryFee());
-            ps.setBigDecimal(9, t.getPrizePool());
-            ps.setTimestamp(10, t.getRegistrationDeadline());
-            ps.setTimestamp(11, t.getStartDate());
-            ps.setTimestamp(12, t.getEndDate());
-            ps.setInt(13, t.getCreateBy());
-            ps.setString(14, t.getNotes());
+            ps.setInt(5, t.getMaxPlayer());
+            ps.setInt(6, t.getMinPlayer());
+            ps.setBigDecimal(7, t.getEntryFee());
+            ps.setBigDecimal(8, t.getPrizePool());
+            ps.setTimestamp(9, t.getRegistrationDeadline());
+            ps.setTimestamp(10, t.getStartDate());
+            ps.setTimestamp(11, t.getEndDate());
+            ps.setInt(12, t.getCreateBy());
+            ps.setString(13, t.getNotes());
 
-            return ps.executeUpdate() > 0;
-
+            if (ps.executeUpdate() <= 0) return null;
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) return rs.getInt(1);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return false;
+        return null;
     }
 
     // =========================
@@ -148,6 +150,26 @@ public class TournamentDAO extends DBContext {
         return list;
     }
 
+    public List<TournamentDTO> getTournamentsByCreator(int creatorId) {
+        List<TournamentDTO> list = new ArrayList<>();
+        String sql = "SELECT * FROM Tournaments WHERE create_by = ? ORDER BY create_at DESC, tournament_id DESC";
+
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, creatorId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapResultSetToTournament(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
     // =========================
     // UPDATE TOURNAMENT
     // =========================
@@ -158,7 +180,6 @@ public class TournamentDAO extends DBContext {
                         description = ?,
                         location = ?,
                         format = ?,
-                        categories = ?,
                         max_player = ?,
                         min_player = ?,
                         entry_fee = ?,
@@ -177,16 +198,15 @@ public class TournamentDAO extends DBContext {
             ps.setString(2, t.getDescription());
             ps.setString(3, t.getLocation());
             ps.setString(4, t.getFormat());
-            ps.setString(5, t.getCategories());
-            ps.setInt(6, t.getMaxPlayer());
-            ps.setInt(7, t.getMinPlayer());
-            ps.setBigDecimal(8, t.getEntryFee());
-            ps.setBigDecimal(9, t.getPrizePool());
-            ps.setTimestamp(10, t.getRegistrationDeadline());
-            ps.setTimestamp(11, t.getStartDate());
-            ps.setTimestamp(12, t.getEndDate());
-            ps.setString(13, t.getNotes());
-            ps.setInt(14, t.getTournamentId());
+            ps.setInt(5, t.getMaxPlayer());
+            ps.setInt(6, t.getMinPlayer());
+            ps.setBigDecimal(7, t.getEntryFee());
+            ps.setBigDecimal(8, t.getPrizePool());
+            ps.setTimestamp(9, t.getRegistrationDeadline());
+            ps.setTimestamp(10, t.getStartDate());
+            ps.setTimestamp(11, t.getEndDate());
+            ps.setString(12, t.getNotes());
+            ps.setInt(13, t.getTournamentId());
 
             return ps.executeUpdate() > 0;
 
@@ -227,7 +247,6 @@ public class TournamentDAO extends DBContext {
         t.setDescription(rs.getString("description"));
         t.setLocation(rs.getString("location"));
         t.setFormat(rs.getString("format"));
-        t.setCategories(rs.getString("categories"));
         t.setMaxPlayer(rs.getInt("max_player"));
         t.setMinPlayer(rs.getInt("min_player"));
         t.setEntryFee(rs.getBigDecimal("entry_fee"));

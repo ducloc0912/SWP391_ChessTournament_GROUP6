@@ -17,7 +17,6 @@ const STATUS_LABELS = {
 const FORMAT_LABELS = {
   RoundRobin: "Vòng tròn",
   KnockOut: "Loại trực tiếp",
-  Hybrid: "Kết hợp",
 };
 
 const getStatusLabel = (s) => STATUS_LABELS[s] || s;

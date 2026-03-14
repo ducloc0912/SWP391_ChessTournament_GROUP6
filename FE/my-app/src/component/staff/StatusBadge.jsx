@@ -1,63 +1,57 @@
 import React from 'react';
 
-const StatusBadge = ({ status }) => {
-    const getStatusClass = (status) => {
-        const s = (status || '').toLowerCase();
-        switch (s) {
-            case 'pending': return 'status-pending';
-            case 'ongoing': return 'status-ongoing';
-            case 'active': return 'status-active';
-            case 'rejected': return 'status-rejected';
-            case 'published': return 'status-published';
-            case 'public': return 'status-public';
-            case 'draft': return 'status-draft';
-            case 'private': return 'status-private';
-            case 'completed': return 'status-completed';
-            case 'cancelled': return 'status-cancelled';
-            case 'delayed': return 'status-delayed';
-            // Format types
-            case 'hybrid': return 'status-strategy';
-            case 'roundrobin': return 'status-strategy';
-            case 'knockout': return 'status-strategy';
-            // Categories
-            case 'strategy': return 'status-strategy';
-            case 'news': return 'status-news';
-            case 'guide': return 'status-guide';
-            case 'guides': return 'status-guides';
-            default: return 'status-draft';
-        }
-    };
+const STATUS_CLASS_MAP = {
+    pending: 'status-pending',
+    upcoming: 'status-upcoming',
+    ongoing: 'status-ongoing',
+    active: 'status-active',
+    approved: 'status-approved',
+    rejected: 'status-rejected',
+    published: 'status-published',
+    public: 'status-public',
+    draft: 'status-draft',
+    private: 'status-private',
+    completed: 'status-completed',
+    cancelled: 'status-cancelled',
+    delayed: 'status-delayed',
+    hybrid: 'status-strategy',
+    roundrobin: 'status-strategy',
+    knockout: 'status-strategy',
+    strategy: 'status-strategy',
+    news: 'status-news',
+    guide: 'status-guide',
+    guides: 'status-guides',
+};
 
-    const getStatusLabel = (status) => {
-        const s = (status || '').toLowerCase();
-        switch (s) {
-            case 'pending': return 'Chờ duyệt';
-            case 'ongoing': return 'Đang diễn ra';
-            case 'active': return 'Hoạt động';
-            case 'rejected': return 'Bị từ chối';
-            case 'published': return 'Đã đăng';
-            case 'public': return 'Công khai';
-            case 'draft': return 'Bản nháp';
-            case 'private': return 'Riêng tư';
-            case 'completed': return 'Hoàn thành';
-            case 'cancelled': return 'Đã hủy';
-            case 'delayed': return 'Tạm hoãn';
-            // Format types
-            case 'hybrid': return 'Hỗn hợp';
-            case 'roundrobin': return 'Vòng tròn';
-            case 'knockout': return 'Loại trực tiếp';
-            // Categories
-            case 'strategy': return 'Chiến thuật';
-            case 'news': return 'Tin tức';
-            case 'guide': return 'Hướng dẫn';
-            case 'guides': return 'Hướng dẫn';
-            default: return status || 'N/A';
-        }
-    };
+const STATUS_LABEL_MAP = {
+    pending: 'Cho duyet',
+    upcoming: 'Sap dien ra',
+    ongoing: 'Dang dien ra',
+    active: 'Hoat dong',
+    approved: 'Approved',
+    rejected: 'Bi tu choi',
+    published: 'Da dang',
+    public: 'Cong khai',
+    draft: 'Ban nhap',
+    private: 'Rieng tu',
+    completed: 'Hoan thanh',
+    cancelled: 'Da huy',
+    delayed: 'Tam hoan',
+    hybrid: 'Hon hop',
+    roundrobin: 'Vong tron',
+    knockout: 'Loai truc tiep',
+    strategy: 'Chien thuat',
+    news: 'Tin tuc',
+    guide: 'Huong dan',
+    guides: 'Huong dan',
+};
+
+const StatusBadge = ({ status }) => {
+    const normalizedStatus = String(status || '').toLowerCase();
 
     return (
-        <span className={`status-badge ${getStatusClass(status)}`}>
-            {getStatusLabel(status)}
+        <span className={`status-badge ${STATUS_CLASS_MAP[normalizedStatus] || 'status-draft'}`}>
+            {STATUS_LABEL_MAP[normalizedStatus] || status || 'N/A'}
         </span>
     );
 };

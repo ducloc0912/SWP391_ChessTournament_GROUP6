@@ -60,6 +60,18 @@ public class FeedbackDAO {
         return feedbacks;
     }
 
+    // 3a. Kiểm tra user đã feedback giải đấu này chưa
+    public boolean hasUserFeedbackForTournament(int userId, int tournamentId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM Feedback WHERE user_id = ? AND tournament_id = ?";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            stmt.setInt(2, tournamentId);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
     // 3. Thêm feedback mới
     public int addFeedback(FeedbackDTO feedback) throws SQLException {
         String sql = "INSERT INTO Feedback (user_id, tournament_id, match_id, " +
@@ -74,7 +86,7 @@ public class FeedbackDAO {
             stmt.setObject(3, feedback.getMatchId());
             stmt.setInt(4, feedback.getStarRating());
             stmt.setString(5, feedback.getComment());
-            stmt.setString(6, "pending"); // Mặc định là pending chờ duyệt
+            stmt.setString(6, "approved"); // Tự động duyệt khi gửi feedback
 
             int affectedRows = stmt.executeUpdate();
 
@@ -114,6 +126,31 @@ public class FeedbackDAO {
         return feedbacks;
     }
 
+    // 4b. Lấy feedback theo tournamentId (approved)
+    public List<FeedbackDTO> getFeedbacksByTournamentId(int tournamentId) throws SQLException {
+        List<FeedbackDTO> feedbacks = new ArrayList<>();
+        String sql = "SELECT f.feedback_id, f.user_id, f.tournament_id, f.match_id, " +
+                "f.star_rating, f.comment, f.status, f.reply, f.create_at, " +
+                "u.first_name, u.last_name, u.avatar, u.email " +
+                "FROM Feedback f " +
+                "LEFT JOIN Users u ON f.user_id = u.user_id " +
+                "WHERE f.tournament_id = ? AND f.status = 'approved' " +
+                "ORDER BY f.create_at DESC";
+
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, tournamentId);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                FeedbackDTO feedback = mapResultSetToFeedbackDTO(rs);
+                feedbacks.add(feedback);
+            }
+        }
+        return feedbacks;
+    }
+
     // 5. Cập nhật status feedback (duyệt/từ chối)
     public boolean updateFeedbackStatus(int feedbackId, String status, String reply) throws SQLException {
         String sql = "UPDATE Feedback SET status = ?, reply = ? WHERE feedback_id = ?";
@@ -124,6 +161,37 @@ public class FeedbackDAO {
             stmt.setString(1, status);
             stmt.setString(2, reply);
             stmt.setInt(3, feedbackId);
+
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
+    // 7. Cập nhật nội dung feedback (starRating + comment) của user, reset status về pending
+    public boolean updateFeedbackContent(int feedbackId, int userId, int starRating, String comment) throws SQLException {
+        String sql = "UPDATE Feedback SET star_rating = ?, comment = ?, status = 'approved' " +
+                     "WHERE feedback_id = ? AND user_id = ?";
+
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, starRating);
+            stmt.setString(2, comment);
+            stmt.setInt(3, feedbackId);
+            stmt.setInt(4, userId);
+
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
+    // 8. Cập nhật reply của tournament leader
+    public boolean updateFeedbackReply(int feedbackId, String reply) throws SQLException {
+        String sql = "UPDATE Feedback SET reply = ? WHERE feedback_id = ?";
+
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, reply);
+            stmt.setInt(2, feedbackId);
 
             return stmt.executeUpdate() > 0;
         }

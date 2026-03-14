@@ -14,7 +14,7 @@ import java.io.IOException;
 /**
  * Đơn giản: nếu request có header Authorization: Bearer xxx và session chưa có "user"
  * thì verify token và gán user vào session. Nhờ đó các servlet hiện tại vẫn dùng được
- * HttpSession như trước, nhưng không phụ thuộc vào cookie JSESSIONID khi quay lại từ VNPay.
+ * HttpSession như trước.
  */
 @WebFilter("/*")
 public class JwtAuthFilter implements Filter {

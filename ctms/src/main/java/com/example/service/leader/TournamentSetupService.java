@@ -177,7 +177,7 @@ public class TournamentSetupService {
     private ValidationResult validateBracketStep(TournamentManualSetupRequestDTO request) {
         if (request == null) return ValidationResult.invalid("Thiếu dữ liệu.");
         String format = tournamentService.getNormalizedFormat(request.getFormat());
-        if (format == null) return ValidationResult.invalid("Thể thức không hợp lệ. Chỉ hỗ trợ RoundRobin, KnockOut, Hybrid.");
+        if (format == null) return ValidationResult.invalid("Thể thức không hợp lệ. Chỉ hỗ trợ RoundRobin, KnockOut.");
         List<TournamentSetupMatchDTO> matches = request.getMatches();
         if (matches == null || matches.isEmpty()) {
             return ValidationResult.invalid("Bạn chưa dựng structure bracket.");
@@ -198,7 +198,7 @@ public class TournamentSetupService {
     private ValidationResult validateScheduleStep(int tournamentId, TournamentManualSetupRequestDTO request) {
         if (request == null) return ValidationResult.invalid("Thiếu dữ liệu. Gửi format và matches (Content-Type: application/json).");
         String format = tournamentService.getNormalizedFormat(request.getFormat());
-        if (format == null) return ValidationResult.invalid("Thể thức không hợp lệ. Chỉ hỗ trợ RoundRobin, KnockOut, Hybrid.");
+        if (format == null) return ValidationResult.invalid("Thể thức không hợp lệ. Chỉ hỗ trợ RoundRobin, KnockOut.");
         List<TournamentSetupMatchDTO> matches = request.getMatches();
         if (matches == null || matches.isEmpty()) {
             return ValidationResult.invalid("Chưa có trận đấu nào. Cần finalize bước Players trước khi finalize Schedule.");

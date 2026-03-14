@@ -13,6 +13,36 @@
   padding: 28px 24px 44px;
 }
 
+/* Header + filter giống tournament public */
+.tl-leader-header.tp-header {
+  margin-bottom: 20px;
+}
+
+.tl-create-btn-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tl-leader-filters.tp-filters {
+  margin-bottom: 24px;
+}
+
+.tl-filter-reset-btn {
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  cursor: pointer;
+}
+
+.tl-filter-reset-btn:hover {
+  background: #f8fafc;
+  border-color: #0f172a;
+}
+
 .tl-header-section {
   display: flex;
   flex-direction: column;
@@ -232,9 +262,17 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.tl-tournament-card:hover {
+/* Card thiết kế mới: nền sáng, ảnh, badge pill, nút đỏ full width */
+.tl-card-new {
+  background: #f8f8f8;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.tl-card-new:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 28px rgba(2, 6, 23, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 .tl-card-banner {
@@ -244,6 +282,17 @@
   align-items: center;
   justify-content: center;
   background: linear-gradient(120deg, #0f1923 0%, #1f2937 40%, #ff4655 100%);
+}
+
+.tl-card-banner-img {
+  height: 140px;
+  padding: 0;
+}
+
+.tl-card-banner-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .tl-card-banner-overlay {
@@ -267,6 +316,19 @@
   padding: 4px 10px;
   font-size: 11px;
   font-weight: 700;
+}
+
+/* Badge trạng thái trên ảnh: chữ trắng, nền tối mờ */
+.tl-card-status-pill {
+  top: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 6px 12px;
+  border: none;
 }
 
 .tl-card-status-badge.Pending {
@@ -312,6 +374,10 @@
   flex: 1;
 }
 
+.tl-card-new .tl-card-content {
+  padding: 14px 16px 18px;
+}
+
 .tl-card-format {
   display: inline-block;
   font-size: 11px;
@@ -321,12 +387,30 @@
   color: #ff4655;
 }
 
+/* Pill thể thức: nền xám nhạt */
+.tl-card-format-pill {
+  display: inline-block;
+  background: #eeeeee;
+  color: #374151;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
 .tl-card-name {
   margin: 6px 0 0;
   color: #111827;
   font-size: 18px;
   line-height: 1.3;
   font-weight: 800;
+}
+
+.tl-card-new .tl-card-name {
+  margin: 8px 0 0;
+  color: #0f172a;
+  font-size: 17px;
 }
 
 .tl-card-details {
@@ -349,8 +433,76 @@
   flex-shrink: 0;
 }
 
+.tl-card-new .tl-card-detail-row {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.tl-card-new .tl-card-detail-row svg {
+  color: #64748b;
+}
+
 .tl-card-progress {
   margin-top: 12px;
+}
+
+/* Thanh tiến trình đỏ giống thiết kế */
+.tl-card-progress-new {
+  margin-top: 14px;
+}
+
+.tl-card-progress-new .tl-card-progress-pct {
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.tl-card-progress-new .tl-card-progress-bar {
+  background: #e5e7eb;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.tl-card-progress-new .tl-card-progress-fill {
+  background: #ff4d6d;
+  border-radius: 999px;
+}
+
+/* Nút CTA full width, đỏ */
+.tl-card-cta-btn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #ff4d6d;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.tl-card-cta-btn:hover {
+  background: #e63e5c;
+}
+
+.tl-card-cancel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tl-card-cancel-link:hover {
+  color: #b42318;
 }
 
 .tl-card-progress-header {

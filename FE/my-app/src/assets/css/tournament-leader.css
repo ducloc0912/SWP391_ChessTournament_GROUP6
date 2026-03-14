@@ -623,7 +623,10 @@
   min-height: 100vh;
   background: #f8fafc;
   color: #1e293b;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont;
 }
 
 .tl-main {
@@ -666,7 +669,6 @@
   font-size: 13px;
   color: #94a3b8;
 }
-
 
 /*===============================================TournamentDetail===============================================*/
 
@@ -819,7 +821,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   padding: 10px 16px;
   border-radius: 16px;
   font-weight: 600;
@@ -845,8 +847,8 @@
 }
 
 .td-btn-danger {
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.3);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 14px;
   border-radius: 18px;
   color: white;
@@ -885,7 +887,7 @@
   background: white;
   border-radius: 32px;
   padding: 32px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
 }
 
 .td-stat-icon {
@@ -899,9 +901,15 @@
   margin-bottom: 16px;
 }
 
-.td-stat-icon.indigo { background: #4f46e5; }
-.td-stat-icon.purple { background: #7c3aed; }
-.td-stat-icon.amber { background: #f59e0b; }
+.td-stat-icon.indigo {
+  background: #4f46e5;
+}
+.td-stat-icon.purple {
+  background: #7c3aed;
+}
+.td-stat-icon.amber {
+  background: #f59e0b;
+}
 
 .td-stat-content h3 {
   font-size: 32px;
@@ -1004,7 +1012,9 @@
   padding: 0.5rem;
   border-radius: 0.75rem;
   background: #f8fafc;
-  transition: background 0.25s, color 0.25s;
+  transition:
+    background 0.25s,
+    color 0.25s;
 }
 
 .td-tab-button.active .td-tab-icon {
@@ -1042,7 +1052,6 @@
   }
 }
 
-
 /* ===============================
    OVERVIEW TAB (td- prefix)
 ================================ */
@@ -1066,7 +1075,7 @@
   border-radius: 2rem;
   padding: 1.75rem;
   border: 1px solid #f1f5f9;
-  box-shadow: 0 6px 16px rgba(0,0,0,.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
 }
 
 .td-overview-card.highlight {
@@ -1300,7 +1309,6 @@
   font-weight: 800;
 }
 
-
 /* ===============================
    PLAYERS TAB (td- prefix)
 ================================ */
@@ -1309,7 +1317,7 @@
   background: #fff;
   border-radius: 2.5rem;
   border: 1px solid #f1f5f9;
-  box-shadow: 0 4px 12px rgba(0,0,0,.04);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
 
@@ -1355,8 +1363,8 @@
 .td-btn {
   display: inline-flex;
   align-items: center;
-  gap: .5rem;
-  padding: .75rem 1.25rem;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
   border-radius: 1.25rem;
   font-weight: 700;
   cursor: pointer;
@@ -1399,7 +1407,6 @@
   padding: 1.25rem 2rem;
   border-top: 1px solid #f1f5f9;
 }
-
 
 /* ===============================
    BRACKET TAB (td- prefix)
@@ -1532,9 +1539,15 @@
 }
 
 @keyframes tdPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.03); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* ===== OVERLAY ===== */
@@ -1542,7 +1555,7 @@
 .td-bracket-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(255,255,255,0.6);
+  background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
@@ -1614,7 +1627,9 @@
   padding: 2rem;
   border-radius: 2rem;
   border: 1px solid #f1f5f9;
-  transition: transform 0.25s, box-shadow 0.25s;
+  transition:
+    transform 0.25s,
+    box-shadow 0.25s;
 }
 
 .match-card:hover {
@@ -1722,7 +1737,6 @@
   cursor: pointer;
 }
 
-
 /* ===============================
    REFEREE TAB (td- prefix)
 ================================ */
@@ -1824,9 +1838,9 @@
 /* Card */
 .td-reports-card {
   background: #ffffff;
-  border-radius: 2.5rem;
-  border: 1px solid #f1f5f9;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+  border-radius: 0;
+  border: none !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
   overflow: hidden;
 }
 
@@ -1890,7 +1904,7 @@
 }
 
 .td-reports-table th {
-  padding: 24px 40px;
+  padding: 16px 24px;
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
@@ -1905,8 +1919,8 @@
 }
 
 .td-reports-table td {
-  padding: 24px 40px;
-  border-top: 1px solid #f8fafc;
+  padding: 16px 24px;
+  border-top: 1px solid #f1f5f9;
 }
 
 .td-reports-table tbody tr:hover {
@@ -1939,6 +1953,32 @@
   color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.1em;
+}
+
+/* ===== Buttons in Reports table ===== */
+.td-reports-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.td-btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.td-btn-success {
+  background-color: #22c55e;
+  color: #ffffff;
+}
+
+.td-btn-danger {
+  background-color: #ef4444;
+  color: #ffffff;
 }
 
 /* Authority */
@@ -2207,7 +2247,6 @@ textarea:focus {
   background: #2563eb;
   color: white;
 }
-
 
 /*===============================================Form Section===============================================*/
 
@@ -2648,11 +2687,11 @@ Half Width Fields in Form
   .tl-form-section-body {
     grid-template-columns: 1fr 1fr;
   }
-  
+
   .tlc-field-half {
     grid-column: span 1;
   }
-  
+
   .tlc-field-full {
     grid-column: 1 / -1;
   }

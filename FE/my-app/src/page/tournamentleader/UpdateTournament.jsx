@@ -11,7 +11,6 @@ import {
   FileText,
   RotateCw,
   Zap,
-  Layers,
 } from "lucide-react";
 import "../../assets/css/tournament-leader/TournamentForm.css";
 
@@ -27,19 +26,16 @@ const STEPS = [
 const FORMAT_ICONS = {
   RoundRobin: RotateCw,
   KnockOut: Zap,
-  Hybrid: Layers,
 };
 
 const FORMAT_LABELS = {
   RoundRobin: "Vòng tròn",
   KnockOut: "Loại trực tiếp",
-  Hybrid: "Kết hợp",
 };
 
 const FORMAT_PLAYER_LIMITS = {
-  RoundRobin: { min: 4, max: 12 },
+  RoundRobin: { min: 4, max: 8 },
   KnockOut: { min: 8, max: 32 },
-  Hybrid: { min: 20, max: 50 },
 };
 
 const getFormatLabel = (format) => FORMAT_LABELS[format] || format;
@@ -57,7 +53,7 @@ export default function UpdateTournamentPage() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState(null);
-  const [formats, setFormats] = useState([]);
+  const [formats, setFormats] = useState(Object.keys(FORMAT_LABELS));
   const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
@@ -65,7 +61,6 @@ export default function UpdateTournamentPage() {
     format: "",
     location: "",
     description: "",
-    categories: "",
     rules: "",
     prizePool: "",
     maxPlayer: "",
@@ -98,7 +93,6 @@ export default function UpdateTournamentPage() {
           format: t.format || "",
           location: t.location || "",
           description: t.description || "",
-          categories: t.categories || "",
           rules: t.rules || "",
           prizePool: t.prizePool ?? "",
           maxPlayer: t.maxPlayer ?? "",
@@ -113,7 +107,7 @@ export default function UpdateTournamentPage() {
           autoApprove: true,
         });
 
-        setFormats(filterRes.data.formats || []);
+        setFormats((filterRes.data.formats || []).filter((f) => f !== "Hybrid"));
       } catch (err) {
         console.error("Error loading tournament:", err);
       } finally {
@@ -134,8 +128,6 @@ export default function UpdateTournamentPage() {
           return setError("Vui lòng nhập tên giải đấu."), false;
         if (!formData.format)
           return setError("Vui lòng chọn thể thức."), false;
-        if (!formData.categories.trim())
-          return setError("Vui lòng nhập hạng mục."), false;
         return true;
       case 2:
         if (!formData.startDate)
@@ -216,7 +208,6 @@ export default function UpdateTournamentPage() {
       rules: formData.rules,
       location: formData.location,
       format: formData.format,
-      categories: formData.categories,
       maxPlayer: Number(formData.maxPlayer) || limits.max,
       minPlayer: Number(formData.minPlayer) || limits.min,
       entryFee: Number(formData.entryFee) || 0,
@@ -240,7 +231,7 @@ export default function UpdateTournamentPage() {
         { withCredentials: true }
       );
       alert("Cập nhật giải đấu thành công!");
-      navigate(`/tournaments/${id}`);
+      navigate(`/leader/tournaments/${id}`);
     } catch (err) {
       console.error("Error updating tournament:", err);
       alert("Cập nhật giải đấu thất bại!");
@@ -348,7 +339,7 @@ export default function UpdateTournamentPage() {
                 <>
                   <button
                     className="cw-btn cw-btn-danger"
-                    onClick={() => navigate(`/tournaments/${id}`)}
+                    onClick={() => navigate(`/leader/tournaments/${id}`)}
                   >
                     Hủy
                   </button>
@@ -377,8 +368,8 @@ export default function UpdateTournamentPage() {
 
 const BasicInfoStep = ({ data, update, formats }) => (
   <div>
-    <div className="cw-form-row cols-2">
-      <div className="cw-field">
+    <div className="cw-form-row">
+      <div className="cw-field full">
         <label className="cw-label">
           Tên giải đấu <span className="req">*</span>
         </label>
@@ -387,17 +378,6 @@ const BasicInfoStep = ({ data, update, formats }) => (
           placeholder="VD: Grandmaster Clash 2026"
           value={data.tournamentName}
           onChange={(e) => update({ tournamentName: e.target.value })}
-        />
-      </div>
-      <div className="cw-field">
-        <label className="cw-label">
-          Hạng mục <span className="req">*</span>
-        </label>
-        <input
-          className="cw-input"
-          placeholder="VD: Open, U18, Nữ"
-          value={data.categories}
-          onChange={(e) => update({ categories: e.target.value })}
         />
       </div>
     </div>
@@ -543,19 +523,6 @@ const ScheduleRulesStep = ({ data, update }) => {
         />
       </div>
     </div>
-
-    <div className="cw-form-row">
-      <div className="cw-field full">
-        <label className="cw-label">Ghi chú thêm</label>
-        <textarea
-          className="cw-textarea"
-          placeholder="Thông tin địa điểm, hướng dẫn đặc biệt…"
-          value={data.notes}
-          onChange={(e) => update({ notes: e.target.value })}
-          style={{ minHeight: 80 }}
-        />
-      </div>
-    </div>
   </div>
   );
 };
@@ -611,26 +578,6 @@ const RegistrationStep = ({ data, update }) => {
       </div>
     </div>
 
-    <div className="cw-divider" />
-
-    <div className="cw-form-row cols-2">
-      <div className="cw-toggle-card">
-        <div className="cw-toggle-row">
-          <div className="cw-toggle-info">
-            <h4>Tự động duyệt</h4>
-            <p>Tự động chấp nhận người chơi đủ điều kiện</p>
-          </div>
-          <label className="cw-switch">
-            <input
-              type="checkbox"
-              checked={data.autoApprove}
-              onChange={(e) => update({ autoApprove: e.target.checked })}
-            />
-            <span className="cw-switch-track" />
-          </label>
-        </div>
-      </div>
-    </div>
   </div>
   );
 };
@@ -669,10 +616,6 @@ const ReviewStep = ({ data }) => {
               <div className="cw-review-row">
                 <span className="label">Thể thức</span>
                 <span className="value">{getFormatLabel(data.format) || "Không có"}</span>
-              </div>
-              <div className="cw-review-row">
-                <span className="label">Hạng mục</span>
-                <span className="value">{data.categories || "Không có"}</span>
               </div>
               <div className="cw-review-row">
                 <span className="label">Địa điểm</span>

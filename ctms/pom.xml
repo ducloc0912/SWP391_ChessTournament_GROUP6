@@ -69,6 +69,13 @@
             <version>4.4.0</version>
         </dependency>
 
+        <!-- PayOS SDK -->
+        <dependency>
+            <groupId>vn.payos</groupId>
+            <artifactId>payos-java</artifactId>
+            <version>2.0.1</version>
+        </dependency>
+
         <!-- Jakarta Mail (Send Email via SMTP - Gmail) -->
 <dependency>
     <groupId>com.sun.mail</groupId>
@@ -76,8 +83,12 @@
     <version>2.0.1</version>
 </dependency>
 
+        
 
     </dependencies>
+
+
+
 
     <!-- ===================== -->
     <!-- BUILD -->

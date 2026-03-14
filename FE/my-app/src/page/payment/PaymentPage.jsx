@@ -61,7 +61,34 @@ const PaymentPage = () => {
     }
   }, []);
 
-  const [paymentMethod, setPaymentMethod] = useState('VNPAY');
+  useEffect(() => {
+    // Fetch fresh profile to get latest balance
+    const fetchUserProfile = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/profile/me`, {
+          withCredentials: true,
+        });
+        if (res.data && res.data.success) {
+          const payload = res.data.data ? res.data.data.user : res.data.user;
+          if (payload) {
+             setSessionUser(payload);
+             const cur = JSON.parse(sessionStorage.getItem("user") || localStorage.getItem("user") || "{}");
+             const updated = { ...cur, balance: payload.balance };
+             sessionStorage.setItem("user", JSON.stringify(updated));
+             localStorage.setItem("user", JSON.stringify(updated));
+          }
+        }
+      } catch (error) {
+         console.error("Failed to fetch fresh profile in PaymentPage", error);
+      }
+    };
+    if (sessionUser) {
+        fetchUserProfile();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [paymentMethod, setPaymentMethod] = useState('WALLET');
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
@@ -121,11 +148,6 @@ const PaymentPage = () => {
   const entryFeeNum = Number(paramEntryFee ?? tournament?.entryFee ?? 0);
   const hasFee = entryFeeNum > 0;
   const actualFee = entryFeeNum || 500000;
-
-  const handleFormChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-    setSubmitError('');
-  };
 
   const getNormalizedForm = () => ({
     ...form,
@@ -195,10 +217,15 @@ const PaymentPage = () => {
         setLoading(false);
         return;
       }
+      if (status === 402) {
+        setSubmitError("Số dư ví không đủ để đăng ký giải này. Vui lòng nạp thêm tiền.");
+        setLoading(false);
+        return;
+      }
       const d = err?.response?.data;
       const msg = (typeof d?.message === 'string' && d.message) ? d.message
         : (typeof d?.error === 'string' && d.error) ? d.error
-        : status === 403 ? "Bạn đã hết hạn thanh toán lần trước. Vui lòng thử lại sau 24 giờ."
+        : status === 403 ? "Bạn đã hủy hoặc hết hạn thanh toán lần trước. Vui lòng thử lại sau 2 giờ."
         : status === 409 ? "Bạn đã đăng ký giải này rồi."
         : "Đăng ký thất bại. Vui lòng thử lại.";
       setSubmitError(msg);
@@ -206,64 +233,12 @@ const PaymentPage = () => {
     }
   };
 
-  const handlePayment = async (overrideParticipantId) => {
-    if (paymentMethod !== 'VNPAY') {
-      alert("Chức năng chỉ đang hỗ trợ VNPAY.");
-      return;
-    }
-    const pId = Number(overrideParticipantId ?? participantId ?? paramParticipantId ?? 0);
-    if (!pId || !tournament?.tournamentId) {
-      setSubmitError("Thiếu thông tin thanh toán. Vui lòng thử lại.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_BASE}/api/vnpay/create-payment`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          amount: actualFee,
-          userId: user.id || sessionUser?.userId || sessionUser?.id,
-          tournamentId: tournament.tournamentId,
-          participantId: pId
-        })
-      });
-      const data = await response.json();
-      if (data.success && data.paymentUrl) {
-        window.location.href = data.paymentUrl;
-        return;
-      }
-      if (response.status === 401) {
-        sessionStorage.removeItem("user");
-        localStorage.removeItem("user");
-        setSessionUser(null);
-        setSubmitError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để thanh toán.");
-      } else {
-        setSubmitError(data?.message || "Không thể lấy link thanh toán. Vui lòng thử lại.");
-      }
-    } catch (error) {
-      if (error?.response?.status === 401) {
-        sessionStorage.removeItem("user");
-        localStorage.removeItem("user");
-        setSessionUser(null);
-        setSubmitError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để thanh toán.");
-      } else {
-        setSubmitError("Lỗi kết nối máy chủ. Vui lòng thử lại.");
-      }
-    } finally {
-      setLoading(false);
-    }
+  const handleTopupRedirect = () => {
+      navigate('/wallet');
   };
 
   const handleSubmitPaid = (e) => {
     e?.preventDefault();
-    if (participantId || paramParticipantId) {
-      handlePayment();
-      return;
-    }
     submitRegister();
   };
 
@@ -388,17 +363,20 @@ const PaymentPage = () => {
 
           <div className="payment-card slide-up delay-2">
             <h2>Thông tin kỳ thủ</h2>
+            <p className="text-xs text-gray" style={{ marginBottom: 12 }}>
+              Thông tin lấy từ hồ sơ cá nhân (chỉ xem). Muốn thay đổi, vui lòng cập nhật tại trang Profile.
+            </p>
             {submitError && (
               <>
                 <div className="payment-form-error">{submitError}</div>
-                {submitError.includes("đăng nhập lại") && (
+                {submitError.includes("Số dư ví không đủ") && (
                   <div style={{ marginTop: 12 }}>
                     <button
                       type="button"
                       className="btn-primary"
-                      onClick={() => navigate("/login", { state: { from: "/payment", tournamentId: paramTournamentId } })}
+                      onClick={handleTopupRedirect}
                     >
-                      Đăng nhập lại
+                      Nạp tiền vào ví
                     </button>
                   </div>
                 )}
@@ -407,27 +385,27 @@ const PaymentPage = () => {
             <div className="grid-2">
               <div>
                 <label className="text-xs font-semibold text-gray">HỌ VÀ TÊN</label>
-                <input type="text" className="input-premium" value={form.fullName} onChange={e => handleFormChange('fullName', e.target.value)} placeholder="Họ và tên" />
+                <div className="input-premium input-readonly" style={{ background: '#f8fafc', cursor: 'default' }}>{form.fullName || "—"}</div>
                 {formErrors.fullName && <span className="payment-field-error">{formErrors.fullName}</span>}
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray">USERNAME / TÊN IN-GAME</label>
-                <input type="text" className="input-premium" value={form.username} onChange={e => handleFormChange('username', e.target.value)} placeholder="Username" />
+                <div className="input-premium input-readonly" style={{ background: '#f8fafc', cursor: 'default' }}>{form.username || "—"}</div>
                 {formErrors.username && <span className="payment-field-error">{formErrors.username}</span>}
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray">SỐ ĐIỆN THOẠI</label>
-                <input type="text" className="input-premium" value={form.phone} onChange={e => handleFormChange('phone', e.target.value)} placeholder="SĐT" />
+                <div className="input-premium input-readonly" style={{ background: '#f8fafc', cursor: 'default' }}>{form.phone || "—"}</div>
                 {formErrors.phone && <span className="payment-field-error">{formErrors.phone}</span>}
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray">EMAIL</label>
-                <input type="email" className="input-premium" value={form.email} onChange={e => handleFormChange('email', e.target.value)} placeholder="Email" />
+                <div className="input-premium input-readonly" style={{ background: '#f8fafc', cursor: 'default' }}>{form.email || "—"}</div>
                 {formErrors.email && <span className="payment-field-error">{formErrors.email}</span>}
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray">BẬC RANK</label>
-                <input type="number" min="0" className="input-premium" value={form.rankAtRegistration} onChange={e => handleFormChange('rankAtRegistration', e.target.value)} placeholder="Rank" />
+                <div className="input-premium input-readonly" style={{ background: '#f8fafc', cursor: 'default' }}>{form.rankAtRegistration !== "" && form.rankAtRegistration != null ? form.rankAtRegistration : "—"}</div>
                 {formErrors.rankAtRegistration && <span className="payment-field-error">{formErrors.rankAtRegistration}</span>}
               </div>
             </div>
@@ -464,21 +442,29 @@ const PaymentPage = () => {
 
               <div className="payment-card">
                 <h2 className="payment-method-title">Phương thức thanh toán</h2>
-                <div className={`radio-option ${paymentMethod === 'VNPAY' ? 'selected' : ''}`} onClick={() => setPaymentMethod('VNPAY')}>
-                  <input type="radio" checked={paymentMethod === 'VNPAY'} readOnly />
-                  <div className="method-icon-box method-blue">VNP</div>
+                <div className={`radio-option ${paymentMethod === 'WALLET' ? 'selected' : ''}`} onClick={() => setPaymentMethod('WALLET')}>
+                  <input type="radio" checked={paymentMethod === 'WALLET'} readOnly />
+                  <div className="method-icon-box" style={{ background: '#0284c7', color: 'white' }}>Ví</div>
                   <div style={{ flex: 1 }}>
-                    <div className="text-sm font-semibold">Thanh toán VNPay</div>
-                    <div className="text-xs text-gray">ATM / Visa / Master / JCB</div>
+                     <div className="flex-between text-sm">
+                        <span className="font-semibold" style={{ color: "#334155" }}>Ví CTMS của tôi</span>
+                        <span className="font-bold text-blue">{(sessionUser?.balance || 0).toLocaleString()}đ</span>
+                     </div>
+                    <div className="text-xs text-gray mt-1">Trừ trực tiếp vào số dư ví</div>
                   </div>
                 </div>
                 <p className="payment-has-fee-msg" style={{ marginTop: '12px', marginBottom: '16px' }}>
-                  Chỉ sau khi thanh toán hoàn tất bạn mới được ghi nhận là thành viên giải.
+                  Hệ thống sẽ trừ trực tiếp <strong>{actualFee.toLocaleString()}đ</strong> từ ví của bạn.
                 </p>
                 <button onClick={handleSubmitPaid} disabled={loading} className={loading ? 'btn-loading' : 'btn-primary'}>
-                  {loading ? "ĐANG CHUYỂN..." : "ĐĂNG KÝ VÀ THANH TOÁN"}
+                  {loading ? "ĐANG XỬ LÝ..." : "ĐĂNG KÝ NGAY"}
                 </button>
-                <div className="text-center mt-4 text-xs text-gray font-semibold">HỖ TRỢ BỞI VNPAY</div>
+                {((sessionUser?.balance || 0) < actualFee) && (
+                   <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                       <span style={{ color: "red", fontSize: "13px" }}>Số dư không đủ. </span>
+                       <span style={{ color: "#2563eb", fontSize: "13px", cursor: "pointer", fontWeight: "bold", textDecoration: "underline" }} onClick={handleTopupRedirect}>Nạp thêm tiền</span>
+                   </div>
+                )}
               </div>
             </>
           ) : (

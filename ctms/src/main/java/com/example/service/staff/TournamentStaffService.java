@@ -8,16 +8,17 @@ import com.example.model.enums.ApprovalAction;
 import com.example.model.enums.TournamentStatus;
 
 import java.util.List;
+import java.util.Map;
 
 public class TournamentStaffService {
     private final TournamentStaffDAO tournamentStaffDAO = new TournamentStaffDAO();
 
-    // =========================
-    // TOURNAMENT MANAGEMENT
-    // =========================
-
     public List<Tournament> getAllTournaments() {
         return tournamentStaffDAO.getAllTournamentsForStaff();
+    }
+
+    public List<Tournament> getPendingTournaments() {
+        return tournamentStaffDAO.getPendingTournamentsForStaff();
     }
 
     public Tournament getTournamentById(int id) {
@@ -28,7 +29,7 @@ public class TournamentStaffService {
         Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
         if (t == null) return false;
         return tournamentStaffDAO.updateTournamentStatusAndLog(
-                tournamentId, staffId, t.getStatus(), TournamentStatus.Ongoing, ApprovalAction.Approve, note);
+                tournamentId, staffId, t.getStatus(), TournamentStatus.Upcoming, ApprovalAction.Approve, note);
     }
 
     public boolean rejectTournament(int tournamentId, int staffId, String note) {
@@ -38,7 +39,6 @@ public class TournamentStaffService {
                 tournamentId, staffId, t.getStatus(), TournamentStatus.Rejected, ApprovalAction.Reject, note);
     }
 
-    // Generic status update
     public boolean updateTournamentStatus(int tournamentId, int staffId, TournamentStatus newStatus,
                                           ApprovalAction action, String note) {
         Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
@@ -53,5 +53,25 @@ public class TournamentStaffService {
 
     public boolean assignStaff(TournamentStaff assignment) {
         return tournamentStaffDAO.assignStaffToTournament(assignment);
+    }
+
+    public List<Map<String, Object>> getTransactionSummary() {
+        return tournamentStaffDAO.getTournamentTransactionSummary();
+    }
+
+    public List<Map<String, Object>> getTransactionsByTournament(int tournamentId) {
+        return tournamentStaffDAO.getTransactionsByTournament(tournamentId);
+    }
+
+    public List<Map<String, Object>> getWithdrawals() {
+        return tournamentStaffDAO.getAllWithdrawals();
+    }
+
+    public boolean markWithdrawalCompleted(int withdrawalId, int staffId, String transferRef) {
+        return tournamentStaffDAO.markWithdrawalCompleted(withdrawalId, staffId, transferRef);
+    }
+
+    public boolean rejectWithdrawal(int withdrawalId, int staffId, String reason) {
+        return tournamentStaffDAO.rejectWithdrawal(withdrawalId, staffId, reason);
     }
 }

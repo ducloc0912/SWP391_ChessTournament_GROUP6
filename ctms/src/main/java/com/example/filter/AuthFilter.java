@@ -44,15 +44,13 @@ public class AuthFilter implements Filter {
             "/api/home",
             // Đăng ký tài khoản mới
             "/api/user/register",
-            // Kết quả thanh toán VNPay (được FE gọi sau khi redirect)
-            "/api/vnpay/vnpay-return"
+            // PayOS Webhook (không cần auth)
+            "/api/payos/webhook"
     );
 
     private static boolean isPublicPath(String uri) {
         if (uri == null) return false;
         if (uri.startsWith("/api/public/")) return true;
-        /* VNPay return: GET với query params, không có session khi user quay từ VNPay */
-        if (uri.startsWith("/api/vnpay/vnpay-return")) return true;
         for (String p : PUBLIC_PATHS) {
             if (uri.equals(p) || uri.startsWith(p + "?")) return true;
         }

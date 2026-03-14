@@ -1,10 +1,14 @@
 /* ===== CreateTournament ===== */
-
+/* Thống nhất với homepage: nền, chữ, nút */
 .cw-page {
   min-height: 100vh;
-  background: #b5b5b5;
   padding: 16px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: Inter, "Segoe UI", sans-serif;
+}
+
+.cw-page.hpv-page {
+  background: var(--hpv-bg, #ece8e1);
+  color: var(--hpv-text, #1f2937);
 }
 
 @media (min-width: 768px) {
@@ -41,13 +45,18 @@
 
 /* Wizard Card */
 .cw-wizard {
-  background: #f5f5f5;
+  background: #fff;
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   min-height: 600px;
+}
+
+.hpv-page .cw-wizard {
+  background: #fff;
 }
 
 /* Step Indicator */
@@ -86,10 +95,14 @@
 }
 
 .cw-step-circle.active {
-  background: #61a9c2;
+  background: var(--hpv-accent, #ff4655);
   color: white;
-  box-shadow: 0 0 0 4px rgba(97, 169, 194, 0.2);
+  box-shadow: 0 0 0 4px rgba(255, 70, 85, 0.2);
   transform: scale(1.1);
+}
+
+.hpv-page .cw-step-circle.active {
+  background: var(--hpv-accent, #ff4655);
 }
 
 .cw-step-circle.completed {
@@ -109,7 +122,8 @@
   transition: color 0.3s;
 }
 
-.cw-step-label.active { color: #61a9c2; }
+.cw-step-label.active { color: var(--hpv-accent, #ff4655); }
+.hpv-page .cw-step-label.active { color: var(--hpv-accent, #ff4655); }
 .cw-step-label.completed { color: #0f172a; }
 .cw-step-label.pending { color: #94a3b8; }
 
@@ -195,15 +209,22 @@
 }
 
 .cw-btn-primary {
-  background: #61a9c2;
+  background: var(--hpv-accent, #ff4655);
   color: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   min-width: 120px;
 }
 
 .cw-btn-primary:hover:not(:disabled) {
-  background: #4d8ea6;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+  background: #e63e5c;
+  box-shadow: 0 4px 8px rgba(255, 70, 85, 0.25);
+}
+
+.hpv-page .cw-btn-primary {
+  background: var(--hpv-accent, #ff4655);
+}
+.hpv-page .cw-btn-primary:hover:not(:disabled) {
+  background: #e63e5c;
 }
 
 .cw-btn-ghost {
@@ -285,8 +306,8 @@
 .cw-input:focus,
 .cw-select:focus,
 .cw-textarea:focus {
-  border-color: #61a9c2;
-  box-shadow: 0 0 0 2px rgba(97, 169, 194, 0.2);
+  border-color: var(--hpv-accent, #ff4655);
+  box-shadow: 0 0 0 2px rgba(255, 70, 85, 0.15);
 }
 
 .cw-textarea {
@@ -299,6 +320,86 @@
   color: #ef4444;
   margin-top: 4px;
   font-weight: 500;
+}
+
+.cw-hint {
+  font-size: 13px;
+  color: var(--hpv-muted, #6b7280);
+  margin: 0 0 10px;
+}
+
+/* Toast nhỏ cho cảnh báo prize */
+.cw-prize-toast {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+  color: #b42318;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+/* Bảng giải thưởng theo hạng */
+.cw-prize-table-wrap {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.cw-prize-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.cw-prize-table th,
+.cw-prize-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.cw-prize-table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.cw-prize-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.cw-input-sm {
+  max-width: 140px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.cw-add-tier-btn {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cw-btn-icon {
+  padding: 6px;
+  min-width: auto;
+  border-radius: 8px;
+}
+
+.cw-prize-review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cw-prize-review-list li {
+  padding: 4px 0;
+  font-size: 14px;
 }
 
 /* Format Buttons */
@@ -324,14 +425,14 @@
 }
 
 .cw-format-btn:hover {
-  border-color: #61a9c2;
-  color: #61a9c2;
+  border-color: var(--hpv-accent, #ff4655);
+  color: var(--hpv-accent, #ff4655);
 }
 
 .cw-format-btn.active {
-  color: #61a9c2;
-  background: rgba(97, 169, 194, 0.08);
-  border-color: #61a9c2;
+  color: #fff;
+  background: var(--hpv-accent, #ff4655);
+  border-color: var(--hpv-accent, #ff4655);
 }
 
 /* Section divider */

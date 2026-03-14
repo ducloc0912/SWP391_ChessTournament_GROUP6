@@ -2,7 +2,6 @@ package com.example.DAO;
 
 import com.example.model.dto.TournamentSetupMatchDTO;
 import com.example.model.dto.TournamentSetupStateDTO;
-import com.example.model.entity.TournamentGroup;
 import com.example.model.enums.SetupStep;
 import com.example.util.DBContext;
 
@@ -450,22 +449,17 @@ public class TournamentSetupDAO extends DBContext {
                     r.name AS round_name,
                     r.round_index,
                     b.type AS bracket_type,
-                    m.group_id,
-                    tg.name AS group_name,
                     LTRIM(RTRIM(COALESCE(uw.first_name, '') + ' ' + COALESCE(uw.last_name, ''))) AS white_name,
                     LTRIM(RTRIM(COALESCE(ub.first_name, '') + ' ' + COALESCE(ub.last_name, ''))) AS black_name,
                     (SELECT TOP 1 mr.referee_id FROM Match_Referee mr WHERE mr.match_id = m.match_id) AS referee_id
                 FROM Matches m
                 LEFT JOIN Round r ON r.round_id = m.round_id
                 LEFT JOIN Bracket b ON b.bracket_id = r.bracket_id
-                LEFT JOIN Tournament_Group tg ON tg.group_id = m.group_id
                 LEFT JOIN Users uw ON uw.user_id = m.white_player_id
                 LEFT JOIN Users ub ON ub.user_id = m.black_player_id
                 WHERE m.tournament_id = ?
                 ORDER BY
                     CASE b.type WHEN 'RoundRobin' THEN 1 WHEN 'KnockOut' THEN 2 ELSE 3 END,
-                    ISNULL(tg.sort_order, 999),
-                    ISNULL(tg.name, ''),
                     ISNULL(r.round_index, 9999),
                     ISNULL(m.board_number, 9999),
                     m.match_id
@@ -484,8 +478,6 @@ public class TournamentSetupDAO extends DBContext {
                     dto.setRoundName(rs.getString("round_name"));
                     dto.setRoundIndex((Integer) rs.getObject("round_index"));
                     dto.setStage(rs.getString("bracket_type"));
-                    try { dto.setGroupId((Integer) rs.getObject("group_id")); } catch (SQLException ignored) {}
-                    try { dto.setGroupName(rs.getString("group_name")); } catch (SQLException ignored) {}
                     dto.setWhitePlayerName(rs.getString("white_name"));
                     dto.setBlackPlayerName(rs.getString("black_name"));
                     Object refObj = rs.getObject("referee_id");
@@ -514,15 +506,14 @@ public class TournamentSetupDAO extends DBContext {
                 INSERT INTO Bracket (bracket_name, tournament_id, type, status)
                 VALUES (?, ?, ?, 'Pending')
                 """;
-        String insertGroupSql = "INSERT INTO Tournament_Group (tournament_id, bracket_id, name, sort_order, max_players) VALUES (?, ?, ?, ?, ?)";
         String insertRoundSql = """
                 INSERT INTO Round (bracket_id, tournament_id, group_id, name, round_index, is_completed)
-                VALUES (?, ?, ?, ?, ?, 0)
+                VALUES (?, ?, NULL, ?, ?, 0)
                 """;
         String insertMatchSql = """
                 INSERT INTO Matches
                 (tournament_id, round_id, group_id, board_number, white_player_id, black_player_id, status, start_time)
-                VALUES (?, ?, ?, ?, ?, ?, 'Scheduled', ?)
+                VALUES (?, ?, NULL, ?, ?, ?, 'Scheduled', ?)
                 """;
 
         try (Connection conn = getConnection()) {
@@ -565,41 +556,6 @@ public class TournamentSetupDAO extends DBContext {
                     bracketByStage.put(stage, bracketId);
                 }
 
-                Map<String, Integer> groupByName = new HashMap<>();
-                String selectGroupSql = "SELECT group_id FROM Tournament_Group WHERE tournament_id = ? AND name = ?";
-                for (String stage : collectDistinctStages(format, matches)) {
-                    int bracketId = bracketByStage.get(stage);
-                    for (TournamentSetupMatchDTO m : matches) {
-                        if (!stage.equals(normalizeStage(m.getStage(), format))) continue;
-                        String gn = (m.getGroupName() != null && !m.getGroupName().isBlank()) ? m.getGroupName().trim() : null;
-                        if (gn != null && !groupByName.containsKey(gn)) {
-                            Integer existingId = null;
-                            try (PreparedStatement ps = conn.prepareStatement(selectGroupSql)) {
-                                ps.setInt(1, tournamentId);
-                                ps.setString(2, gn);
-                                try (ResultSet rs = ps.executeQuery()) {
-                                    if (rs.next()) existingId = rs.getInt("group_id");
-                                }
-                            }
-                            if (existingId != null) {
-                                groupByName.put(gn, existingId);
-                            } else {
-                                try (PreparedStatement ps = conn.prepareStatement(insertGroupSql, PreparedStatement.RETURN_GENERATED_KEYS)) {
-                                    ps.setInt(1, tournamentId);
-                                    ps.setInt(2, bracketId);
-                                    ps.setString(3, gn);
-                                    ps.setInt(4, groupByName.size());
-                                    ps.setNull(5, java.sql.Types.INTEGER);
-                                    ps.executeUpdate();
-                                    try (ResultSet keys = ps.getGeneratedKeys()) {
-                                        if (keys.next()) groupByName.put(gn, keys.getInt(1));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
                 Map<String, Integer> roundByKey = new LinkedHashMap<>();
                 for (TournamentSetupMatchDTO match : matches) {
                     String stage = normalizeStage(match.getStage(), format);
@@ -608,18 +564,15 @@ public class TournamentSetupDAO extends DBContext {
                     String roundName = (match.getRoundName() == null || match.getRoundName().isBlank())
                             ? "Round " + roundIndex
                             : match.getRoundName().trim();
-                    String gn = (match.getGroupName() != null && !match.getGroupName().isBlank()) ? match.getGroupName().trim() : null;
-                    Integer groupId = gn != null ? groupByName.get(gn) : null;
-                    String roundKey = stage + "::" + (gn != null ? gn : "") + "::" + roundIndex + "::" + roundName;
+                    String roundKey = stage + "::" + roundIndex + "::" + roundName;
 
                     Integer roundId = roundByKey.get(roundKey);
                     if (roundId == null) {
                         try (PreparedStatement ps = conn.prepareStatement(insertRoundSql, PreparedStatement.RETURN_GENERATED_KEYS)) {
                             ps.setInt(1, bracketId);
                             ps.setInt(2, tournamentId);
-                            ps.setObject(3, groupId);
-                            ps.setString(4, roundName);
-                            ps.setInt(5, roundIndex);
+                            ps.setString(3, roundName);
+                            ps.setInt(4, roundIndex);
                             ps.executeUpdate();
                             try (ResultSet keys = ps.getGeneratedKeys()) {
                                 if (!keys.next()) {
@@ -635,15 +588,14 @@ public class TournamentSetupDAO extends DBContext {
                     try (PreparedStatement ps = conn.prepareStatement(insertMatchSql)) {
                         ps.setInt(1, tournamentId);
                         ps.setInt(2, roundId);
-                        ps.setObject(3, groupId);
-                        if (match.getBoardNumber() == null) ps.setNull(4, java.sql.Types.INTEGER);
-                        else ps.setInt(4, match.getBoardNumber());
-                        if (match.getWhitePlayerId() == null) ps.setNull(5, java.sql.Types.INTEGER);
-                        else ps.setInt(5, match.getWhitePlayerId());
-                        if (match.getBlackPlayerId() == null) ps.setNull(6, java.sql.Types.INTEGER);
-                        else ps.setInt(6, match.getBlackPlayerId());
-                        if (match.getStartTime() == null) ps.setNull(7, java.sql.Types.TIMESTAMP);
-                        else ps.setTimestamp(7, match.getStartTime());
+                        if (match.getBoardNumber() == null) ps.setNull(3, java.sql.Types.INTEGER);
+                        else ps.setInt(3, match.getBoardNumber());
+                        if (match.getWhitePlayerId() == null) ps.setNull(4, java.sql.Types.INTEGER);
+                        else ps.setInt(4, match.getWhitePlayerId());
+                        if (match.getBlackPlayerId() == null) ps.setNull(5, java.sql.Types.INTEGER);
+                        else ps.setInt(5, match.getBlackPlayerId());
+                        if (match.getStartTime() == null) ps.setNull(6, java.sql.Types.TIMESTAMP);
+                        else ps.setTimestamp(6, match.getStartTime());
                         ps.executeUpdate();
                     }
                 }

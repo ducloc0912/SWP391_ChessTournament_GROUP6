@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MainHeader from '../../component/common/MainHeader';
 import StaffTournament from './StaffTournament';
-import { Trophy } from 'lucide-react';
 import '../../assets/css/StaffDashboard.css';
 
 const StaffDashboard = () => {
@@ -10,7 +9,6 @@ const StaffDashboard = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Lấy thông tin user từ localStorage
     const storedUser = localStorage.getItem('user');
     const currentUser = storedUser ? JSON.parse(storedUser) : null;
 
@@ -22,24 +20,26 @@ const StaffDashboard = () => {
 
     return (
         <div className="staff-page">
-            {/* Header chung */}
-            <MainHeader 
-                user={currentUser} 
-                onLogout={handleLogout} 
-                currentPath={location.pathname} 
+            <MainHeader
+                user={currentUser}
+                onLogout={handleLogout}
+                currentPath={location.pathname}
             />
 
-            {/* Main Content */}
             <div className="staff-main-wrapper">
-                {/* Page Header */}
-                <div className="staff-page-header">
-                    <h1 className="staff-page-title">Staff Dashboard</h1>
-                    <p className="staff-page-subtitle">Quản lý giải đấu cho hệ thống</p>
+                <div className="staff-page-hero">
+                    <p className="staff-page-kicker">Staff Operations</p>
+                    <div className="staff-page-header">
+                        <h1 className="staff-page-title">Tournament Control Center</h1>
+                        <p className="staff-page-subtitle">
+                            Theo doi giai dau, tim nhanh thong tin va cap nhat trang thai
+                            trong mot giao dien dong bo voi home page.
+                        </p>
+                    </div>
                 </div>
 
-                {/* Content Area */}
                 <div className="staff-content-area">
-                    <StaffTournament currentUser={currentUser} />
+                    <StaffTournament currentUser={currentUser} activeTab={activeTab} />
                 </div>
             </div>
         </div>

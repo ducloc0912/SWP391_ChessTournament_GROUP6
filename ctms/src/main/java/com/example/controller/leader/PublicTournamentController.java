@@ -2,9 +2,11 @@ package com.example.controller.leader;
 
 import com.example.model.dto.TournamentDTO;
 import com.example.model.dto.TournamentPlayerDTO;
+import com.example.model.dto.FeedbackDTO;
 import com.example.model.enums.TournamentFormat;
 import com.example.model.enums.TournamentStatus;
 import com.example.service.leader.TournamentService;
+import com.example.DAO.FeedbackDAO;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import jakarta.servlet.ServletException;
@@ -23,11 +25,13 @@ import java.util.Map;
 public class PublicTournamentController extends HttpServlet {
 
     private TournamentService tournamentService;
+    private FeedbackDAO feedbackDAO;
     private Gson gson;
 
     @Override
     public void init() throws ServletException {
         tournamentService = new TournamentService();
+        feedbackDAO = new FeedbackDAO();
         gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd HH:mm:ss")
                 .create();
@@ -69,7 +73,7 @@ public class PublicTournamentController extends HttpServlet {
         if ("filters".equals(action)) {
             Map<String, Object> data = new HashMap<>();
             data.put("statuses", Arrays.stream(TournamentStatus.values()).map(Enum::name).toList());
-            data.put("formats", Arrays.stream(TournamentFormat.values()).map(Enum::name).toList());
+            data.put("formats", Arrays.stream(TournamentFormat.values()).filter(f -> f != TournamentFormat.Hybrid).map(Enum::name).toList());
             response.getWriter().write(gson.toJson(data));
             return;
         }
@@ -153,6 +157,47 @@ public class PublicTournamentController extends HttpServlet {
             } catch (NumberFormatException e) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 response.getWriter().write("{\"message\":\"Invalid tournament id\"}");
+            }
+            return;
+        }
+
+        if ("feedback".equals(action)) {
+            String idParam = request.getParameter("id");
+            if (idParam == null || idParam.isBlank()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Missing tournament id\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(idParam);
+                List<FeedbackDTO> items = feedbackDAO.getFeedbacksByTournamentId(tournamentId);
+
+                // Tính toán thống kê
+                Map<String, Integer> starCounts = new HashMap<>();
+                starCounts.put("1", 0); starCounts.put("2", 0);
+                starCounts.put("3", 0); starCounts.put("4", 0); starCounts.put("5", 0);
+                double totalRating = 0;
+                for (FeedbackDTO fb : items) {
+                    if (fb.getStarRating() != null) {
+                        totalRating += fb.getStarRating();
+                        String key = String.valueOf(fb.getStarRating());
+                        starCounts.put(key, starCounts.getOrDefault(key, 0) + 1);
+                    }
+                }
+                double avg = items.isEmpty() ? 0 : totalRating / items.size();
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("averageRating", Math.round(avg * 10.0) / 10.0);
+                result.put("totalReviews", items.size());
+                result.put("starCounts", starCounts);
+                result.put("items", items);
+                response.getWriter().write(gson.toJson(result));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Invalid tournament id\"}");
+            } catch (Exception e) {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.getWriter().write("{\"message\":\"Failed to load feedback\"}");
             }
             return;
         }

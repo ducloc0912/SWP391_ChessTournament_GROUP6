@@ -61,7 +61,7 @@ export default function Login() {
           navigate("/staff/dashboard", { replace: true });
           break;
         case "TOURNAMENTLEADER":
-          navigate("/tournaments", { replace: true });
+          navigate("/leader/tournaments", { replace: true });
           break;
         case "REFEREE":
           navigate("/home", { replace: true });

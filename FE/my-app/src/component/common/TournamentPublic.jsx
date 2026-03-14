@@ -20,7 +20,6 @@ const STATUS_OPTIONS = [
 const FORMAT_LABELS = {
   RoundRobin: "Vòng tròn",
   KnockOut: "Loại trực tiếp",
-  Hybrid: "Kết hợp",
 };
 
 function formatDate(raw) {

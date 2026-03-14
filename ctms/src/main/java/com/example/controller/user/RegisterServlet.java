@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 /**
  * Đăng ký giải đấu – POST /api/register.
  * Giải miễn phí: tạo Participant is_paid=true, Active → thành công ngay.
- * Giải có phí: tạo Participant is_paid=false → trả participantId để FE chuyển VNPay; chỉ coi là thành công khi thanh toán xong (vnpay-return cập nhật is_paid=1).
+ * Giải có phí: kiểm tra số dư và trừ thẳng vào ví.
  * Không có tính năng giữ chỗ.
  */
 @WebServlet("/api/register")
@@ -104,16 +104,7 @@ public class RegisterServlet extends HttpServlet {
                 return;
             }
             if (existingAny != null && existingAny.getStatus() == ParticipantStatus.PendingPayment && !Boolean.TRUE.equals(existingAny.getIsPaid())) {
-                java.sql.Timestamp exp = existingAny.getPaymentExpiresAt();
-                if (exp != null && exp.after(new Timestamp(System.currentTimeMillis()))) {
-                    Map<String, Object> data = new HashMap<>();
-                    data.put("needPayment", true);
-                    data.put("participantId", existingAny.getParticipantId());
-                    data.put("entryFee", tournament.getEntryFee() != null ? tournament.getEntryFee().doubleValue() : 0);
-                    data.put("paymentExpiresAt", exp.getTime());
-                    write(resp, HttpServletResponse.SC_OK, true, "Vui lòng hoàn tất thanh toán.", data);
-                    return;
-                }
+                // If they already have a pending registration, we can just let them proceed to pay with wallet now
             }
             if (participantDAO.isBlockedByUnpaidExpiry(tournamentId, currentUser.getUserId())) {
                 write(resp, HttpServletResponse.SC_FORBIDDEN, false,
@@ -181,37 +172,36 @@ public class RegisterServlet extends HttpServlet {
                 return;
             }
 
-            long expiresAtMillis = System.currentTimeMillis() + (PAYMENT_DEADLINE_HOURS * 3600L * 1000L);
-            Timestamp paymentExpiresAt = new Timestamp(expiresAtMillis);
+            java.math.BigDecimal userBalance = currentUser.getBalance() != null ? currentUser.getBalance() : java.math.BigDecimal.ZERO;
+            if (userBalance.compareTo(entryFee) < 0) {
+                 Map<String, Object> data = new HashMap<>();
+                 data.put("needPayment", true);
+                 data.put("currentBalance", userBalance.doubleValue());
+                 data.put("entryFee", entryFee.doubleValue());
+                 write(resp, HttpServletResponse.SC_PAYMENT_REQUIRED, false, "Số dư tài khoản không đủ. Vui lòng nạp thêm tiền vào ví.", data);
+                 return;
+            }
 
             Integer participantId;
-            if (existingAny != null && existingAny.getStatus() == ParticipantStatus.Withdrawn
-                    && existingAny.getRemovedAt() != null) {
-                long blockEnd = existingAny.getRemovedAt().getTime() + (2L * 3600 * 1000);
-                if (System.currentTimeMillis() >= blockEnd) {
-                    existingAny.setStatus(ParticipantStatus.PendingPayment);
-                    existingAny.setIsPaid(false);
-                    existingAny.setPaymentExpiresAt(paymentExpiresAt);
-                    existingAny.setRemovedAt(null);
-                    existingAny.setTitleAtRegistration(resolvedFullName != null && !resolvedFullName.isEmpty() ? resolvedFullName : "Player");
-                    existingAny.setNotes(note);
-                    if (!participantDAO.updateParticipant(existingAny)) {
-                        write(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, false, "Không thể tạo đăng ký. Vui lòng thử lại.", null);
-                        return;
-                    }
-                    participantId = existingAny.getParticipantId();
-                } else {
-                    write(resp, HttpServletResponse.SC_FORBIDDEN, false, "Bạn đã hủy hoặc hết hạn thanh toán lần trước. Vui lòng thử lại sau 2 giờ.", null);
+            if (existingAny != null && (existingAny.getStatus() == ParticipantStatus.Withdrawn || existingAny.getStatus() == ParticipantStatus.PendingPayment)) {
+                existingAny.setStatus(ParticipantStatus.Active);
+                existingAny.setIsPaid(true);
+                existingAny.setPaymentExpiresAt(null);
+                existingAny.setRemovedAt(null);
+                existingAny.setTitleAtRegistration(resolvedFullName != null && !resolvedFullName.isEmpty() ? resolvedFullName : "Player");
+                existingAny.setNotes(note);
+                if (!participantDAO.updateParticipant(existingAny)) {
+                    write(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, false, "Không thể cập nhật đăng ký. Vui lòng thử lại.", null);
                     return;
                 }
+                participantId = existingAny.getParticipantId();
             } else {
                 Participant p = new Participant();
                 p.setTournamentId(tournamentId);
                 p.setUserId(currentUser.getUserId());
                 p.setTitleAtRegistration(resolvedFullName != null && !resolvedFullName.isEmpty() ? resolvedFullName : "Player");
-                p.setStatus(ParticipantStatus.PendingPayment);
-                p.setIsPaid(false);
-                p.setPaymentExpiresAt(paymentExpiresAt);
+                p.setStatus(ParticipantStatus.Active);
+                p.setIsPaid(true);
                 p.setNotes(note);
                 participantId = participantDAO.createParticipantAndReturnId(p);
                 if (participantId == null) {
@@ -220,12 +210,30 @@ public class RegisterServlet extends HttpServlet {
                 }
             }
 
+            // Deduct balance
+            com.example.DAO.UserDAO userDAO = new com.example.DAO.UserDAO();
+            boolean deducted = userDAO.addBalance(currentUser.getUserId(), entryFee.negate());
+            if (deducted) {
+                 currentUser.setBalance(userBalance.subtract(entryFee));
+                 session.setAttribute("user", currentUser);
+
+                 com.example.model.entity.PaymentTransaction tx = new com.example.model.entity.PaymentTransaction();
+                 tx.setUserId(currentUser.getUserId());
+                 tx.setTournamentId(tournamentId);
+                 tx.setType("EntryFee");
+                 tx.setAmount(entryFee.negate());
+                 tx.setBalanceAfter(currentUser.getBalance());
+                 tx.setDescription("Đăng ký giải đấu " + tournament.getTournamentName());
+                 
+                 com.example.DAO.PaymentDAO pDao = new com.example.DAO.PaymentDAO();
+                 pDao.insertTransactionAndUpdateParticipant(tx, participantId);
+            }
+
             Map<String, Object> data = new HashMap<>();
-            data.put("needPayment", true);
+            data.put("needPayment", false);
             data.put("participantId", participantId);
-            data.put("entryFee", entryFee != null ? entryFee.doubleValue() : 0);
-            data.put("paymentExpiresAt", paymentExpiresAt.getTime());
-            write(resp, HttpServletResponse.SC_OK, true, "Đang chuyển đến cổng thanh toán.", data);
+            write(resp, HttpServletResponse.SC_OK, true, "Đăng ký giải thành công bằng số dư ví.", data);
+
         } catch (RuntimeException ex) {
             ex.printStackTrace();
             String userMsg = ex.getMessage() != null ? ex.getMessage().trim() : "";
