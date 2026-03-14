@@ -3191,18 +3191,14 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
             {laneStep === "referee" ? (
               <>
                 <div className="tsu-referee-step">
-                <div className="tsu-preview-head">
-                  <div>
-                    <h3>4. Select Referee</h3>
-                    <p>
-                      Gán trọng tài cho từng ván đấu. Trọng tài phải được thêm
-                      vào giải trước (tab Referees).
-                    </p>
-                    {tournamentReferees.length === 0 && (
-                      <p className="tsu-referee-empty-hint">
-                        Chưa có trọng tài nào. Vào tab Referees để thêm trọng
-                        tài vào giải trước.
+                  <div className="tsu-preview-head">
+                    <div>
+                      <h3>4. Select Referee</h3>
+                      <p>
+                        Gán trọng tài cho từng ván đấu. Trọng tài phải được thêm
+                        vào giải trước (tab Referees).
                       </p>
+
                       {tournamentReferees.length === 0 && (
                         <p className="tsu-referee-empty-hint">
                           Chưa có trọng tài nào. Vào tab Referees để thêm trọng
@@ -3212,19 +3208,19 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                     </div>
                   </div>
                 </div>
-              </div>
-              {effectiveFormat === "RoundRobin" &&
-                renderRoundRobinPreview(
-                  stageRows.nativeRounds,
-                  "Round Robin - Chọn trọng tài",
-                )}
-              {effectiveFormat === "KnockOut" &&
-                renderKnockoutPreview(
-                  stageRows.nativeRounds,
-                  "Knock Out - Chọn trọng tài",
-                )}
+
+                {effectiveFormat === "RoundRobin" &&
+                  renderRoundRobinPreview(
+                    stageRows.nativeRounds,
+                    "Round Robin - Chọn trọng tài",
+                  )}
+                {effectiveFormat === "KnockOut" &&
+                  renderKnockoutPreview(
+                    stageRows.nativeRounds,
+                    "Knock Out - Chọn trọng tài",
+                  )}
               </>
-          ) : (
+            ) : (
               <div className="tsu-schedule-wrap">
                 <div className="tsu-preview-head">
                   <div>
