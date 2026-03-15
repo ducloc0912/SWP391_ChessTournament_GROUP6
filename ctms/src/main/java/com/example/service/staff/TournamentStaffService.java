@@ -50,8 +50,19 @@ public class TournamentStaffService {
                                           ApprovalAction action, String note) {
         Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
         if (t == null) return false;
-        return tournamentStaffDAO.updateTournamentStatusAndLog(
+
+        boolean success = tournamentStaffDAO.updateTournamentStatusAndLog(
                 tournamentId, staffId, t.getStatus(), newStatus, action, note);
+
+        // Nếu chuyển sang trạng thái Completed:
+        // 1. Chia lợi nhuận (entry fee đã thu) cho Leader
+        // 2. Chia giải thưởng (prize_pool) cho người chơi theo bảng xếp hạng
+        if (success && newStatus == TournamentStatus.Completed) {
+            paymentDAO.payoutLeaderProfit(tournamentId, t.getCreateBy());
+            paymentDAO.distributePrizes(tournamentId, t.getPrizePool());
+        }
+
+        return success;
     }
 
     /**
