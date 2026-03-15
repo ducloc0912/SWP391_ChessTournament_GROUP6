@@ -448,12 +448,19 @@ public class TournamentController extends HttpServlet {
             String phoneNumber = body == null || body.get("phoneNumber") == null ? null : String.valueOf(body.get("phoneNumber"));
             String address = body == null || body.get("address") == null ? null : String.valueOf(body.get("address"));
 
+            String duplicateMsg = tournamentService.checkRefereeDuplicateMessage(email, phoneNumber);
+            if (duplicateMsg != null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"" + duplicateMsg.replace("\"", "\\\"") + "\"}");
+                return;
+            }
+
             TournamentRefereeDTO created = tournamentService.createRefereeUser(
                     firstName, lastName, email, phoneNumber, address
             );
             if (created == null) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                response.getWriter().write("{\"success\": false, \"message\": \"Create referee failed (duplicate email/phone or invalid data)\"}");
+                response.getWriter().write("{\"success\": false, \"message\": \"Tạo trọng tài thất bại (dữ liệu không hợp lệ hoặc lỗi hệ thống).\"}");
                 return;
             }
 

@@ -243,6 +243,17 @@ public class TournamentService {
         return tournamentDAO.saveTournamentImages(tournamentId, normalizedCover, normalized);
     }
 
+    /**
+     * Returns a user-friendly message if email or phone is already used, or null if neither.
+     */
+    public String checkRefereeDuplicateMessage(String email, String phone) {
+        if (email == null || phone == null) return null;
+        String dup = refereeDAO.findDuplicateEmailOrPhone(email.trim(), phone.trim());
+        if ("email".equals(dup)) return "Email này đã được sử dụng.";
+        if ("phone".equals(dup)) return "Số điện thoại này đã được sử dụng.";
+        return null;
+    }
+
     public TournamentRefereeDTO createRefereeUser(
             String firstName,
             String lastName,
