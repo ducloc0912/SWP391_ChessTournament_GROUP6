@@ -107,7 +107,10 @@ export default function MainHeader({
 
     // Link riêng cho referee
     if (normalizedRole === "REFEREE") {
-      extraItems.push({ to: "/referee/invitations", label: "Invitations" });
+      extraItems.push(
+        { to: "/referee/invitations", label: "Invitations" },
+        { to: "/referee/matches", label: "Matches" },
+      );
     }
 
     // Nút Report trên header:
