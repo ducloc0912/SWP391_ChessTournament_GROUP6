@@ -16,6 +16,7 @@ import TournamentList from "./page/tournamentleader/TournamentList";
 import TournamentDetailLeader from "./page/tournamentleader/TournamentDetail";
 import TournamentPublic from "./component/common/TournamentPublic";
 import TournamentDetailPublic from "./component/common/TournamentDetail";
+import FollowedTournamentsPage from "./page/user/FollowedTournamentsPage";
 import CreateTournament from "./page/tournamentleader/CreateTournament";
 import UpdateTournament from "./page/tournamentleader/UpdateTournament";
 import StaffDashboard from "./page/staff/StaffDashboard";
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="/admin/dashboard" element={<AdminLayout />} />
         <Route path="/tournaments" element={<TournamentPublic />} />
         <Route path="/tournaments/public" element={<TournamentPublic />} />
+        <Route path="/tournaments/following" element={<FollowedTournamentsPage />} />
         <Route path="/tournaments/public/:id" element={<TournamentDetailPublic />} />
         <Route path="/leader/tournaments" element={<TournamentList />} />
         <Route path="/leader/tournaments/:id" element={<TournamentDetailLeader />} />

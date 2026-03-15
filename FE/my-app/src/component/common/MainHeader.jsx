@@ -82,10 +82,32 @@ export default function MainHeader({
       }
     };
     loadNotifications();
+    const interval = setInterval(loadNotifications, 30000); // Poll every 30s
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
   }, [user]);
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await axios.post(`${API_BASE}/api/notifications?action=markRead`, {
+        notificationId: id
+      }, { withCredentials: true });
+      setNotifications(prev => prev.map(n => n.notificationId === id ? { ...n, isRead: true } : n));
+    } catch (err) {
+      console.error("Mark as read failed:", err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await axios.post(`${API_BASE}/api/notifications?action=markAllRead`, {}, { withCredentials: true });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error("Mark all as read failed:", err);
+    }
+  };
 
   const handleMenuAction = (item) => {
     if (item.to) {
@@ -230,31 +252,62 @@ export default function MainHeader({
                   </button>
                   {notifOpen && (
                     <div className="notification-dropdown">
+                      <div className="notification-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 15px', borderBottom: '1px solid #334155' }}>
+                        <span style={{ fontWeight: 'bold' }}>Thông báo</span>
+                        {unreadCount > 0 && (
+                          <button 
+                            type="button" 
+                            style={{ fontSize: '12px', color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer' }}
+                            onClick={handleMarkAllAsRead}
+                          >
+                            Đánh dấu tất cả đã đọc
+                          </button>
+                        )}
+                      </div>
                       {notifications.length === 0 ? (
                         <div className="notification-empty">Không có thông báo.</div>
                       ) : (
-                        <ul className="notification-list">
-                          {notifications.slice(0, 6).map((n) => (
-                            <li
-                              key={n.notificationId}
-                              className={`notification-item ${n.isRead ? "read" : "unread"}`}
-                              onClick={() => {
-                                if (n.actionUrl) {
-                                  navigate(n.actionUrl);
-                                  setNotifOpen(false);
-                                }
-                              }}
-                            >
-                              <div className="notification-title">{n.title}</div>
-                              {n.message && (
-                                <div className="notification-message">
-                                  {n.message.length > 80 ? `${n.message.slice(0, 80)}…` : n.message}
+                        <div className="notification-scroll-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                          <ul className="notification-list">
+                            {notifications.map((n) => (
+                              <li
+                                key={n.notificationId}
+                                className={`notification-item ${n.isRead ? "read" : "unread"}`}
+                                style={{
+                                  position: 'relative',
+                                  padding: '12px 15px',
+                                  borderBottom: '1px solid #334155',
+                                  backgroundColor: n.isRead ? 'transparent' : 'rgba(99, 102, 241, 0.05)',
+                                  cursor: 'pointer'
+                                }}
+                                onClick={() => {
+                                  if (!n.isRead) handleMarkAsRead(n.notificationId);
+                                  if (n.actionUrl) {
+                                    navigate(n.actionUrl);
+                                    setNotifOpen(false);
+                                  }
+                                }}
+                              >
+                                <div className="notification-title" style={{ fontWeight: n.isRead ? '500' : '700', fontSize: '14px', marginBottom: '4px' }}>{n.title}</div>
+                                {n.message && (
+                                  <div className="notification-message" style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.4' }}>
+                                    {n.message}
+                                  </div>
+                                )}
+                                <div className="notification-time" style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                                  {n.createdAt ? new Date(n.createdAt).toLocaleString('vi-VN') : ''}
                                 </div>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
+                                {!n.isRead && <span style={{ position: 'absolute', right: '15px', top: '15px', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#6366f1' }} />}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
+                      <div className="notification-footer" style={{ textAlign: 'center', padding: '10px', borderTop: '1px solid #334155' }}>
+                         <button type="button" style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '13px', cursor: 'pointer' }} onClick={() => navigate('/notifications')}>
+                           Xem tất cả
+                         </button>
+                      </div>
                     </div>
                   )}
                 </div>

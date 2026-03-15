@@ -469,7 +469,8 @@ public class RefereeMatchDAO extends DBContext {
      */
     public void aggregateMatchResult(int matchId) {
         String matchSql = """
-                SELECT m.player1_id, m.player2_id, m.result, m.status, t.format
+                SELECT m.player1_id, m.player2_id, m.result, m.status, t.format,
+                       m.round_id, m.board_number
                 FROM Matches m
                 JOIN Tournaments t ON t.tournament_id = m.tournament_id
                 WHERE m.match_id = ?
@@ -495,6 +496,8 @@ public class RefereeMatchDAO extends DBContext {
             String curResult;
             String curStatus;
             String format;
+            int roundId;
+            int boardNumber;
             try (PreparedStatement ps = conn.prepareStatement(matchSql)) {
                 ps.setInt(1, matchId);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -504,6 +507,8 @@ public class RefereeMatchDAO extends DBContext {
                     curResult = rs.getString("result");
                     curStatus = rs.getString("status");
                     format = rs.getString("format");
+                    roundId = rs.getInt("round_id");
+                    boardNumber = rs.getInt("board_number");
                 }
             }
 
@@ -666,8 +671,64 @@ public class RefereeMatchDAO extends DBContext {
                 ps.setInt(6, matchId);
                 ps.executeUpdate();
             }
+
+            if (isKnockout && winnerId != null && "Completed".equals(newStatus)) {
+                propagateKoWinner(conn, roundId, boardNumber, winnerId);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * After a KO match completes, place the winner into the correct slot of the next round's match.
+     * Board B in round R → board ceil(B/2) in round R+1.
+     * Odd B → player1_id slot; even B → player2_id slot.
+     */
+    private void propagateKoWinner(Connection conn, int roundId, int boardNumber, int winnerId) throws SQLException {
+        // Get current round's round_index and tournament_id
+        String roundSql = """
+                SELECT r.round_index, r.tournament_id
+                FROM Round r
+                WHERE r.round_id = ?
+                """;
+        int currentRoundIndex;
+        int tournamentId;
+        try (PreparedStatement ps = conn.prepareStatement(roundSql)) {
+            ps.setInt(1, roundId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return;
+                currentRoundIndex = rs.getInt("round_index");
+                tournamentId = rs.getInt("tournament_id");
+            }
+        }
+
+        // Find the next round (round_index + 1) in the same tournament
+        String nextRoundSql = """
+                SELECT r.round_id
+                FROM Round r
+                WHERE r.tournament_id = ? AND r.round_index = ?
+                """;
+        int nextRoundId;
+        try (PreparedStatement ps = conn.prepareStatement(nextRoundSql)) {
+            ps.setInt(1, tournamentId);
+            ps.setInt(2, currentRoundIndex + 1);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return; // no next round (this was the final)
+                nextRoundId = rs.getInt("round_id");
+            }
+        }
+
+        int nextBoard = (int) Math.ceil(boardNumber / 2.0);
+        boolean isOddBoard = (boardNumber % 2 != 0);
+        String slotColumn = isOddBoard ? "player1_id" : "player2_id";
+
+        String updateSlotSql = "UPDATE Matches SET " + slotColumn + " = ? WHERE round_id = ? AND board_number = ?";
+        try (PreparedStatement ps = conn.prepareStatement(updateSlotSql)) {
+            ps.setInt(1, winnerId);
+            ps.setInt(2, nextRoundId);
+            ps.setInt(3, nextBoard);
+            ps.executeUpdate();
         }
     }
 

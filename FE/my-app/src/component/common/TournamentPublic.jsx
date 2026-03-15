@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Calendar, ChevronLeft, ChevronRight, MapPin, Search, Trophy, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Trophy } from "lucide-react";
 import MainHeader from "./MainHeader";
+import TournamentPublicCard from "./TournamentPublicCard";
 import "../../assets/css/TournamentPublic.css";
-
 import { API_BASE } from "../../config/api";
-const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1528819622765-d6bcf132f793?auto=format&fit=crop&w=1200&q=80";
+
 const PAGE_SIZE = 9;
 
 const STATUS_OPTIONS = [
@@ -22,28 +21,12 @@ const FORMAT_LABELS = {
   KnockOut: "Loại trực tiếp",
 };
 
-function formatDate(raw) {
-  if (!raw) return "—";
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("vi-VN");
-}
-
-function formatMoney(amount) {
-  const num = Number(amount);
-  if (Number.isNaN(num)) return "0";
-  return num.toLocaleString("vi-VN");
-}
-
 function normalizeStatus(status) {
   const normalized = String(status || "").trim().toLowerCase();
-
   if (normalized === "upcoming") return "upcoming";
   if (normalized === "ongoing") return "ongoing";
   if (normalized === "completed") return "completed";
   if (normalized === "delayed") return "delayed";
-
-  // Các trạng thái khác (Pending, Cancelled, Rejected, ...) không hiển thị trên trang public
   return "other";
 }
 
@@ -57,33 +40,7 @@ function getStatusLabel(status) {
 }
 
 function getFormatLabel(format) {
-  return FORMAT_LABELS[format] || format || "—";
-}
-
-function getApiOrigin() {
-  try {
-    return new URL(API_BASE).origin;
-  } catch {
-    return window.location.origin;
-  }
-}
-
-function resolveImageUrl(rawImage) {
-  const src = String(rawImage || "").trim();
-  if (!src) return FALLBACK_IMAGE;
-
-  const apiOrigin = getApiOrigin();
-
-  if (/^(https?:)?\/\//i.test(src)) {
-    if (src.startsWith("//")) return `${window.location.protocol}${src}`;
-    return src;
-  }
-  if (/^(data:|blob:)/i.test(src)) return src;
-
-  if (src.startsWith("/")) return `${apiOrigin}${src}`;
-
-  const cleaned = src.replace(/^\.?\//, "");
-  return `${apiOrigin}/${cleaned}`;
+  return FORMAT_LABELS[format] || format || "-";
 }
 
 export default function TournamentPublic() {
@@ -99,6 +56,8 @@ export default function TournamentPublic() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [followedIds, setFollowedIds] = useState(new Set());
+  const [followLoading, setFollowLoading] = useState({});
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -121,12 +80,9 @@ export default function TournamentPublic() {
     const fetchData = async () => {
       setLoading(true);
       setError("");
-
       try {
         const tournamentRes = await axios.get(`${API_BASE}/api/public/tournaments`);
-
         let list = Array.isArray(tournamentRes?.data) ? tournamentRes.data : [];
-
         if (list.length === 0) {
           const homeRes = await axios.get(`${API_BASE}/api/home`).catch(() => null);
           const upcomingList = Array.isArray(homeRes?.data?.upcomingTournaments)
@@ -136,7 +92,6 @@ export default function TournamentPublic() {
             list = upcomingList;
           }
         }
-
         setTournaments(list);
       } catch (err) {
         console.error("Load public tournaments failed:", err);
@@ -150,49 +105,80 @@ export default function TournamentPublic() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (!user?.userId) return;
+    axios
+      .get(`${API_BASE}/api/user/follow?action=list`, { withCredentials: true })
+      .then((res) => {
+        const ids = new Set((res.data || []).map((t) => t.tournamentId));
+        setFollowedIds(ids);
+      })
+      .catch((err) => console.error("Load followed tournaments failed:", err));
+  }, [user?.userId]);
+
+  const handleFollowToggle = async (event, tournamentId) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const isFollowing = followedIds.has(tournamentId);
+    setFollowLoading((prev) => ({ ...prev, [tournamentId]: true }));
+    try {
+      const action = isFollowing ? "unfollow" : "follow";
+      const res = await axios.post(
+        `${API_BASE}/api/user/follow?action=${action}`,
+        { tournamentId },
+        { withCredentials: true },
+      );
+      if (res?.data?.success || res?.status === 200) {
+        setFollowedIds((prev) => {
+          const next = new Set(prev);
+          if (isFollowing) next.delete(tournamentId);
+          else next.add(tournamentId);
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error("Follow toggle failed:", err);
+    } finally {
+      setFollowLoading((prev) => ({ ...prev, [tournamentId]: false }));
+    }
+  };
+
   const filteredTournaments = useMemo(() => {
-    const q = searchText.trim().toLowerCase();
-    const base = tournaments.filter((t) => {
-      const name = (t.tournamentName || "").toLowerCase();
-      const locationName = (t.location || "").toLowerCase();
-      const matchesSearch = !q || name.includes(q) || locationName.includes(q);
+    return [...tournaments]
+      .filter((t) => normalizeStatus(t.status) !== "other")
+      .filter((t) => {
+        const q = searchText.trim().toLowerCase();
+        const name = String(t.tournamentName || "").toLowerCase();
+        const locationName = String(t.location || "").toLowerCase();
+        const normStatus = normalizeStatus(t.status);
+        const prize = Number(t.prizePool || 0);
+        const fee = Number(t.entryFee || 0);
 
-      const normStatus = normalizeStatus(t.status);
-      // Chỉ hiển thị các giải Upcoming, Ongoing, Completed, Delayed
-      if (normStatus === "other") return false;
+        const matchesSearch = !q || name.includes(q) || locationName.includes(q);
+        const matchesStatus = !statusFilter || normStatus === statusFilter;
+        const matchesPrize =
+          !prizeFilter ||
+          (prizeFilter === "lt3000000" && prize < 3000000) ||
+          (prizeFilter === "3000000-7000000" && prize >= 3000000 && prize <= 7000000) ||
+          (prizeFilter === "gt7000000" && prize > 7000000);
+        const matchesFee =
+          !feeFilter ||
+          (feeFilter === "free" && fee === 0) ||
+          (feeFilter === "paid" && fee > 0);
 
-      const matchesStatus = !statusFilter || normStatus === statusFilter;
-      const prize = Number(t.prizePool || 0);
-      const matchesPrize = (() => {
-        if (!prizeFilter) return true;
-        if (prizeFilter === "lt3000000") return prize < 3000000;
-        if (prizeFilter === "3000000-7000000") return prize >= 3000000 && prize <= 7000000;
-        if (prizeFilter === "gt7000000") return prize > 7000000;
-        return true;
-      })();
-
-      const fee = Number(t.entryFee || 0);
-      const matchesFee = (() => {
-        if (!feeFilter) return true;
-        if (feeFilter === "free") return fee === 0;
-        if (feeFilter === "paid") return fee > 0;
-        return true;
-      })();
-
-      return matchesSearch && matchesStatus && matchesPrize && matchesFee;
-    });
-
-    return [...base].sort((a, b) => {
-      const nameA = String(a.tournamentName || "").toLowerCase();
-      const nameB = String(b.tournamentName || "").toLowerCase();
-      return nameSort === "za" ? nameB.localeCompare(nameA) : nameA.localeCompare(nameB);
-    });
+        return matchesSearch && matchesStatus && matchesPrize && matchesFee;
+      })
+      .sort((a, b) => {
+        const nameA = String(a.tournamentName || "").toLowerCase();
+        const nameB = String(b.tournamentName || "").toLowerCase();
+        return nameSort === "za" ? nameB.localeCompare(nameA) : nameA.localeCompare(nameB);
+      });
   }, [tournaments, searchText, statusFilter, prizeFilter, feeFilter, nameSort]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTournaments.length / PAGE_SIZE));
   const paginatedTournaments = filteredTournaments.slice(
     (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+    currentPage * PAGE_SIZE,
   );
 
   useEffect(() => {
@@ -201,7 +187,7 @@ export default function TournamentPublic() {
 
   const menuItems = [
     { to: "/home", label: "Home" },
-    { to: "/tournaments/public", label: "Tournaments" },
+    { to: "/tournaments/following", label: "Các giải đang theo dõi" },
     { to: "/blog", label: "Blog" },
   ];
 
@@ -220,17 +206,27 @@ export default function TournamentPublic() {
             <div className="tp-header-text">
               <h1>Danh sách giải đấu</h1>
               <p>
-                Xem các giải cờ vua <strong>sắp diễn ra</strong>,{" "}
-                <strong>đang diễn ra</strong> hoặc <strong>đã kết thúc</strong>.
+                Xem các giải cờ vua <strong>sắp diễn ra</strong>, <strong>đang diễn ra</strong> hoặc <strong>đã kết thúc</strong>.
               </p>
             </div>
-            <button
-              type="button"
-              className="tp-all-btn"
-              onClick={() => navigate("/tournaments/public")}
-            >
-              Xem tất cả giải đấu
-            </button>
+            <div className="tp-header-actions">
+              {user ? (
+                <button
+                  type="button"
+                  className="tp-all-btn"
+                  onClick={() => navigate("/tournaments/following")}
+                >
+                  <Trophy size={16} /> Các giải đang theo dõi
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="tp-all-btn"
+                onClick={() => navigate("/tournaments/public")}
+              >
+                Xem tất cả giải đấu
+              </button>
+            </div>
           </div>
 
           <div className="tp-filters">
@@ -244,38 +240,22 @@ export default function TournamentPublic() {
             </div>
 
             <div className="tp-filter-row">
-              <select
-                className="tp-select"
-                value={prizeFilter}
-                onChange={(e) => setPrizeFilter(e.target.value)}
-              >
+              <select className="tp-select" value={prizeFilter} onChange={(e) => setPrizeFilter(e.target.value)}>
                 <option value="">Tất cả giải thưởng</option>
                 <option value="lt3000000">Dưới 3.000.000</option>
                 <option value="3000000-7000000">3.000.000 - 7.000.000</option>
                 <option value="gt7000000">Trên 7.000.000</option>
               </select>
-              <select
-                className="tp-select"
-                value={feeFilter}
-                onChange={(e) => setFeeFilter(e.target.value)}
-              >
+              <select className="tp-select" value={feeFilter} onChange={(e) => setFeeFilter(e.target.value)}>
                 <option value="">Tất cả phí tham gia</option>
                 <option value="free">Miễn phí</option>
                 <option value="paid">Có phí</option>
               </select>
-              <select
-                className="tp-select"
-                value={nameSort}
-                onChange={(e) => setNameSort(e.target.value)}
-              >
+              <select className="tp-select" value={nameSort} onChange={(e) => setNameSort(e.target.value)}>
                 <option value="az">Tên giải A-Z</option>
                 <option value="za">Tên giải Z-A</option>
               </select>
-              <select
-                className="tp-select"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
+              <select className="tp-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                 <option value="">Tất cả trạng thái</option>
                 {STATUS_OPTIONS.map((status) => (
                   <option key={status.value} value={status.value}>
@@ -300,75 +280,29 @@ export default function TournamentPublic() {
           ) : (
             <>
               <div className="tp-grid">
-                {paginatedTournaments.map((t) => {
-                  const currentPlayers = Number(t.currentPlayers ?? t.current_players ?? 0);
-                  const maxPlayers = Number(t.maxPlayer ?? t.max_player ?? 0);
-                  const progress = maxPlayers > 0 ? Math.round((currentPlayers / maxPlayers) * 100) : 0;
-                  const statusKey = normalizeStatus(t.status);
-
-                  return (
-                    <article key={t.tournamentId} className="tp-card">
-                      <div className="tp-card-banner">
-                        <img
-                          src={resolveImageUrl(t.tournamentImage)}
-                          alt={t.tournamentName || "Tournament"}
-                          onError={(e) => {
-                            e.currentTarget.src = FALLBACK_IMAGE;
-                          }}
-                        />
-                        <span className={`tp-status-badge tp-status-${statusKey}`}>
-                          {getStatusLabel(t.status)}
-                        </span>
-                      </div>
-
-                      <div className="tp-card-body">
-                        <span className="tp-format">{getFormatLabel(t.format)}</span>
-                        <h3>{t.tournamentName || "Tournament"}</h3>
-
-                        <div className="tp-meta">
-                          <p>
-                            <MapPin size={15} />
-                            {t.location || "Online"}
-                          </p>
-                          <p>
-                            <Calendar size={15} />
-                            {formatDate(t.startDate)} - {formatDate(t.endDate)}
-                          </p>
-                          <p>
-                            <Trophy size={15} />
-                            {formatMoney(t.prizePool)} VND
-                          </p>
-                        </div>
-
-                        <div className="tp-progress">
-                          <div className="tp-progress-head">
-                            <span>
-                              <Users size={14} /> {currentPlayers}/{maxPlayers} người chơi
-                            </span>
-                            <strong>{progress}%</strong>
-                          </div>
-                          <div className="tp-progress-bar">
-                            <div
-                              className="tp-progress-fill"
-                              style={{ width: `${Math.min(progress, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          className="tp-detail-btn"
-                          onClick={() => navigate(`/tournaments/public/${t.tournamentId}`)}
-                        >
-                          Xem chi tiết
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
+                {paginatedTournaments.map((t) => (
+                  <TournamentPublicCard
+                    key={t.tournamentId}
+                    tournament={t}
+                    apiBase={API_BASE}
+                    statusKey={normalizeStatus(t.status)}
+                    statusLabel={getStatusLabel(t.status)}
+                    formatLabel={getFormatLabel(t.format)}
+                    onViewDetail={() => navigate(`/tournaments/public/${t.tournamentId}`)}
+                    secondaryAction={
+                      user
+                        ? {
+                          disabled: followLoading[t.tournamentId],
+                          onClick: (event) => handleFollowToggle(event, t.tournamentId),
+                          label: followedIds.has(t.tournamentId) ? "Bỏ theo dõi" : "Theo dõi",
+                        }
+                        : null
+                    }
+                  />
+                ))}
               </div>
 
-              {totalPages > 1 && (
+              {totalPages > 1 ? (
                 <div className="tp-pagination">
                   <button
                     type="button"
@@ -401,7 +335,7 @@ export default function TournamentPublic() {
                     <ChevronRight size={20} />
                   </button>
                 </div>
-              )}
+              ) : null}
             </>
           )}
         </div>

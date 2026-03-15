@@ -7,6 +7,9 @@ import com.example.model.entity.TournamentApprovalLog;
 import com.example.model.entity.TournamentStaff;
 import com.example.model.enums.ApprovalAction;
 import com.example.model.enums.TournamentStatus;
+import com.example.model.dto.TournamentSetupStateDTO;
+import com.example.service.leader.TournamentSetupService;
+import com.example.service.leader.TournamentNotificationService;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -15,6 +18,7 @@ import java.util.Map;
 public class TournamentStaffService {
     private final TournamentStaffDAO tournamentStaffDAO = new TournamentStaffDAO();
     private final PaymentDAO paymentDAO = new PaymentDAO();
+    private final TournamentNotificationService notificationService = new TournamentNotificationService();
 
     public List<Tournament> getAllTournaments() {
         return tournamentStaffDAO.getAllTournamentsForStaff();
@@ -33,23 +37,46 @@ public class TournamentStaffService {
     }
 
     public boolean approveTournament(int tournamentId, int staffId, String note) {
-        Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
-        if (t == null) return false;
-        return tournamentStaffDAO.updateTournamentStatusAndLog(
-                tournamentId, staffId, t.getStatus(), TournamentStatus.Upcoming, ApprovalAction.Approve, note);
+        boolean ok = updateTournamentStatus(tournamentId, staffId, TournamentStatus.Upcoming, ApprovalAction.Approve, note);
+        if (ok) {
+            notificationService.notifyFollowers(tournamentId, "Tournament Approved", 
+                "The tournament has been approved and is now Upcoming.", "INFO", "/tournaments/public");
+        }
+        return ok;
     }
 
     public boolean rejectTournament(int tournamentId, int staffId, String note) {
         Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
         if (t == null) return false;
-        return tournamentStaffDAO.updateTournamentStatusAndLog(
+        boolean ok = tournamentStaffDAO.updateTournamentStatusAndLog(
                 tournamentId, staffId, t.getStatus(), TournamentStatus.Rejected, ApprovalAction.Reject, note);
+        if (ok) {
+            notificationService.notifyFollowers(tournamentId, "Tournament Rejected", 
+                "The tournament you followed has been rejected by staff.", "WARNING", "/tournaments/public");
+        }
+        return ok;
     }
 
     public boolean updateTournamentStatus(int tournamentId, int staffId, TournamentStatus newStatus,
                                           ApprovalAction action, String note) {
         Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
         if (t == null) return false;
+
+        if (newStatus == TournamentStatus.Upcoming || newStatus == TournamentStatus.Ongoing) {
+            TournamentSetupService setupService = new TournamentSetupService();
+            TournamentSetupStateDTO state = setupService.getSetupState(tournamentId);
+            if (state == null || state.getStepStatuses() == null) {
+                throw new IllegalArgumentException("Chưa hoàn tất các bước setup (Structure, Players, Schedule, Referee).");
+            }
+            java.util.Map<String, String> statuses = state.getStepStatuses();
+            if (!"FINALIZED".equalsIgnoreCase(statuses.get("BRACKET")) ||
+                !"FINALIZED".equalsIgnoreCase(statuses.get("PLAYERS")) ||
+                !"FINALIZED".equalsIgnoreCase(statuses.get("SCHEDULE")) ||
+                !"FINALIZED".equalsIgnoreCase(statuses.get("REFEREES"))) {
+                throw new IllegalArgumentException("Không thể duyệt giải hoặc công khai giải! Leader cần finalize đủ 4 bước (Structure, Players, Schedule, Referee).");
+            }
+        }
+
         return tournamentStaffDAO.updateTournamentStatusAndLog(
                 tournamentId, staffId, t.getStatus(), newStatus, action, note);
     }
@@ -85,6 +112,11 @@ public class TournamentStaffService {
             if (!refunded) {
                 System.err.println("[WARNING] Giải đấu #" + tournamentId + " đã bị hủy bởi staff nhưng hoàn tiền thất bại!");
             }
+        }
+
+        if (cancelled) {
+            notificationService.notifyFollowers(tournamentId, "Tournament Cancelled", 
+                "The tournament has been cancelled. Refunds are being processed if applicable.", "ERROR", "/tournaments/public");
         }
 
         return true;

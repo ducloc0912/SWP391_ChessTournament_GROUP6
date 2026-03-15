@@ -7,8 +7,8 @@ import {
   Clock3,
   Globe,
   MapPin,
+  Search,
   Trophy,
-  Users,
 } from "lucide-react";
 import MainHeader from "./MainHeader";
 import "../../assets/css/TournamentDetailPublic.css";
@@ -28,17 +28,6 @@ function normalizeStatus(status) {
   return "registering";
 }
 
-function getStatusLabel(status) {
-  const key = normalizeStatus(status);
-  if (key === "ongoing") return "Đang diễn ra";
-  if (key === "finished") return "Kết thúc";
-  return "Đang đăng ký";
-}
-
-function getFormatLabel(format) {
-  const map = { RoundRobin: "Vòng tròn", KnockOut: "Loại trực tiếp" };
-  return map[format] || format || "—";
-}
 
 function formatDate(raw) {
   if (!raw) return "—";
@@ -62,7 +51,11 @@ function formatMoney(amount) {
 
 function parseResult(str) {
   if (!str || typeof str !== "string") return { white: "—", black: "—" };
-  const s = str.trim();
+  const s = str.trim().toLowerCase();
+  if (s === "player1") return { white: "W", black: "L" };
+  if (s === "player2") return { white: "L", black: "W" };
+  if (s === "draw") return { white: "½", black: "½" };
+  if (s === "pending" || s === "none" || s === "*") return { white: "—", black: "—" };
   if (s === "½-½" || s === "0.5-0.5") return { white: "½", black: "½" };
   const m = s.match(/^(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)$/);
   if (m) return { white: m[1], black: m[2] };
@@ -103,6 +96,8 @@ export default function TournamentDetail() {
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -175,6 +170,12 @@ export default function TournamentDetail() {
       } else {
         setIsJoined(false);
       }
+      // Check follow status
+      if (user?.userId && id) {
+        axios.get(`${API_BASE}/api/user/follow?action=status&tournamentId=${id}`, { withCredentials: true })
+          .then(res => setIsFollowing(res.data?.isFollowing))
+          .catch(err => console.error("Check follow status failed:", err));
+      }
     } catch (err) {
       console.error("Load tournament detail failed:", err);
       setError("Không thể tải chi tiết giải đấu.");
@@ -207,7 +208,8 @@ export default function TournamentDetail() {
     () => normalizeStatus(tournament?.status),
     [tournament?.status],
   );
-  const showMatches = statusKey === "ongoing" || statusKey === "finished";
+  const bracketPublished = Boolean(tournament?.bracketPublished);
+  const showMatches = bracketPublished;
   const canRegisterByStatus = statusKey === "registering";
 
   const statusPillLabel = useMemo(() => {
@@ -275,6 +277,28 @@ export default function TournamentDetail() {
     });
   };
 
+  const handleFollowToggle = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    setFollowLoading(true);
+    try {
+      const action = isFollowing ? "unfollow" : "follow";
+      const res = await axios.post(`${API_BASE}/api/user/follow?action=${action}`, {
+        tournamentId: id
+      }, { withCredentials: true });
+
+      if (res.data?.success || res.status === 200) {
+        setIsFollowing(!isFollowing);
+      }
+    } catch (err) {
+      console.error("Follow toggle failed:", err);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
   return (
     <div className="tdp-page">
       <MainHeader
@@ -327,22 +351,47 @@ export default function TournamentDetail() {
                     {tournament.location || "Online"}
                   </span>
                 </div>
-                <div className="tdp-register-cta">
-                  {canRegisterByStatus && !isJoined && (
-                    <button
-                      type="button"
-                      className="tdp-register-btn"
-                      onClick={handleRegisterTournament}
-                    >
-                      Đăng ký giải
-                    </button>
-                  )}
-                  {canRegisterByStatus && isJoined && (
-                    <span className="tdp-register-text-joined">
-                      Bạn đã đăng ký giải này
-                    </span>
-                  )}
-                </div>
+                  <div className="tdp-follow-cta" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    {canRegisterByStatus && !isJoined && (
+                      <button
+                        type="button"
+                        className="tdp-register-btn"
+                        onClick={handleRegisterTournament}
+                      >
+                        Đăng ký giải
+                      </button>
+                    )}
+                    {canRegisterByStatus && isJoined && (
+                      <span className="tdp-register-text-joined">
+                        Bạn đã đăng ký giải này
+                      </span>
+                    )}
+                    {user && (
+                      <button
+                        type="button"
+                        className={`tdp-follow-btn-detail ${isFollowing ? 'following' : ''}`}
+                        disabled={followLoading}
+                        onClick={handleFollowToggle}
+                        style={{
+                          backgroundColor: isFollowing ? 'transparent' : '#ff4655',
+                          border: isFollowing ? '2px solid #ff4655' : 'none',
+                          color: 'white',
+                          padding: '10px 20px',
+                          borderRadius: '6px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          transition: 'all 0.2s',
+                          fontSize: '0.9rem'
+                        }}
+                      >
+                        <Search size={18} />
+                        {isFollowing ? "Đã theo dõi" : "Theo dõi giải"}
+                      </button>
+                    )}
+                  </div>
               </div>
               <div className="tdp-hero-fee">
                 {Number(tournament?.entryFee ?? 0) > 0 ? (
@@ -373,13 +422,15 @@ export default function TournamentDetail() {
               >
                 PARTICIPANT
               </button>
-              <button
-                type="button"
-                className={`tdp-tab ${activeTab === "bracket" ? "active" : ""}`}
-                onClick={() => setActiveTab("bracket")}
-              >
-                BRACKET
-              </button>
+              {bracketPublished && (
+                <button
+                  type="button"
+                  className={`tdp-tab ${activeTab === "bracket" ? "active" : ""}`}
+                  onClick={() => setActiveTab("bracket")}
+                >
+                  BRACKET
+                </button>
+              )}
             </nav>
 
             {activeTab === "participant" && (
@@ -630,7 +681,9 @@ export default function TournamentDetail() {
                       <div className="tdp-empty-bracket">
                         {showMatches
                           ? "Chưa có trận đấu nào."
-                          : "Bracket sẽ hiển thị khi giải bắt đầu."}
+                          : bracketPublished
+                            ? "Bracket chưa có trận đấu khả dụng."
+                            : "Bracket sẽ hiển thị sau khi Tournament Leader publish."}
                       </div>
                     ) : (
                       roundsMap.map(({ round, matches }) => (
@@ -649,7 +702,7 @@ export default function TournamentDetail() {
                                   <div className="tdp-match-row">
                                     <span className="tdp-player-avatar" />
                                     <span className="tdp-player-name">
-                                      {m.whitePlayerName || "TBD"}
+                                      {m.player1Name || "TBD"}
                                     </span>
                                     <span className="tdp-score">
                                       {scores.white}
@@ -659,7 +712,7 @@ export default function TournamentDetail() {
                                   <div className="tdp-match-row">
                                     <span className="tdp-player-avatar" />
                                     <span className="tdp-player-name">
-                                      {m.blackPlayerName || "TBD"}
+                                      {m.player2Name || "TBD"}
                                     </span>
                                     <span className="tdp-score">
                                       {scores.black}
@@ -678,33 +731,6 @@ export default function TournamentDetail() {
                     )}
                   </div>
 
-                  <aside className="tdp-bracket-side">
-                    <div className="tdp-side-panel tdp-advances">
-                      <h4>ADVANCES</h4>
-                      <div className="tdp-side-list">
-                        {statusKey === "finished" && podium.championName ? (
-                          <div className="tdp-side-item">
-                            <span className="tdp-player-avatar" />
-                            <span>{podium.championName}</span>
-                          </div>
-                        ) : (
-                          <div className="tdp-side-item tbd">
-                            <span className="tdp-player-avatar" />
-                            <span>TBD</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="tdp-side-panel tdp-eliminated">
-                      <h4>ELIMINATED</h4>
-                      <div className="tdp-side-list">
-                        <div className="tdp-side-item tbd">
-                          <span className="tdp-player-avatar" />
-                          <span>TBD</span>
-                        </div>
-                      </div>
-                    </div>
-                  </aside>
                 </div>
               </section>
             )}

@@ -104,6 +104,7 @@ public class TournamentService {
         if (t != null) {
             t.setCurrentPlayers(participantDAO.countParticipantsByTournament(id));
             t.setTournamentImages(tournamentDAO.getTournamentImages(id));
+            t.setBracketPublished(tournamentDAO.isBracketPublished(id));
         }
         return t;
     }
@@ -647,6 +648,48 @@ public class TournamentService {
         return tournamentDAO.getAllTournaments();
     }
 
+    public boolean isBracketPublished(int tournamentId) {
+        if (tournamentId <= 0) return false;
+        return tournamentDAO.isBracketPublished(tournamentId);
+    }
+
+    /** Lưu tạm lịch thi đấu (schedule) mà không thay đổi trạng thái bước. */
+    public SetupValidationResult saveScheduleDraft(int tournamentId, TournamentManualSetupRequestDTO request) {
+        if (tournamentId <= 0) return SetupValidationResult.invalid("Tournament id không hợp lệ.");
+        if (request == null) return SetupValidationResult.invalid("Thiếu dữ liệu.");
+        String format = getNormalizedFormat(request.getFormat());
+        if (format == null) return SetupValidationResult.invalid("Thể thức không hợp lệ.");
+        List<TournamentSetupMatchDTO> matches = normalizeMatchesInternal(request.getMatches(), format);
+        if (matches.isEmpty()) return SetupValidationResult.invalid("Chưa có trận đấu nào để lưu.");
+        boolean saved = setupDAO.replaceManualSetup(tournamentId, format, matches);
+        return saved ? SetupValidationResult.valid("Lưu tạm lịch thành công.") : SetupValidationResult.invalid("Không thể lưu tạm lịch.");
+    }
+
+    public SetupValidationResult publishBracket(int tournamentId) {
+        if (tournamentId <= 0) {
+            return SetupValidationResult.invalid("Tournament id không hợp lệ.");
+        }
+
+        TournamentSetupStateDTO state = setupDAO.getSetupStateFull(tournamentId);
+        Map<String, String> statuses = state != null && state.getStepStatuses() != null
+                ? state.getStepStatuses()
+                : Map.of();
+        if (!"FINALIZED".equalsIgnoreCase(statuses.get("REFEREES"))) {
+            return SetupValidationResult.invalid("Chỉ được publish sau khi hoàn tất Step 4 - Referee.");
+        }
+
+        List<TournamentSetupMatchDTO> matches = setupDAO.getManualSetupMatches(tournamentId);
+        if (matches.isEmpty()) {
+            return SetupValidationResult.invalid("Bracket chưa có trận đấu để publish.");
+        }
+
+        if (!tournamentDAO.publishBracket(tournamentId)) {
+            return SetupValidationResult.invalid("Không thể publish bracket. Hãy kiểm tra migration trạng thái Bracket trước khi thử lại.");
+        }
+
+        return SetupValidationResult.valid("Publish bracket thành công.");
+    }
+
     // =========================
     // UPDATE
     // =========================
@@ -793,8 +836,8 @@ if (isBlank(t.getTournamentName())) return false;
 
         for (TournamentSetupMatchDTO m : matches) {
             String stage = normalizeStage(m.getStage(), format);
-            Integer white = m.getWhitePlayerId();
-            Integer black = m.getBlackPlayerId();
+            Integer white = m.getPlayer1Id();
+            Integer black = m.getPlayer2Id();
             int roundIndex = m.getRoundIndex() == null ? 1 : m.getRoundIndex();
 
             if (white != null && !participantIds.contains(white)) {
@@ -834,11 +877,28 @@ if (isBlank(t.getTournamentName())) return false;
         return SetupValidationResult.valid("Add Players hợp lệ.");
     }
 
-    /** Validate Schedule: players đã hợp lệ; cho phép một số trận chưa có startTime. */
+    /** Validate Schedule: players đã hợp lệ; tất cả trận phải có startTime nằm trong khoảng thời gian giải đấu. */
     private SetupValidationResult validateScheduleStep(int tournamentId, String format, List<TournamentSetupMatchDTO> matches) {
         SetupValidationResult validPlayers = validatePlayersStep(tournamentId, format, matches);
         if (!validPlayers.isValid()) return validPlayers;
-        // Cho phép finalize lịch kể cả khi một số trận chưa có startTime (user có thể dùng Auto schedule hoặc điền sau).
+
+        TournamentDTO tournament = tournamentDAO.getTournamentById(tournamentId);
+        java.sql.Timestamp tStart = tournament != null ? tournament.getStartDate() : null;
+        java.sql.Timestamp tEnd   = tournament != null ? tournament.getEndDate()   : null;
+
+        for (int i = 0; i < matches.size(); i++) {
+            TournamentSetupMatchDTO m = matches.get(i);
+            java.sql.Timestamp st = m.getStartTime();
+            if (st == null) {
+                return SetupValidationResult.invalid("Trận " + (i + 1) + " chưa có giờ bắt đầu. Vui lòng điền đủ lịch thi đấu trước khi Finalize.");
+            }
+            if (tStart != null && st.before(tStart)) {
+                return SetupValidationResult.invalid("Trận " + (i + 1) + ": Giờ thi đấu (" + st + ") phải sau ngày bắt đầu giải (" + tStart + ").");
+            }
+            if (tEnd != null && st.after(tEnd)) {
+                return SetupValidationResult.invalid("Trận " + (i + 1) + ": Giờ thi đấu (" + st + ") phải trước ngày kết thúc giải (" + tEnd + ").");
+            }
+        }
         return SetupValidationResult.valid("Schedule hợp lệ.");
     }
 
@@ -852,8 +912,8 @@ if (isBlank(t.getTournamentName())) return false;
             copy.setRoundName(m.getRoundName());
             copy.setRoundIndex(m.getRoundIndex() == null || m.getRoundIndex() <= 0 ? 1 : m.getRoundIndex());
             copy.setBoardNumber(m.getBoardNumber() == null || m.getBoardNumber() <= 0 ? null : m.getBoardNumber());
-            copy.setWhitePlayerId(m.getWhitePlayerId());
-            copy.setBlackPlayerId(m.getBlackPlayerId());
+            copy.setPlayer1Id(m.getPlayer1Id());
+            copy.setPlayer2Id(m.getPlayer2Id());
             copy.setStartTime(normalizeTimestamp(m.getStartTime()));
             normalized.add(copy);
         }
@@ -917,7 +977,7 @@ if (isBlank(t.getTournamentName())) return false;
 
     private boolean checkPlayerCountByFormat(String format, int count) {
         if ("RoundRobin".equals(format)) {
-            return count >= 4 && count <= 8;
+            return count >= 4 && count <= 10;
         }
         if ("KnockOut".equals(format)) {
             return count >= 8 && count <= 32;
@@ -1107,7 +1167,7 @@ if (isBlank(t.getTournamentName())) return false;
                 if (posInRound >= 0 && posInRound < genRound.size()) {
                     TournamentSetupMatchDTO gm = genRound.get(posInRound);
                     if (gm != null) {
-                        rrFilledByStructIdx.put(structIdx, new int[]{gm.getWhitePlayerId(), gm.getBlackPlayerId()});
+                        rrFilledByStructIdx.put(structIdx, new int[]{gm.getPlayer1Id(), gm.getPlayer2Id()});
                     }
                 }
             }
@@ -1136,17 +1196,17 @@ if (isBlank(t.getTournamentName())) return false;
             if ("RoundRobin".equals(stage)) {
                 int[] pair = rrFilledByStructIdx.get(i);
                 if (pair != null) {
-                    copy.setWhitePlayerId(pair[0]);
-                    copy.setBlackPlayerId(pair[1]);
+                    copy.setPlayer1Id(pair[0]);
+                    copy.setPlayer2Id(pair[1]);
                 }
             } else if ("KnockOut".equals(stage)) {
                 int[] pair = koFilledByStructIdx.get(i);
                 if (pair != null) {
-                    copy.setWhitePlayerId(pair[0]);
-                    copy.setBlackPlayerId(pair[1]);
+                    copy.setPlayer1Id(pair[0]);
+                    copy.setPlayer2Id(pair[1]);
                 } else if ((m.getRoundIndex() == null ? 1 : m.getRoundIndex()) > 1) {
-                    copy.setWhitePlayerId(null);
-                    copy.setBlackPlayerId(null);
+                    copy.setPlayer1Id(null);
+                    copy.setPlayer2Id(null);
                 }
             }
             result.add(copy);
@@ -1175,8 +1235,8 @@ if (isBlank(t.getTournamentName())) return false;
         c.setRoundName(m.getRoundName());
         c.setRoundIndex(m.getRoundIndex());
         c.setBoardNumber(m.getBoardNumber());
-        c.setWhitePlayerId(m.getWhitePlayerId());
-        c.setBlackPlayerId(m.getBlackPlayerId());
+        c.setPlayer1Id(m.getPlayer1Id());
+        c.setPlayer2Id(m.getPlayer2Id());
         c.setStartTime(m.getStartTime());
         c.setRefereeId(m.getRefereeId());
         return c;
@@ -1207,5 +1267,100 @@ if (isBlank(t.getTournamentName())) return false;
         public String getMessage() {
             return message;
         }
+    }
+
+    /**
+     * Auto Structure: only creates empty bracket slots (no players, no schedule).
+     * Returns matches with player1Id/player2Id = null.
+     */
+    public AutoSetupResult autoStructure(int tournamentId) {
+        if (tournamentId <= 0) return AutoSetupResult.error("Tournament id không hợp lệ.");
+        TournamentDTO tournament = tournamentDAO.getTournamentById(tournamentId);
+        if (tournament == null) return AutoSetupResult.error("Không tìm thấy giải đấu.");
+        String format = normalizeFormat(tournament.getFormat());
+        if (format == null) format = "RoundRobin";
+
+        List<TournamentPlayerDTO> allPlayers = participantDAO.getPlayersWithUserInfo(tournamentId);
+        List<TournamentPlayerDTO> activePlayers = allPlayers.stream()
+                .filter(p -> "Active".equalsIgnoreCase(p.getStatus()))
+                .sorted(Comparator.comparing(TournamentPlayerDTO::getRank, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(TournamentPlayerDTO::getUserId))
+                .collect(Collectors.toList());
+
+        if (activePlayers.isEmpty()) {
+            return AutoSetupResult.error("Chưa có người chơi đã duyệt (Active) để tạo structure.");
+        }
+
+        int n = activePlayers.size();
+        List<TournamentSetupMatchDTO> generated = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+
+        if ("RoundRobin".equals(format)) {
+            // Generate slots with null players (structure only)
+            int rounds = n % 2 == 0 ? n - 1 : n;
+            int matchesPerRound = n / 2;
+            for (int r = 1; r <= rounds; r++) {
+                for (int b = 1; b <= matchesPerRound; b++) {
+                    TournamentSetupMatchDTO m = new TournamentSetupMatchDTO();
+                    m.setStage("RoundRobin");
+                    m.setRoundIndex(r);
+                    m.setRoundName("Round " + r);
+                    m.setBoardNumber(b);
+                    generated.add(m);
+                }
+            }
+        } else {
+            // KnockOut structure
+            int bracketSize = nextPowerOf2(n);
+            if (bracketSize != n) {
+                warnings.add("KnockOut bracket: " + bracketSize + " slots (" + (bracketSize - n) + " BYE).");
+            }
+            int rounds = (int) (Math.log(bracketSize) / Math.log(2));
+            int matchesInRound = bracketSize / 2;
+            for (int r = 1; r <= rounds; r++) {
+                for (int b = 1; b <= matchesInRound; b++) {
+                    TournamentSetupMatchDTO m = new TournamentSetupMatchDTO();
+                    m.setStage("KnockOut");
+                    m.setRoundIndex(r);
+                    m.setRoundName("Round " + r);
+                    m.setBoardNumber(b);
+                    generated.add(m);
+                }
+                matchesInRound = Math.max(1, matchesInRound / 2);
+            }
+        }
+
+        if (generated.isEmpty()) return AutoSetupResult.error("Không thể tạo structure. Vui lòng dùng manual.");
+        return new AutoSetupResult(true,
+                "Đã tạo " + generated.size() + " ô trận (structure rỗng). Nhấn Finalize Structure để lưu, sau đó sang bước 2 để gán người chơi.",
+                generated, warnings);
+    }
+
+    /**
+     * Auto Schedule: distributes start_time evenly from tournament start to end date,
+     * applied to the given list of matches (player assignments preserved).
+     */
+    public AutoSetupResult autoSchedule(int tournamentId, List<TournamentSetupMatchDTO> matches) {
+        if (tournamentId <= 0) return AutoSetupResult.error("Tournament id không hợp lệ.");
+        if (matches == null || matches.isEmpty()) return AutoSetupResult.error("Chưa có trận đấu để tạo lịch.");
+        TournamentDTO tournament = tournamentDAO.getTournamentById(tournamentId);
+        if (tournament == null) return AutoSetupResult.error("Không tìm thấy giải đấu.");
+        java.sql.Timestamp start = tournament.getStartDate();
+        java.sql.Timestamp end = tournament.getEndDate();
+        if (start == null || end == null || !end.after(start)) {
+            return AutoSetupResult.error("Giải đấu chưa có ngày bắt đầu/kết thúc hợp lệ để tự động lịch đấu.");
+        }
+        long startMs = start.getTime();
+        long endMs = end.getTime();
+        long step = (endMs - startMs) / Math.max(matches.size(), 1);
+        List<TournamentSetupMatchDTO> scheduled = new ArrayList<>();
+        for (int i = 0; i < matches.size(); i++) {
+            TournamentSetupMatchDTO copy = copyMatch(matches.get(i));
+            copy.setStartTime(new java.sql.Timestamp(startMs + step * i));
+            scheduled.add(copy);
+        }
+        return new AutoSetupResult(true,
+                "Đã tự động phân bổ lịch thi đấu cho " + scheduled.size() + " trận. Nhấn Finalize Schedule để lưu.",
+                scheduled, List.of("Thời gian được phân bổ đều giữa " + start + " và " + end));
     }
 }
