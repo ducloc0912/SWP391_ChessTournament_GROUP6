@@ -195,6 +195,194 @@ public class PaymentDAO {
         return false;
     }
 
+    /**
+     * Trừ tiền leader khi tạo giải đấu.
+     * Atomic: kiểm tra balance >= prizePool, trừ balance, ghi Payment_Transaction.
+     * @return true nếu trừ thành công, false nếu không đủ tiền hoặc lỗi.
+     */
+    public boolean deductBalanceForTournamentCreation(int userId, int tournamentId, java.math.BigDecimal prizePool) {
+        if (prizePool == null || prizePool.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            return true; // Không cần trừ nếu prizePool = 0
+        }
+
+        String updateBalanceSql = "UPDATE Users SET balance = balance - ? WHERE user_id = ? AND balance >= ?";
+        String getBalanceSql = "SELECT balance FROM Users WHERE user_id = ?";
+        String insertTxSql = "INSERT INTO Payment_Transaction (user_id, tournament_id, type, amount, balance_after, description, create_at) "
+                + "VALUES (?, ?, 'TournamentCreation', ?, ?, ?, GETDATE())";
+
+        Connection conn = null;
+        try {
+            conn = DBContext.getConnection();
+            conn.setAutoCommit(false);
+
+            // 1. Trừ balance (nếu đủ)
+            try (PreparedStatement psUpdate = conn.prepareStatement(updateBalanceSql)) {
+                psUpdate.setBigDecimal(1, prizePool);
+                psUpdate.setInt(2, userId);
+                psUpdate.setBigDecimal(3, prizePool);
+                int rows = psUpdate.executeUpdate();
+                if (rows == 0) {
+                    conn.rollback();
+                    return false; // Không đủ tiền
+                }
+            }
+
+            // 2. Lấy balance sau khi trừ
+            java.math.BigDecimal balanceAfter = java.math.BigDecimal.ZERO;
+            try (PreparedStatement psBalance = conn.prepareStatement(getBalanceSql)) {
+                psBalance.setInt(1, userId);
+                try (java.sql.ResultSet rs = psBalance.executeQuery()) {
+                    if (rs.next()) {
+                        balanceAfter = rs.getBigDecimal("balance");
+                    }
+                }
+            }
+
+            // 3. Ghi transaction
+            try (PreparedStatement psTx = conn.prepareStatement(insertTxSql)) {
+                psTx.setInt(1, userId);
+                psTx.setInt(2, tournamentId);
+                psTx.setBigDecimal(3, prizePool.negate()); // Số tiền âm (trừ)
+                psTx.setBigDecimal(4, balanceAfter);
+                psTx.setString(5, "Trừ tiền tạo giải đấu (Prize Pool)");
+                psTx.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            e.printStackTrace();
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Hoàn tiền khi giải đấu bị hủy.
+     * Hoàn prizePool cho leader (nếu > 0) và hoàn entryFee cho tất cả người chơi đã thanh toán.
+     * @return true nếu hoàn tiền thành công, false nếu lỗi.
+     */
+    public boolean refundTournamentCancellation(int tournamentId, int leaderId,
+            java.math.BigDecimal prizePool, java.math.BigDecimal entryFee,
+            java.util.List<Integer> paidUserIds) {
+
+        String addBalanceSql = "UPDATE Users SET balance = ISNULL(balance, 0) + ? WHERE user_id = ?";
+        String getBalanceSql = "SELECT balance FROM Users WHERE user_id = ?";
+        String insertTxSql = "INSERT INTO Payment_Transaction (user_id, tournament_id, type, amount, balance_after, description, create_at) "
+                + "VALUES (?, ?, 'Refund', ?, ?, ?, GETDATE())";
+
+        Connection conn = null;
+        try {
+            conn = DBContext.getConnection();
+            conn.setAutoCommit(false);
+
+            // 1. Hoàn prizePool cho leader
+            if (prizePool != null && prizePool.compareTo(java.math.BigDecimal.ZERO) > 0) {
+                try (PreparedStatement ps = conn.prepareStatement(addBalanceSql)) {
+                    ps.setBigDecimal(1, prizePool);
+                    ps.setInt(2, leaderId);
+                    ps.executeUpdate();
+                }
+
+                java.math.BigDecimal leaderBalanceAfter = java.math.BigDecimal.ZERO;
+                try (PreparedStatement ps = conn.prepareStatement(getBalanceSql)) {
+                    ps.setInt(1, leaderId);
+                    try (java.sql.ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) leaderBalanceAfter = rs.getBigDecimal("balance");
+                    }
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement(insertTxSql)) {
+                    ps.setInt(1, leaderId);
+                    ps.setInt(2, tournamentId);
+                    ps.setBigDecimal(3, prizePool); // Số tiền dương (hoàn)
+                    ps.setBigDecimal(4, leaderBalanceAfter);
+                    ps.setString(5, "Hoàn tiền Prize Pool do giải đấu bị hủy");
+                    ps.executeUpdate();
+                }
+            }
+
+            // 2. Hoàn entryFee cho các người chơi đã thanh toán
+            if (entryFee != null && entryFee.compareTo(java.math.BigDecimal.ZERO) > 0
+                    && paidUserIds != null && !paidUserIds.isEmpty()) {
+
+                for (int playerId : paidUserIds) {
+                    try (PreparedStatement ps = conn.prepareStatement(addBalanceSql)) {
+                        ps.setBigDecimal(1, entryFee);
+                        ps.setInt(2, playerId);
+                        ps.executeUpdate();
+                    }
+
+                    java.math.BigDecimal playerBalanceAfter = java.math.BigDecimal.ZERO;
+                    try (PreparedStatement ps = conn.prepareStatement(getBalanceSql)) {
+                        ps.setInt(1, playerId);
+                        try (java.sql.ResultSet rs = ps.executeQuery()) {
+                            if (rs.next()) playerBalanceAfter = rs.getBigDecimal("balance");
+                        }
+                    }
+
+                    try (PreparedStatement ps = conn.prepareStatement(insertTxSql)) {
+                        ps.setInt(1, playerId);
+                        ps.setInt(2, tournamentId);
+                        ps.setBigDecimal(3, entryFee); // Số tiền dương (hoàn)
+                        ps.setBigDecimal(4, playerBalanceAfter);
+                        ps.setString(5, "Hoàn phí tham gia do giải đấu bị hủy");
+                        ps.executeUpdate();
+                    }
+                }
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            e.printStackTrace();
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Lấy danh sách user_id đã thanh toán (is_paid = 1) cho một giải đấu.
+     */
+    public java.util.List<Integer> getPaidUserIdsByTournament(int tournamentId) {
+        java.util.List<Integer> userIds = new java.util.ArrayList<>();
+        String sql = "SELECT user_id FROM Participants WHERE tournament_id = ? AND is_paid = 1 AND (status IS NULL OR status = 'Active')";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    userIds.add(rs.getInt("user_id"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return userIds;
+    }
+
     public java.util.List<java.util.Map<String, Object>> getWithdrawalsByUserId(int userId) {
         java.util.List<java.util.Map<String, Object>> list = new java.util.ArrayList<>();
         String sql = "SELECT * FROM Withdrawal WHERE user_id = ? ORDER BY create_at DESC";
