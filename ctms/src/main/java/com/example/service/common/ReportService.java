@@ -11,6 +11,7 @@ import com.example.model.enums.BlogCategory;
 import com.example.model.enums.BlogStatus;
 import com.example.service.staff.BlogPostStaffService;
 
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
@@ -28,46 +29,54 @@ public class ReportService {
         this.blogService = new BlogPostStaffService();
         this.notificationDAO = new NotificationDAO();
     }
-
     public int createReport(ReportDTO dto) {
-        // Các validate nghiệp vụ sẽ ném IllegalArgumentException nếu có lỗi.
-        // Không được nuốt (catch) IllegalArgumentException ở đây để servlet có thể trả
-        // lại đúng message cho frontend.
+        if (dto == null) {
+            throw new IllegalArgumentException("Report payload is required.");
+        }
         if (dto.getReporterId() == null) {
-            throw new IllegalArgumentException("Reporter is required");
+            throw new IllegalArgumentException("Reporter is required.");
         }
         if (dto.getDescription() == null || dto.getDescription().trim().isEmpty()) {
-            throw new IllegalArgumentException("Description is required");
+            throw new IllegalArgumentException("Description is required.");
         }
         if (dto.getType() == null || dto.getType().trim().isEmpty()) {
-            throw new IllegalArgumentException("Type is required");
+            throw new IllegalArgumentException("Type is required.");
         }
 
-        // Chuẩn hóa evidenceUrl: cột DB không cho NULL -> dùng chuỗi rỗng nếu không có
-        if (dto.getEvidenceUrl() == null) {
-            dto.setEvidenceUrl("");
-        } else {
-            dto.setEvidenceUrl(dto.getEvidenceUrl().trim());
-        }
-
-        // Không cho phép 1 user gửi trùng report cho cùng 1 trận (violation)
         String type = dto.getType().trim();
-        try {
-            if (dto.getMatchId() != null
-                    && ("Cheating".equalsIgnoreCase(type) || "Misconduct".equalsIgnoreCase(type))) {
-                if (reportDAO.existsByReporterAndMatch(dto.getReporterId(), dto.getMatchId())) {
-                    throw new IllegalArgumentException("Bạn đã gửi report cho trận đấu này rồi.");
-                }
-            }
+        boolean isViolation = "Cheating".equalsIgnoreCase(type) || "Misconduct".equalsIgnoreCase(type);
+        boolean isSystem = "TechnicalIssue".equalsIgnoreCase(type) || "Other".equalsIgnoreCase(type);
 
+        if (!isViolation && !isSystem) {
+            throw new IllegalArgumentException("Invalid report type. Allowed: Cheating, Misconduct, TechnicalIssue, Other.");
+        }
+
+        if (isViolation) {
+            if (dto.getMatchId() == null) {
+                throw new IllegalArgumentException("Match ID is required for violation reports.");
+            }
+            if (dto.getAccusedId() == null) {
+                throw new IllegalArgumentException("Accused user is required for violation reports.");
+            }
+            if (dto.getReporterId().equals(dto.getAccusedId())) {
+                throw new IllegalArgumentException("Reporter cannot accuse themselves.");
+            }
+        } else {
+            dto.setMatchId(null);
+            dto.setAccusedId(null);
+        }
+
+        dto.setEvidenceUrl(dto.getEvidenceUrl() == null ? "" : dto.getEvidenceUrl().trim());
+
+        try {
+            if (isViolation && reportDAO.existsByReporterAndMatch(dto.getReporterId(), dto.getMatchId())) {
+                throw new IllegalArgumentException("You have already reported this match.");
+            }
             dto.setStatus("Pending");
             return reportDAO.createReport(dto);
-        } catch (IllegalArgumentException e) {
-            // Đẩy tiếp cho servlet xử lý và trả message cụ thể cho client
-            throw e;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return -1;
+        } catch (SQLException e) {
+            String dbMessage = e.getMessage() == null ? "Unknown database error." : e.getMessage();
+            throw new IllegalStateException("Cannot create report: " + dbMessage);
         }
     }
 
@@ -300,4 +309,5 @@ public class ReportService {
         return full.isEmpty() ? (u.getUsername() != null ? u.getUsername() : "bạn") : full;
     }
 }
+
 

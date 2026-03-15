@@ -35,8 +35,8 @@ public class MatchGenerationService {
                 m.setRoundName(roundName);
                 m.setRoundIndex(roundIndex);
                 m.setBoardNumber(i + 1);
-                m.setWhitePlayerId(w);
-                m.setBlackPlayerId(b);
+                m.setPlayer1Id(w);
+                m.setPlayer2Id(b);
                 out.add(m);
             }
             if (n > 2) {
@@ -52,8 +52,8 @@ public class MatchGenerationService {
                 m2.setRoundName("Round " + (m.getRoundIndex() + baseRounds) + " (leg 2)");
                 m2.setRoundIndex(m.getRoundIndex() + baseRounds);
                 m2.setBoardNumber(m.getBoardNumber());
-                m2.setWhitePlayerId(m.getBlackPlayerId());
-                m2.setBlackPlayerId(m.getWhitePlayerId());
+                m2.setPlayer1Id(m.getPlayer2Id());
+                m2.setPlayer2Id(m.getPlayer1Id());
                 out.add(m2);
             }
         }
@@ -84,8 +84,8 @@ public class MatchGenerationService {
                 if (roundIndex == 1) {
                     int wIdx = bracketLeftSlot(pow, i);
                     int bIdx = bracketRightSlot(pow, i);
-                    m.setWhitePlayerId(wIdx < order.size() ? order.get(wIdx) : null);
-                    m.setBlackPlayerId(bIdx < order.size() ? order.get(bIdx) : null);
+                    m.setPlayer1Id(wIdx < order.size() ? order.get(wIdx) : null);
+                    m.setPlayer2Id(bIdx < order.size() ? order.get(bIdx) : null);
                 }
                 out.add(m);
             }

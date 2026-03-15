@@ -78,7 +78,7 @@ const StatCard = ({ label, value, icon, accent, onClick }) => (
 );
 
 /** Cho phép chọn ngày + giờ (date + time picker) thay vì nhập tay. value/onChange dùng format "YYYY-MM-DDTHH:mm". */
-const ScheduleDateTimePicker = ({ value, onChange, title }) => {
+const ScheduleDateTimePicker = ({ value, onChange, title, disabled = false }) => {
   const datePart = value && value.length >= 10 ? value.slice(0, 10) : "";
   const timePart = value && value.length >= 16 ? value.slice(11, 16) : "";
   const handleDate = (e) => {
@@ -97,6 +97,7 @@ const ScheduleDateTimePicker = ({ value, onChange, title }) => {
         className="tsu-mini-input tsu-input-date"
         value={datePart}
         onChange={handleDate}
+        disabled={disabled}
         aria-label="Chọn ngày"
       />
       <input
@@ -104,6 +105,7 @@ const ScheduleDateTimePicker = ({ value, onChange, title }) => {
         className="tsu-mini-input tsu-input-time"
         value={timePart}
         onChange={handleTime}
+        disabled={disabled}
         aria-label="Chọn giờ"
       />
     </div>
@@ -1544,16 +1546,108 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
 
   const [rows, setRows] = useState([]);
   const [loadingRows, setLoadingRows] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [unlocking, setUnlocking] = useState(false);
-  const [autoSetupLoading, setAutoSetupLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState({
+    autoStructure: false,
+    autoPlayers: false,
+    autoSchedule: false,
+    finalize: false,
+    publish: false,
+  });
   const [laneStep, setLaneStep] = useState("structure");
-  const [serverSetupStep, setServerSetupStep] = useState("BRACKET");
   const [stepStatuses, setStepStatuses] = useState({});
   const [serverBanner, setServerBanner] = useState(null);
   const [rowErrors, setRowErrors] = useState({});
   const [tournamentReferees, setTournamentReferees] = useState([]);
   const [toast, setToast] = useState("");
+  const [resultModal, setResultModal] = useState({
+    open: false,
+    type: "success",
+    message: "",
+  });
+
+  const STEP_ORDER = ["BRACKET", "PLAYERS", "SCHEDULE", "REFEREES"];
+  const LANE_TO_STEP = {
+    structure: "BRACKET",
+    players: "PLAYERS",
+    schedule: "SCHEDULE",
+    referee: "REFEREES",
+  };
+  const isFinalized = (stepKey) => stepStatuses?.[stepKey] === "FINALIZED";
+  const canEditPlayers = isFinalized("BRACKET");
+  const canEditSchedule = isFinalized("PLAYERS");
+  const canEditReferees = isFinalized("SCHEDULE");
+  const canPublish = STEP_ORDER.every((stepKey) => isFinalized(stepKey));
+
+  const setActionBusy = (key, value) => {
+    setActionLoading((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const mapMatchesToRows = (list = [], stageFallback = effectiveFormat || "RoundRobin") =>
+    list.map((m, idx) => ({
+      id: `sv-${m.matchId || idx + 1}`,
+      matchId: m.matchId,
+      stage: m.stage || stageFallback,
+      roundName: m.roundName || "",
+      roundIndex: Number(m.roundIndex || 1),
+      boardNumber: Number(m.boardNumber || idx + 1),
+      player1Id: String(m.player1Id ?? ""),
+      player2Id: String(m.player2Id ?? ""),
+      startTime: toDateTimeLocal(m.startTime),
+      refereeId: m.refereeId ? String(m.refereeId) : "",
+      groupId: m.groupId ?? null,
+      groupName: m.groupName ?? "",
+    }));
+
+  const refreshSetupData = async (nextLaneStep = null) => {
+    const [res, stateRes] = await Promise.all([
+      axios.get(`${API_BASE}/api/tournaments?action=schedule&id=${tournamentId}`, {
+        withCredentials: true,
+      }),
+      axios.get(`${API_BASE}/api/tournaments?action=setupState&id=${tournamentId}`, {
+        withCredentials: true,
+      }),
+    ]);
+    const list = Array.isArray(res?.data) ? res.data : [];
+    const rawStep = stateRes?.data?.currentStep || stateRes?.data?.step || "BRACKET";
+    setStepStatuses(stateRes?.data?.stepStatuses || {});
+    setRows(mapMatchesToRows(list));
+    if (nextLaneStep) {
+      setLaneStep(nextLaneStep);
+    }
+  };
+
+  const markDirtyFromStep = async (stepKey) => {
+    const startIndex = STEP_ORDER.indexOf(stepKey);
+    if (startIndex < 0) return;
+    const shouldMarkDirty = STEP_ORDER.slice(startIndex).some(
+      (key) => stepStatuses?.[key] === "FINALIZED",
+    );
+    if (!shouldMarkDirty) return;
+    try {
+      const res = await axios.post(
+        `${API_BASE}/api/tournaments?action=markDirtyStep&id=${tournamentId}&step=${stepKey}`,
+        {},
+        { withCredentials: true },
+      );
+      if (res?.data?.stepStatuses) {
+        setStepStatuses(res.data.stepStatuses);
+      }
+    } catch (err) {
+      console.error("markDirtyStep failed", err);
+    }
+  };
+
+  const showResultModal = (type, message) => {
+    setResultModal({
+      open: true,
+      type: type === "success" ? "success" : "error",
+      message: String(message || ""),
+    });
+  };
+
+  const closeResultModal = () => {
+    setResultModal((prev) => ({ ...prev, open: false }));
+  };
 
   useEffect(() => {
     if (!toast) return;
@@ -1580,7 +1674,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
         const list = Array.isArray(res.data) ? res.data : [];
         const rawStep = stateRes?.data?.currentStep || stateRes?.data?.step || "BRACKET";
         const step = String(rawStep).toUpperCase().replace("REFEREE", "REFEREES");
-        setServerSetupStep(step);
         const statuses = stateRes?.data?.stepStatuses || {};
         setStepStatuses(statuses);
         const scheduleFinalized = statuses?.SCHEDULE === "FINALIZED";
@@ -1599,24 +1692,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
         } else {
           setLaneStep("schedule");
         }
-        // Dùng effectiveFormat cho stage fallback để KO không bị gán nhầm RoundRobin khi load
-        const stageFallback = effectiveFormat || "RoundRobin";
-        setRows(
-          list.map((m, idx) => ({
-            id: `sv-${m.matchId || idx + 1}`,
-            matchId: m.matchId,
-            stage: m.stage || stageFallback,
-            roundName: m.roundName || "",
-            roundIndex: Number(m.roundIndex || 1),
-            boardNumber: Number(m.boardNumber || idx + 1),
-            whitePlayerId: String(m.whitePlayerId ?? ""),
-            blackPlayerId: String(m.blackPlayerId ?? ""),
-            startTime: toDateTimeLocal(m.startTime),
-            refereeId: m.refereeId ? String(m.refereeId) : "",
-            groupId: m.groupId ?? null,
-            groupName: m.groupName ?? "",
-          })),
-        );
+        setRows(mapMatchesToRows(list));
       } catch (err) {
         console.error("Load schedule error:", err);
         if (mounted) setRows([]);
@@ -1660,8 +1736,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
     stage,
     roundIndex,
     boardNumber,
-    whitePlayerId = "",
-    blackPlayerId = "",
+    player1Id = "",
+    player2Id = "",
     roundName = "",
     startTime = "",
   }) => ({
@@ -1670,8 +1746,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
     roundName,
     roundIndex: Number(roundIndex || 1),
     boardNumber: Number(boardNumber || 1),
-    whitePlayerId: String(whitePlayerId || ""),
-    blackPlayerId: String(blackPlayerId || ""),
+    player1Id: String(player1Id || ""),
+    player2Id: String(player2Id || ""),
     startTime,
   });
 
@@ -1751,15 +1827,13 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       return errors;
     }
 
-    let hasRr = false;
-    let hasKo = false;
     const rrPairs = new Set();
     const koRoundSlots = new Set();
 
     rows.forEach((row, idx) => {
       const stage = row.stage || stageOptions[0];
-      const white = Number(row.whitePlayerId);
-      const black = Number(row.blackPlayerId);
+      const player1 = Number(row.player1Id);
+      const player2 = Number(row.player2Id);
       const roundIndex = Number(row.roundIndex || 1);
 
       if (!stageOptions.includes(stage)) {
@@ -1767,34 +1841,34 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
           `Dòng ${idx + 1}: Stage không hợp lệ với thể thức hiện tại.`,
         );
       }
-      const hasWhite = Number.isInteger(white) && white > 0;
-      const hasBlack = Number.isInteger(black) && black > 0;
+      const hasPlayer1 = Number.isInteger(player1) && player1 > 0;
+      const hasPlayer2 = Number.isInteger(player2) && player2 > 0;
 
       if (stage === "RoundRobin") {
-        if (!hasWhite || !hasBlack) {
+        if (!hasPlayer1 || !hasPlayer2) {
           errors.push(`Dòng ${idx + 1}: Thiếu người chơi trắng/đen.`);
           return;
         }
       } else if (stage === "KnockOut") {
-        if ((hasWhite && !hasBlack) || (!hasWhite && hasBlack)) {
+        if ((hasPlayer1 && !hasPlayer2) || (!hasPlayer1 && hasPlayer2)) {
           errors.push(
             `Dòng ${idx + 1}: Knock Out phải để trống cả 2 hoặc điền đủ cả 2 người chơi.`,
           );
           return;
         }
-        if (!hasWhite && !hasBlack && roundIndex <= 1) {
+        if (!hasPlayer1 && !hasPlayer2 && roundIndex <= 1) {
           errors.push(`Dòng ${idx + 1}: Round 1 của Knock Out cần có đủ 2 người chơi.`);
           return;
         }
       }
-      if (hasWhite && hasBlack && white === black) {
+      if (hasPlayer1 && hasPlayer2 && player1 === player2) {
         errors.push(
           `Dòng ${idx + 1}: Một trận không thể để cùng 1 người chơi ở 2 bên.`,
         );
       }
       if (
-        (hasWhite && !playerSet.has(white)) ||
-        (hasBlack && !playerSet.has(black))
+        (hasPlayer1 && !playerSet.has(player1)) ||
+        (hasPlayer2 && !playerSet.has(player2))
       ) {
         errors.push(
           `Dòng ${idx + 1}: Có người chơi không thuộc danh sách đã duyệt.`,
@@ -1805,8 +1879,10 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       }
 
       if (stage === "RoundRobin") {
-        hasRr = true;
-        const key = white < black ? `${white}-${black}` : `${black}-${white}`;
+        const key =
+          player1 < player2
+            ? `${player1}-${player2}`
+            : `${player2}-${player1}`;
         if (rrPairs.has(key)) {
           errors.push(`Dòng ${idx + 1}: Cặp đấu Round Robin bị trùng.`);
         } else {
@@ -1815,25 +1891,24 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       }
 
       if (stage === "KnockOut") {
-        hasKo = true;
-        if (hasWhite) {
-          const wKey = `${roundIndex}-${white}`;
-          if (koRoundSlots.has(wKey)) {
+        if (hasPlayer1) {
+          const p1Key = `${roundIndex}-${player1}`;
+          if (koRoundSlots.has(p1Key)) {
             errors.push(
               `Dòng ${idx + 1}: Người chơi đang bị xếp 2 trận trong cùng round Knock Out.`,
             );
           } else {
-            koRoundSlots.add(wKey);
+            koRoundSlots.add(p1Key);
           }
         }
-        if (hasBlack) {
-          const bKey = `${roundIndex}-${black}`;
-          if (koRoundSlots.has(bKey)) {
+        if (hasPlayer2) {
+          const p2Key = `${roundIndex}-${player2}`;
+          if (koRoundSlots.has(p2Key)) {
             errors.push(
               `Dòng ${idx + 1}: Người chơi đang bị xếp 2 trận trong cùng round Knock Out.`,
             );
           } else {
-            koRoundSlots.add(bKey);
+            koRoundSlots.add(p2Key);
           }
         }
       }
@@ -1878,6 +1953,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
   };
 
   const handleDeleteRow = (id) => {
+    void markDirtyFromStep("BRACKET");
     setRowErrors((prev) => {
       if (!prev[id]) return prev;
       const copy = { ...prev };
@@ -1889,7 +1965,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       if (
         laneStep === "structure" &&
         target &&
-        (target.whitePlayerId || target.blackPlayerId || target.startTime)
+        (target.player1Id || target.player2Id || target.startTime)
       ) {
         setServerBanner({
           type: "error",
@@ -1907,6 +1983,14 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       "roundIndex",
       "boardNumber",
     ]);
+    let dirtyStepKey = null;
+    if (structureFields.has(field)) dirtyStepKey = "BRACKET";
+    else if (field === "player1Id" || field === "player2Id") dirtyStepKey = "PLAYERS";
+    else if (field === "startTime") dirtyStepKey = "SCHEDULE";
+    else if (field === "refereeId") dirtyStepKey = "REFEREES";
+    if (dirtyStepKey) {
+      void markDirtyFromStep(dirtyStepKey);
+    }
     setRowErrors((prev) => {
       if (!prev[id]) return prev;
       const copy = { ...prev };
@@ -1925,10 +2009,10 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
               if (
                 laneStep === "structure" &&
                 structureFields.has(field) &&
-                (row.whitePlayerId || row.blackPlayerId || row.startTime)
+                (row.player1Id || row.player2Id || row.startTime)
               ) {
-                nextRow.whitePlayerId = "";
-                nextRow.blackPlayerId = "";
+                nextRow.player1Id = "";
+                nextRow.player2Id = "";
                 nextRow.startTime = "";
                 setServerBanner({
                   type: "error",
@@ -1943,6 +2027,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
   };
 
   const addInlineMatch = ({ stage, roundIndex }) => {
+    void markDirtyFromStep("BRACKET");
     setRows((prev) => [
       ...prev,
       makeRow({ stage, roundIndex, boardNumber: 1 }),
@@ -1956,6 +2041,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
   const MAX_KNOCKOUT_ROUNDS = 4;
 
   const addInlineRound = (stage) => {
+    void markDirtyFromStep("BRACKET");
     const targetRows = rows.filter((r) => r.stage === stage);
     const roundIndices = new Set(
       targetRows.map((r) => Number(r.roundIndex || 1)),
@@ -1983,7 +2069,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
   const runAutoSetup = async () => {
     if (!tournamentId) return;
     try {
-      setAutoSetupLoading(true);
+      void markDirtyFromStep("BRACKET");
+      setActionBusy("autoStructure", true);
       setServerBanner(null);
       // Dùng POST để tránh cache và đảm bảo backend trả về matches (GET có thể bị cache sai)
       const res = await axios.post(
@@ -2023,8 +2110,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
         roundName: m.roundName || "",
         roundIndex: Number(m.roundIndex || 1),
         boardNumber: Number(m.boardNumber || idx + 1),
-        whitePlayerId: m.whitePlayerId ? String(m.whitePlayerId) : "",
-        blackPlayerId: m.blackPlayerId ? String(m.blackPlayerId) : "",
+        player1Id: m.player1Id ? String(m.player1Id) : "",
+        player2Id: m.player2Id ? String(m.player2Id) : "",
         startTime: toDateTimeLocal(m.startTime),
         refereeId: m.refereeId ? String(m.refereeId) : "",
       }));
@@ -2040,134 +2127,38 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
         text: err?.response?.data?.message || err?.message || "Auto setup thất bại. Kiểm tra kết nối và thử lại.",
       });
     } finally {
-      setAutoSetupLoading(false);
+      setActionBusy("autoStructure", false);
     }
   };
 
   const handleSave = async () => {
-    if (laneStep === "referee") {
-      if (stepStatuses?.SCHEDULE !== "FINALIZED") {
-        setServerBanner({
-          type: "error",
-          text: "Bạn cần hoàn tất Schedule (nhấn Finalize Schedule) trước khi gán trọng tài.",
-        });
-        return;
-      }
-      try {
-        setSaving(true);
-        setServerBanner(null);
-        const assignments = rows
-          .filter((r) => r.matchId && r.refereeId)
-          .map((r) => ({
-            matchId: Number(r.matchId),
-            refereeId: Number(r.refereeId),
-          }));
-        const res = await axios.post(
-          `${API_BASE}/api/tournaments?action=saveRefereeAssignments&id=${tournamentId}`,
-          { matches: assignments },
-          {
-            withCredentials: true,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-        if (!res?.data?.success) {
-          setServerBanner({
-            type: "error",
-            text: res?.data?.message || "Lưu gán trọng tài thất bại.",
-          });
-          return;
-        }
-        const finalizeRes = await axios.post(
-          `${API_BASE}/api/tournaments?action=finalizeStep&id=${tournamentId}&step=REFEREES`,
-          {},
-          {
-            withCredentials: true,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-        const successMsg = finalizeRes?.data?.message || res?.data?.message || "Lưu và công bố thành công.";
-        setServerBanner({ type: "success", text: successMsg });
-        setToast(successMsg);
-        setServerSetupStep("COMPLETED");
-        setRowErrors({});
-        const [schedRes, stateRes] = await Promise.all([
-          axios.get(`${API_BASE}/api/tournaments?action=schedule&id=${tournamentId}`, { withCredentials: true }),
-          axios.get(`${API_BASE}/api/tournaments?action=setupState&id=${tournamentId}`, { withCredentials: true }),
-        ]);
-        const statuses = stateRes?.data?.stepStatuses || {};
-        setStepStatuses(statuses);
-        setServerSetupStep(stateRes?.data?.currentStep || stateRes?.data?.step || "COMPLETED");
-        const list = Array.isArray(schedRes?.data) ? schedRes.data : [];
-        setRows(
-          list.map((m, idx) => ({
-            id: `sv-${m.matchId || idx + 1}`,
-            matchId: m.matchId,
-            stage: m.stage || effectiveFormat,
-            roundName: m.roundName || "",
-            roundIndex: Number(m.roundIndex || 1),
-            boardNumber: Number(m.boardNumber || idx + 1),
-            whitePlayerId: String(m.whitePlayerId ?? ""),
-            blackPlayerId: String(m.blackPlayerId ?? ""),
-            startTime: toDateTimeLocal(m.startTime),
-            refereeId: m.refereeId ? String(m.refereeId) : "",
-          })),
-        );
-      } catch (err) {
-        const msg = err?.response?.data?.message ?? err?.message ?? "Lưu trọng tài thất bại.";
-        setServerBanner({
-          type: "error",
-          text: msg,
-        });
-      } finally {
-        setSaving(false);
-      }
+    if (!canPublish) {
+      const msg = "Chỉ có thể Save & Publish khi cả 4 bước đều đã FINALIZED.";
+      setServerBanner({ type: "error", text: msg });
+      showResultModal("error", msg);
       return;
     }
-    if (laneStep !== "schedule") {
-      setServerBanner({
-        type: "error",
-        text: "Hãy hoàn tất bước trước và vào Schedule để lưu.",
-      });
-      return;
-    }
-    if (errors.length > 0) {
-      applyRowErrors(errors);
-      setServerBanner({ type: "error", text: errors[0] });
-      return;
-    }
-    const payload = {
-      format: effectiveFormat,
-      setupStep: "SCHEDULE",
-      matches: rows.map((r) => ({
-        stage: r.stage || effectiveFormat,
-        roundName:
-          r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
-        roundIndex: Math.max(1, Number(r.roundIndex || 1)),
-        boardNumber: Math.max(1, Number(r.boardNumber || 1)),
-        whitePlayerId: r.whitePlayerId ? Number(r.whitePlayerId) : null,
-        blackPlayerId: r.blackPlayerId ? Number(r.blackPlayerId) : null,
-        startTime: toSqlDateTime(r.startTime),
-      })),
-    };
     try {
-      setSaving(true);
+      setActionBusy("publish", true);
       const res = await axios.post(
-        `${API_BASE}/api/tournaments?action=manualSetup&id=${tournamentId}`,
-        payload,
-        { withCredentials: true },
+        `${API_BASE}/api/tournaments?action=publishSetup&id=${tournamentId}`,
+        {},
+        {
+          withCredentials: true,
+          headers: { "Content-Type": "application/json" },
+        },
       );
-      setServerBanner({
-        type: "success",
-        text: res?.data?.message || "Lưu setup thành công.",
-      });
-      setRowErrors({});
+      const successMsg = res?.data?.message || "Save & Publish thành công.";
+      setServerBanner({ type: "success", text: successMsg });
+      setToast(successMsg);
+      showResultModal("success", successMsg);
+      await refreshSetupData("referee");
     } catch (err) {
-      setServerBanner({
-        type: "error",
-        text: err?.response?.data?.message || "Lưu setup thất bại.",
-      });
+      const msg = err?.response?.data?.message ?? err?.message ?? "Save & Publish thất bại.";
+      setServerBanner({ type: "error", text: msg });
+      showResultModal("error", msg);
     } finally {
-      setSaving(false);
+      setActionBusy("publish", false);
     }
   };
 
@@ -2181,8 +2172,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
     const board = Number(match.boardNumber || 1);
     const prevRound = Math.max(1, round - 1);
     return {
-      whiteRef: `W(R${prevRound}-B${board * 2 - 1})`,
-      blackRef: `W(R${prevRound}-B${board * 2})`,
+      player1Ref: `W(R${prevRound}-B${board * 2 - 1})`,
+      player2Ref: `W(R${prevRound}-B${board * 2})`,
     };
   };
 
@@ -2194,21 +2185,21 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       if (r.stage !== "KnockOut") return;
       if (Number(r.roundIndex || 1) !== round) return;
       if (r.id === match.id) return;
-      const w = Number(r.whitePlayerId);
-      const b = Number(r.blackPlayerId);
+      const w = Number(r.player1Id);
+      const b = Number(r.player2Id);
       if (Number.isInteger(w) && w > 0) taken.add(w);
       if (Number.isInteger(b) && b > 0) taken.add(b);
     });
 
     const oppositeId = Number(
-      slot === "white" ? match.blackPlayerId : match.whitePlayerId,
+      slot === "player1" ? match.player2Id : match.player1Id,
     );
     if (Number.isInteger(oppositeId) && oppositeId > 0) {
       taken.add(oppositeId);
     }
 
     const currentId = Number(
-      slot === "white" ? match.whitePlayerId : match.blackPlayerId,
+      slot === "player1" ? match.player1Id : match.player2Id,
     );
     return availablePlayers.filter(
       (p) => p.userId === currentId || !taken.has(p.userId),
@@ -2216,6 +2207,13 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
   };
 
   const autoFillPlayersIntoStructure = async () => {
+    if (!canEditPlayers) {
+      setServerBanner({
+        type: "error",
+        text: "Bạn cần Finalize Structure trước khi tự động gán players.",
+      });
+      return;
+    }
     if (rows.length === 0) {
       setServerBanner({
         type: "error",
@@ -2224,6 +2222,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       return;
     }
     try {
+      void markDirtyFromStep("PLAYERS");
+      setActionBusy("autoPlayers", true);
       const payload = {
         matches: rows.map((r) => ({
           matchId: r.matchId ? Number(r.matchId) : null,
@@ -2231,8 +2231,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
           roundName: r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
           roundIndex: Math.max(1, Number(r.roundIndex || 1)),
           boardNumber: Math.max(1, Number(r.boardNumber || 1)),
-          whitePlayerId: r.whitePlayerId ? Number(r.whitePlayerId) : null,
-          blackPlayerId: r.blackPlayerId ? Number(r.blackPlayerId) : null,
+          player1Id: r.player1Id ? Number(r.player1Id) : null,
+          player2Id: r.player2Id ? Number(r.player2Id) : null,
           startTime: toSqlDateTime(r.startTime),
         })),
       };
@@ -2256,8 +2256,8 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
         roundName: m.roundName || "",
         roundIndex: Number(m.roundIndex || 1),
         boardNumber: Number(m.boardNumber || idx + 1),
-        whitePlayerId: m.whitePlayerId ? String(m.whitePlayerId) : "",
-        blackPlayerId: m.blackPlayerId ? String(m.blackPlayerId) : "",
+        player1Id: m.player1Id ? String(m.player1Id) : "",
+        player2Id: m.player2Id ? String(m.player2Id) : "",
         startTime: toDateTimeLocal(m.startTime),
         refereeId: rows[idx]?.refereeId || "",
       }));
@@ -2272,188 +2272,197 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
         type: "error",
         text: err?.response?.data?.message || "Auto add players thất bại.",
       });
+    } finally {
+      setActionBusy("autoPlayers", false);
     }
   };
 
-  const handleFinalizeCurrentStep = async () => {
-    if (laneStep === "structure") {
-      if (structureErrors.length > 0) {
-        applyRowErrors(structureErrors);
-        setServerBanner({ type: "error", text: structureErrors[0] });
-        return;
-      }
-      try {
-        if (rows.length === 0) {
-          setServerBanner({
-            type: "error",
-            text: "Chưa có vòng/trận nào. Hãy thêm ít nhất một dòng (Round + Board) trước khi Finalize.",
-          });
-          return;
-        }
-        const bracketStage = (r) => {
-          if (r.stage === "RoundRobin" || r.stage === "KnockOut") return r.stage;
-          return effectiveFormat === "KnockOut" ? "KnockOut" : (r.stage || effectiveFormat);
-        };
-        const payload = {
-          format: effectiveFormat,
-          matches: rows.map((r) => ({
-            stage: bracketStage(r),
-            roundName: r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
-            roundIndex: Math.max(1, Number(r.roundIndex || 1)),
-            boardNumber: Math.max(1, Number(r.boardNumber || 1)),
-            whitePlayerId: r.whitePlayerId ? Number(r.whitePlayerId) : null,
-            blackPlayerId: r.blackPlayerId ? Number(r.blackPlayerId) : null,
-            startTime: toSqlDateTime(r.startTime),
-          })),
-        };
-        const res = await axios.post(
-          `${API_BASE}/api/tournaments?action=finalizeStep&id=${tournamentId}&step=BRACKET`,
-          payload,
-          { withCredentials: true },
-        );
-        setServerSetupStep("PLAYERS");
-        setLaneStep("players");
-        setServerBanner({
-          type: "success",
-          text: res?.data?.message || "Hoàn tất Structure.",
-        });
-        setRowErrors({});
-      } catch (err) {
-        const msg =
-          err?.response?.data?.message ||
-          err?.message ||
-          "Không thể hoàn tất bước Structure.";
-        setServerBanner({
-          type: "error",
-          text: `${msg} Bạn có thể nhấn vào bước 2 (Gán người chơi), 3 (Lịch) hoặc 4 (Trọng tài) trên thanh tiến trình để chuyển tab.`,
-        });
-      }
+  const autoScheduleCurrentMatches = async () => {
+    if (!canEditSchedule) {
+      setServerBanner({
+        type: "error",
+        text: "Bạn cần Finalize Players trước khi tự động xếp lịch.",
+      });
       return;
     }
-
-    if (laneStep === "players") {
-      if (errors.length > 0) {
-        applyRowErrors(errors);
-        setServerBanner({ type: "error", text: errors[0] });
-        return;
-      }
-      try {
-        const resolveStage = (r) => {
-          if (r.stage === "RoundRobin" || r.stage === "KnockOut") return r.stage;
-          return r.stage || effectiveFormat;
-        };
-        const payload = {
-          format: effectiveFormat,
-          matches: rows.map((r) => ({
-            stage: resolveStage(r),
-            roundName: r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
-            roundIndex: Math.max(1, Number(r.roundIndex || 1)),
-            boardNumber: Math.max(1, Number(r.boardNumber || 1)),
-            whitePlayerId: r.whitePlayerId ? Number(r.whitePlayerId) : null,
-            blackPlayerId: r.blackPlayerId ? Number(r.blackPlayerId) : null,
-            startTime: toSqlDateTime(r.startTime),
-          })),
-        };
-        const res = await axios.post(
-          `${API_BASE}/api/tournaments?action=finalizeStep&id=${tournamentId}&step=PLAYERS`,
-          payload,
-          { withCredentials: true },
-        );
-        setServerSetupStep("SCHEDULE");
-        setLaneStep("schedule");
-        setServerBanner({
-          type: "success",
-          text: res?.data?.message || "Hoàn tất Add Players.",
-        });
-        setRowErrors({});
-      } catch (err) {
-        setServerBanner({
-          type: "error",
-          text:
-            err?.response?.data?.message ||
-            "Không thể hoàn tất bước Add Players.",
-        });
-      }
+    if (rows.length === 0) {
+      setServerBanner({
+        type: "error",
+        text: "Chưa có match để auto schedule.",
+      });
+      return;
     }
-  };
-
-  const handleUnlockStep = async (stepKey) => {
-    if (!tournamentId || !stepKey) return;
-    const confirmed = window.confirm(
-      "Sửa bước này sẽ làm các bước sau cần finalize lại. Bạn có chắc muốn mở khóa?",
-    );
-    if (!confirmed) return;
     try {
-      setUnlocking(true);
-      setServerBanner(null);
-      await axios.post(
-        `${API_BASE}/api/tournaments?action=unlockStep&id=${tournamentId}&step=${stepKey}`,
-        {},
+      void markDirtyFromStep("SCHEDULE");
+      setActionBusy("autoSchedule", true);
+      const payload = {
+        matches: rows.map((r) => ({
+          matchId: r.matchId ? Number(r.matchId) : null,
+          stage: r.stage || effectiveFormat,
+          roundName: r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
+          roundIndex: Math.max(1, Number(r.roundIndex || 1)),
+          boardNumber: Math.max(1, Number(r.boardNumber || 1)),
+          player1Id: r.player1Id ? Number(r.player1Id) : null,
+          player2Id: r.player2Id ? Number(r.player2Id) : null,
+          startTime: toSqlDateTime(r.startTime),
+        })),
+      };
+      const res = await axios.post(
+        `${API_BASE}/api/tournaments?action=autoSchedule&id=${tournamentId}`,
+        payload,
         { withCredentials: true },
       );
-      const laneFromStep =
-        stepKey === "BRACKET"
-          ? "structure"
-          : stepKey === "PLAYERS"
-            ? "players"
-            : stepKey === "SCHEDULE"
-              ? "schedule"
-              : "referee";
-      const [res, stateRes] = await Promise.all([
-        axios.get(
-          `${API_BASE}/api/tournaments?action=schedule&id=${tournamentId}`,
-          { withCredentials: true },
-        ),
-        axios.get(
-          `${API_BASE}/api/tournaments?action=setupState&id=${tournamentId}`,
-          { withCredentials: true },
-        ),
-      ]);
-      const list = Array.isArray(res.data) ? res.data : [];
-      const rawStep =
-        stateRes?.data?.currentStep || stateRes?.data?.step || "BRACKET";
-      const step = String(rawStep).toUpperCase();
-      setServerSetupStep(step);
-      setStepStatuses(stateRes?.data?.stepStatuses || {});
-      setLaneStep(laneFromStep);
-      const stageFallback = effectiveFormat || "RoundRobin";
-      setRows(
-        list.map((m, idx) => ({
-          id: `sv-${m.matchId || idx + 1}`,
-          matchId: m.matchId,
-          stage: m.stage || stageFallback,
-          roundName: m.roundName || "",
-          roundIndex: Number(m.roundIndex || 1),
-          boardNumber: Number(m.boardNumber || idx + 1),
-          whitePlayerId: String(m.whitePlayerId ?? ""),
-          blackPlayerId: String(m.blackPlayerId ?? ""),
-          startTime: toDateTimeLocal(m.startTime),
-          refereeId: m.refereeId ? String(m.refereeId) : "",
-        })),
-      );
+      const data = res?.data;
+      if (!data?.success || !Array.isArray(data.matches)) {
+        setServerBanner({
+          type: "error",
+          text: data?.message || "Auto schedule thất bại.",
+        });
+        return;
+      }
+      setRows(mapMatchesToRows(data.matches));
+      setRowErrors({});
       setServerBanner({
         type: "success",
-        text: "Đã mở khóa bước. Các bước sau cần được finalize lại.",
+        text: data?.message || `Đã auto schedule cho ${data.matches.length} trận.`,
       });
     } catch (err) {
       setServerBanner({
         type: "error",
-        text: err?.response?.data?.message || "Mở khóa thất bại.",
+        text: err?.response?.data?.message || "Auto schedule thất bại.",
       });
     } finally {
-      setUnlocking(false);
+      setActionBusy("autoSchedule", false);
     }
   };
 
-  const handleUnlockCurrentStep = async () => {
-    if (!tournamentId) return;
-    let stepKey = null;
-    if (laneStep === "structure") stepKey = "BRACKET";
-    else if (laneStep === "players") stepKey = "PLAYERS";
-    else if (laneStep === "schedule") stepKey = "SCHEDULE";
-    else if (laneStep === "referee") stepKey = "REFEREES";
+  const handleFinalizeCurrentStep = async () => {
+    const nextLaneByStep = {
+      BRACKET: "players",
+      PLAYERS: "schedule",
+      SCHEDULE: "referee",
+      REFEREES: "referee",
+    };
+    const buildPayload = () => ({
+      format: effectiveFormat,
+      matches: rows.map((r) => ({
+        matchId: r.matchId ? Number(r.matchId) : null,
+        stage:
+          r.stage === "RoundRobin" || r.stage === "KnockOut"
+            ? r.stage
+            : r.stage || effectiveFormat,
+        roundName: r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
+        roundIndex: Math.max(1, Number(r.roundIndex || 1)),
+        boardNumber: Math.max(1, Number(r.boardNumber || 1)),
+        player1Id: r.player1Id ? Number(r.player1Id) : null,
+        player2Id: r.player2Id ? Number(r.player2Id) : null,
+        startTime: toSqlDateTime(r.startTime),
+        refereeId: r.refereeId ? Number(r.refereeId) : null,
+      })),
+    });
+
+    let stepKey = LANE_TO_STEP[laneStep];
     if (!stepKey) return;
-    await handleUnlockStep(stepKey);
+
+    if (stepKey === "BRACKET") {
+      if (structureErrors.length > 0) {
+        applyRowErrors(structureErrors);
+        setServerBanner({ type: "error", text: structureErrors[0] });
+        showResultModal("error", structureErrors[0]);
+        return;
+      }
+      if (rows.length === 0) {
+        const msg = "Chưa có vòng/trận nào. Hãy thêm ít nhất một dòng trước khi Finalize Structure.";
+        setServerBanner({ type: "error", text: msg });
+        showResultModal("error", msg);
+        return;
+      }
+    }
+
+    if (stepKey === "PLAYERS") {
+      if (!canEditPlayers) {
+        const msg = "Bạn cần Finalize Structure trước khi Finalize Players.";
+        setServerBanner({ type: "error", text: msg });
+        showResultModal("error", msg);
+        return;
+      }
+      if (errors.length > 0) {
+        applyRowErrors(errors);
+        setServerBanner({ type: "error", text: errors[0] });
+        showResultModal("error", errors[0]);
+        return;
+      }
+    }
+
+    if (stepKey === "SCHEDULE") {
+      if (!canEditSchedule) {
+        const msg = "Bạn cần Finalize Players trước khi Finalize Schedule.";
+        setServerBanner({ type: "error", text: msg });
+        showResultModal("error", msg);
+        return;
+      }
+      if (errors.length > 0) {
+        applyRowErrors(errors);
+        setServerBanner({ type: "error", text: errors[0] });
+        showResultModal("error", errors[0]);
+        return;
+      }
+    }
+
+    if (stepKey === "REFEREES" && !canEditReferees) {
+      const msg = "Bạn cần Finalize Schedule trước khi Finalize Referee.";
+      setServerBanner({ type: "error", text: msg });
+      showResultModal("error", msg);
+      return;
+    }
+
+    try {
+      setActionBusy("finalize", true);
+      const res = await axios.post(
+        `${API_BASE}/api/tournaments?action=finalizeStep&id=${tournamentId}&step=${stepKey}`,
+        buildPayload(),
+        {
+          withCredentials: true,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+      const successMsg =
+        res?.data?.message ||
+        (stepKey === "BRACKET"
+          ? "Hoàn tất Structure."
+          : stepKey === "PLAYERS"
+            ? "Hoàn tất Players."
+            : stepKey === "SCHEDULE"
+              ? "Hoàn tất Schedule."
+              : "Hoàn tất Referee.");
+      setServerBanner({ type: "success", text: successMsg });
+      showResultModal("success", successMsg);
+      setRowErrors({});
+      await refreshSetupData(nextLaneByStep[stepKey]);
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Không thể finalize bước hiện tại.";
+      setServerBanner({ type: "error", text: msg });
+      showResultModal("error", msg);
+    } finally {
+      setActionBusy("finalize", false);
+    }
+  };
+
+  const handleRoundNameChange = (stage, roundIndex, value) => {
+    void markDirtyFromStep("BRACKET");
+    const normalizedStage = stage || effectiveFormat;
+    const targetRound = Number(roundIndex || 1);
+    setRows((prev) =>
+      prev.map((r) => {
+        const rowStage = r.stage || effectiveFormat;
+        const rowRound = Number(r.roundIndex || 1);
+        if (rowStage !== normalizedStage || rowRound !== targetRound) return r;
+        return { ...r, roundName: value };
+      }),
+    );
   };
 
   const renderRoundCard = (match) => (
@@ -2461,15 +2470,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       {laneStep === "structure" && (
         <div className="tsu-preview-topline">
           <div className="tsu-preview-small-grid">
-            <input
-              type="text"
-              className="tsu-mini-input"
-              placeholder="Round name"
-              value={match.roundName || ""}
-              onChange={(e) =>
-                handleRowFieldChange(match.id, "roundName", e.target.value)
-              }
-            />
             <input
               type="number"
               className="tsu-mini-input"
@@ -2492,21 +2492,22 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
 
       {laneStep !== "structure" && (
         <>
-          <div className="tsu-preview-player white">
-            <span className="tsu-preview-seat">W</span>
+          <div className="tsu-preview-player player1">
+            <span className="tsu-preview-seat">P1</span>
             {laneStep === "players" ? (
               <select
                 className="tsu-mini-select"
-                value={match.whitePlayerId || ""}
+                value={match.player1Id || ""}
+                disabled={!canEditPlayers}
                 onChange={(e) =>
                   handleRowFieldChange(
                     match.id,
-                    "whitePlayerId",
+                    "player1Id",
                     e.target.value,
                   )
                 }
               >
-                <option value="">-- White --</option>
+                <option value="">-- Player 1 --</option>
                 {availablePlayers.map((p) => (
                   <option
                     key={`inline-w-${match.id}-${p.userId}`}
@@ -2518,26 +2519,27 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
               </select>
             ) : (
               <span className="tsu-readonly-value">
-                {labelForPlayer(match.whitePlayerId)}
+                {labelForPlayer(match.player1Id)}
               </span>
             )}
           </div>
 
-          <div className="tsu-preview-player black">
-            <span className="tsu-preview-seat">B</span>
+          <div className="tsu-preview-player player2">
+            <span className="tsu-preview-seat">P2</span>
             {laneStep === "players" ? (
               <select
                 className="tsu-mini-select"
-                value={match.blackPlayerId || ""}
+                value={match.player2Id || ""}
+                disabled={!canEditPlayers}
                 onChange={(e) =>
                   handleRowFieldChange(
                     match.id,
-                    "blackPlayerId",
+                    "player2Id",
                     e.target.value,
                   )
                 }
               >
-                <option value="">-- Black --</option>
+                <option value="">-- Player 2 --</option>
                 {availablePlayers.map((p) => (
                   <option
                     key={`inline-b-${match.id}-${p.userId}`}
@@ -2549,7 +2551,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
               </select>
             ) : (
               <span className="tsu-readonly-value">
-                {labelForPlayer(match.blackPlayerId)}
+                {labelForPlayer(match.player2Id)}
               </span>
             )}
           </div>
@@ -2563,6 +2565,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
             value={match.startTime || ""}
             onChange={(v) => handleRowFieldChange(match.id, "startTime", v)}
             title={scheduleInputHint}
+            disabled={!canEditSchedule}
           />
         </div>
       )}
@@ -2586,6 +2589,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
             <select
               className="tsu-mini-select"
               value={match.refereeId || ""}
+              disabled={!canEditReferees}
               onChange={(e) => handleRowFieldChange(match.id, "refereeId", e.target.value)}
             >
               <option value="">-- Chọn trọng tài --</option>
@@ -2617,9 +2621,25 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
           {rounds.map((round) => (
             <div key={`rr-${round.roundIndex}`} className="tsu-rr-round-card">
               <div className="tsu-rr-round-head">
-                <strong>
-                  {resolveRoundLabel(round.matches, round.roundIndex)}
-                </strong>
+                {laneStep === "structure" ? (
+                  <input
+                    type="text"
+                    className="tsu-mini-input"
+                    placeholder={`Round ${round.roundIndex}`}
+                    value={resolveRoundLabel(round.matches, round.roundIndex)}
+                    onChange={(e) =>
+                      handleRoundNameChange(
+                        "RoundRobin",
+                        round.roundIndex,
+                        e.target.value,
+                      )
+                    }
+                  />
+                ) : (
+                  <strong>
+                    {resolveRoundLabel(round.matches, round.roundIndex)}
+                  </strong>
+                )}
                 <div className="tsu-round-actions">
                   <span>{round.matches.length} trận</span>
                   <button
@@ -2670,9 +2690,25 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                 }}
               >
                 <div className="tsu-ko-column-head">
-                  <strong>
-                    {resolveRoundLabel(round.matches, round.roundIndex)}
-                  </strong>
+                  {laneStep === "structure" ? (
+                    <input
+                      type="text"
+                      className="tsu-mini-input"
+                      placeholder={`Round ${round.roundIndex}`}
+                      value={resolveRoundLabel(round.matches, round.roundIndex)}
+                      onChange={(e) =>
+                        handleRoundNameChange(
+                          "KnockOut",
+                          round.roundIndex,
+                          e.target.value,
+                        )
+                      }
+                    />
+                  ) : (
+                    <strong>
+                      {resolveRoundLabel(round.matches, round.roundIndex)}
+                    </strong>
+                  )}
                   <span>Round #{round.roundIndex}</span>
                 </div>
                 <div
@@ -2693,19 +2729,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                       {laneStep === "structure" ? (
                         <div className="tsu-preview-topline">
                           <div className="tsu-preview-small-grid">
-                            <input
-                              type="text"
-                              className="tsu-mini-input"
-                              placeholder="Round name"
-                              value={match.roundName || ""}
-                              onChange={(e) =>
-                                handleRowFieldChange(
-                                  match.id,
-                                  "roundName",
-                                  e.target.value,
-                                )
-                              }
-                            />
                             <input
                               type="number"
                               className="tsu-mini-input"
@@ -2744,26 +2767,27 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                       {laneStep !== "structure" && (
                         <>
                           <div className="tsu-ko-player-row">
-                            <span className="tsu-ko-seat">W</span>
+                            <span className="tsu-ko-seat">P1</span>
                             {laneStep === "players" &&
                             Number(match.roundIndex || 1) > 1 ? (
                               <span className="tsu-readonly-value">
-                                {getKoWinnerRefs(match).whiteRef}
+                                {getKoWinnerRefs(match).player1Ref}
                               </span>
                             ) : laneStep === "players" ? (
                               <select
                                 className="tsu-mini-select"
-                                value={match.whitePlayerId || ""}
+                                value={match.player1Id || ""}
+                                disabled={!canEditPlayers}
                                 onChange={(e) =>
                                   handleRowFieldChange(
                                     match.id,
-                                    "whitePlayerId",
+                                    "player1Id",
                                     e.target.value,
                                   )
                                 }
                               >
-                                <option value="">-- White --</option>
-                                {getKoPlayersForSelect(match, "white").map(
+                                <option value="">-- Player 1 --</option>
+                                {getKoPlayersForSelect(match, "player1").map(
                                   (p) => (
                                     <option
                                       key={`ko-w-${match.id}-${p.userId}`}
@@ -2777,33 +2801,34 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                             ) : (
                               <span className="tsu-readonly-value">
                                 {Number(match.roundIndex || 1) > 1 &&
-                                !match.whitePlayerId
-                                  ? getKoWinnerRefs(match).whiteRef
-                                  : labelForPlayer(match.whitePlayerId)}
+                                !match.player1Id
+                                  ? getKoWinnerRefs(match).player1Ref
+                                  : labelForPlayer(match.player1Id)}
                               </span>
                             )}
                           </div>
                           <div className="tsu-ko-player-row">
-                            <span className="tsu-ko-seat">B</span>
+                            <span className="tsu-ko-seat">P2</span>
                             {laneStep === "players" &&
                             Number(match.roundIndex || 1) > 1 ? (
                               <span className="tsu-readonly-value">
-                                {getKoWinnerRefs(match).blackRef}
+                                {getKoWinnerRefs(match).player2Ref}
                               </span>
                             ) : laneStep === "players" ? (
                               <select
                                 className="tsu-mini-select"
-                                value={match.blackPlayerId || ""}
+                                value={match.player2Id || ""}
+                                disabled={!canEditPlayers}
                                 onChange={(e) =>
                                   handleRowFieldChange(
                                     match.id,
-                                    "blackPlayerId",
+                                    "player2Id",
                                     e.target.value,
                                   )
                                 }
                               >
-                                <option value="">-- Black --</option>
-                                {getKoPlayersForSelect(match, "black").map(
+                                <option value="">-- Player 2 --</option>
+                                {getKoPlayersForSelect(match, "player2").map(
                                   (p) => (
                                     <option
                                       key={`ko-b-${match.id}-${p.userId}`}
@@ -2817,9 +2842,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                             ) : (
                               <span className="tsu-readonly-value">
                                 {Number(match.roundIndex || 1) > 1 &&
-                                !match.blackPlayerId
-                                  ? getKoWinnerRefs(match).blackRef
-                                  : labelForPlayer(match.blackPlayerId)}
+                                !match.player2Id
+                                  ? getKoWinnerRefs(match).player2Ref
+                                  : labelForPlayer(match.player2Id)}
                               </span>
                             )}
                           </div>
@@ -2832,6 +2857,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                             value={match.startTime || ""}
                             onChange={(v) => handleRowFieldChange(match.id, "startTime", v)}
                             title={scheduleInputHint}
+                            disabled={!canEditSchedule}
                           />
                         </div>
                       )}
@@ -2855,6 +2881,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                             <select
                               className="tsu-mini-select"
                               value={match.refereeId || ""}
+                              disabled={!canEditReferees}
                               onChange={(e) =>
                                 handleRowFieldChange(match.id, "refereeId", e.target.value)
                               }
@@ -2938,39 +2965,20 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                       ? "SCHEDULE"
                       : "REFEREES";
               const finalized = stepStatuses?.[stepKey] === "FINALIZED";
-              const prevStep = step - 1;
-              const prevKey =
-                prevStep === 1
-                  ? "BRACKET"
-                  : prevStep === 2
-                    ? "PLAYERS"
-                    : prevStep === 3
-                      ? "SCHEDULE"
-                      : null;
-              const prevOk =
-                !prevKey || stepStatuses?.[prevKey] === "FINALIZED";
-              // Bước structure khi đã finalize thì không cho chuyển về (chỉ mở khóa mới chỉnh được)
-              const isStructureLocked = key === "structure" && finalized;
-              const disabled = !prevOk || isStructureLocked;
+              const dirty = stepStatuses?.[stepKey] === "DIRTY";
               return (
                 <div
                   key={key}
                   role="button"
-                  tabIndex={disabled ? -1 : 0}
-                  className={`tsu-step-item ${laneStep === key ? "active" : ""} ${disabled ? "disabled" : ""} ${isStructureLocked ? "tsu-step-locked" : ""}`}
-                  onClick={(e) => {
-                    if (disabled) return;
-                    if (isStructureLocked) {
-                      e.stopPropagation();
-                      return;
-                    }
+                  tabIndex={0}
+                  className={`tsu-step-item ${laneStep === key ? "active" : ""}`}
+                  onClick={() => {
                     setLaneStep(key);
                   }}
                   onKeyDown={(e) => {
-                    if (disabled) return;
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      if (!isStructureLocked) setLaneStep(key);
+                      setLaneStep(key);
                     }
                   }}
                 >
@@ -2979,19 +2987,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                   {finalized && (
                     <span className="tsu-step-label"> (Finalized)</span>
                   )}
-                  {isStructureLocked && (
-                    <button
-                      type="button"
-                      className="tsu-step-unlock-inline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUnlockStep("BRACKET");
-                      }}
-                      disabled={unlocking}
-                    >
-                      {unlocking ? "…" : "Unlock"}
-                    </button>
-                  )}
+                  {dirty && <span className="tsu-step-label"> (Dirty)</span>}
                   {step < 4 && <span className="tsu-step-connector" />}
                 </div>
               );
@@ -3003,173 +2999,53 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
           </p>
 
           <div className="tsu-actions">
-            {/*
-              Finalize buttons chỉ hiển thị khi bước tương ứng đang ở trạng thái DRAFT.
-              Nếu đã FINALIZED thì phải dùng nút Unlock trước, sau đó mới Finalize lại.
-            */}
-            {laneStep === "structure" && stepStatuses?.BRACKET !== "FINALIZED" && (
+            {laneStep === "structure" && (
               <button
                 className="tsu-btn tsu-btn-primary tsu-btn-hpv-primary"
                 onClick={runAutoSetup}
-                disabled={autoSetupLoading}
+                disabled={actionLoading.autoStructure || actionLoading.finalize}
               >
-                {autoSetupLoading ? "Đang tạo..." : "Auto Setup"}
+                {actionLoading.autoStructure ? "Đang tạo..." : "Auto Generate Bracket"}
               </button>
             )}
             {laneStep === "players" && (
               <button
                 className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
                 onClick={autoFillPlayersIntoStructure}
+                disabled={!canEditPlayers || actionLoading.autoPlayers || actionLoading.finalize}
               >
-                Auto Add Players
+                {actionLoading.autoPlayers ? "Đang điền..." : "Auto Fill Players"}
               </button>
             )}
-            {laneStep === "structure" &&
-              stepStatuses?.BRACKET !== "FINALIZED" && (
-                <button
-                  className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                  onClick={handleFinalizeCurrentStep}
-                >
-                  Finalize Structure
-                </button>
-              )}
-            {laneStep === "players" &&
-              stepStatuses?.PLAYERS !== "FINALIZED" && (
-                <button
-                  className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                  onClick={handleFinalizeCurrentStep}
-                >
-                  Finalize Players
-                </button>
-              )}
-            {laneStep === "structure" &&
-              stepStatuses?.BRACKET === "FINALIZED" && (
-                <button
-                  className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                  onClick={handleUnlockCurrentStep}
-                  disabled={unlocking}
-                >
-                  {unlocking ? "Đang mở khóa..." : "Unlock Structure"}
-                </button>
-              )}
-            {laneStep === "players" &&
-              stepStatuses?.PLAYERS === "FINALIZED" && (
-                <button
-                  className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                  onClick={handleUnlockCurrentStep}
-                  disabled={unlocking}
-                >
-                  {unlocking ? "Đang mở khóa..." : "Unlock Players"}
-                </button>
-              )}
-            {laneStep === "schedule" &&
-              stepStatuses?.SCHEDULE === "FINALIZED" && (
-                <button
-                  className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                  onClick={handleUnlockCurrentStep}
-                  disabled={unlocking}
-                >
-                  {unlocking ? "Đang mở khóa..." : "Unlock Schedule"}
-                </button>
-              )}
-            {laneStep === "referee" &&
-              stepStatuses?.REFEREES === "FINALIZED" && (
-                <button
-                  className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                  onClick={handleUnlockCurrentStep}
-                  disabled={unlocking}
-                >
-                  {unlocking ? "Đang mở khóa..." : "Unlock Referees"}
-                </button>
-              )}
             {laneStep === "schedule" && (
               <button
                 className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                disabled={
-                  saving ||
-                  errors.length > 0 ||
-                  stepStatuses?.SCHEDULE === "FINALIZED"
-                }
-                onClick={async () => {
-                  if (errors.length > 0) {
-                    applyRowErrors(errors);
-                    setServerBanner({ type: "error", text: errors[0] });
-                    return;
-                  }
-                  try {
-                    setSaving(true);
-                    const scheduleStage = (r) => {
-                      if (r.stage === "RoundRobin" || r.stage === "KnockOut") return r.stage;
-                      return r.stage || effectiveFormat;
-                    };
-                    const payload = {
-                      format: effectiveFormat,
-                      matches: rows.map((r) => ({
-                        stage: scheduleStage(r),
-                        roundName: r.roundName || `Round ${Number(r.roundIndex || 1)}`,
-                        roundIndex: Number(r.roundIndex || 1),
-                        boardNumber: Number(r.boardNumber || 1),
-                        whitePlayerId: r.whitePlayerId
-                          ? Number(r.whitePlayerId)
-                          : null,
-                        blackPlayerId: r.blackPlayerId
-                          ? Number(r.blackPlayerId)
-                          : null,
-                        startTime: toSqlDateTime(r.startTime),
-                      })),
-                    };
-                    const res = await axios.post(
-                      `${API_BASE}/api/tournaments?action=finalizeStep&id=${tournamentId}&step=SCHEDULE`,
-                      payload,
-                      {
-                        withCredentials: true,
-                        headers: { "Content-Type": "application/json" },
-                      },
-                    );
-                    setServerBanner({ type: "success", text: res?.data?.message || "Lưu lịch thành công." });
-                    const [schedRes, stateRes] = await Promise.all([
-                      axios.get(
-                        `${API_BASE}/api/tournaments?action=schedule&id=${tournamentId}`,
-                        { withCredentials: true },
-                      ),
-                      axios.get(
-                        `${API_BASE}/api/tournaments?action=setupState&id=${tournamentId}`,
-                        { withCredentials: true },
-                      ),
-                    ]);
-                    const statuses = stateRes?.data?.stepStatuses || {};
-                    setStepStatuses(statuses);
-                    setServerSetupStep(stateRes?.data?.currentStep || stateRes?.data?.step || "REFEREES");
-                    setLaneStep("referee");
-                    const list = Array.isArray(schedRes.data) ? schedRes.data : [];
-                    setRows(
-                      list.map((m, idx) => ({
-                        id: `sv-${m.matchId || idx + 1}`,
-                        matchId: m.matchId,
-                        stage: m.stage || stageOptions[0] || "RoundRobin",
-                        roundName: m.roundName || "",
-                        roundIndex: Number(m.roundIndex || 1),
-                        boardNumber: Number(m.boardNumber || idx + 1),
-                        whitePlayerId: String(m.whitePlayerId ?? ""),
-                        blackPlayerId: String(m.blackPlayerId ?? ""),
-                        startTime: toDateTimeLocal(m.startTime),
-                        refereeId: m.refereeId ? String(m.refereeId) : "",
-                      })),
-                    );
-                  } catch (err) {
-                    const msg = err?.response?.data?.message ?? err?.message ?? "Không thể lưu lịch.";
-                    setServerBanner({
-                      type: "error",
-                      text: msg,
-                    });
-                  } finally {
-                    setSaving(false);
-                  }
-                }}
+                onClick={autoScheduleCurrentMatches}
+                disabled={!canEditSchedule || actionLoading.autoSchedule || actionLoading.finalize}
               >
-                Finalize Schedule
+                {actionLoading.autoSchedule ? "Đang xếp..." : "Auto Schedule"}
               </button>
             )}
+            <button
+              className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
+              onClick={handleFinalizeCurrentStep}
+              disabled={
+                actionLoading.finalize ||
+                (laneStep === "players" && !canEditPlayers) ||
+                (laneStep === "schedule" && !canEditSchedule) ||
+                (laneStep === "referee" && !canEditReferees)
+              }
+            >
+              {actionLoading.finalize
+                ? "Đang finalize..."
+                : laneStep === "structure"
+                  ? "Finalize Structure"
+                  : laneStep === "players"
+                    ? "Finalize Players"
+                    : laneStep === "schedule"
+                      ? "Finalize Schedule"
+                      : "Finalize Referee"}
+            </button>
             {laneStep === "referee" && (
               <button
                 className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
@@ -3181,9 +3057,9 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
             <button
               className="tsu-btn tsu-btn-primary ui-btn ui-btn-primary"
               onClick={handleSave}
-              disabled={saving || laneStep !== "referee"}
+              disabled={actionLoading.publish || laneStep !== "referee" || !canPublish}
             >
-              {saving ? "Đang lưu..." : "Save & Publish"}
+              {actionLoading.publish ? "Đang publish..." : "Save & Publish"}
             </button>
           </div>
 
@@ -3203,13 +3079,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                         Chưa có trọng tài nào. Vào tab Referees để thêm trọng
                         tài vào giải trước.
                       </p>
-                      {tournamentReferees.length === 0 && (
-                        <p className="tsu-referee-empty-hint">
-                          Chưa có trọng tài nào. Vào tab Referees để thêm trọng
-                          tài vào giải trước.
-                        </p>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3247,61 +3117,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                       )}
                     </p>
                   </div>
-                  {laneStep === "schedule" && (
-                    <div className="tsu-preview-head-actions">
-                      <button
-                        type="button"
-                        className="tsu-round-add-btn"
-                        onClick={() => {
-                          if (!tournamentStartDate || !tournamentEndDate || rows.length === 0) {
-                            setServerBanner({ type: "error", text: "Cần có khoảng thời gian giải (start/end) để auto lịch." });
-                            return;
-                          }
-                          const start = new Date(tournamentStartDate).getTime();
-                          const end = new Date(tournamentEndDate).getTime();
-                          if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
-                            setServerBanner({ type: "error", text: "Ngày bắt đầu/kết thúc giải không hợp lệ." });
-                            return;
-                          }
-                          const step = (end - start) / Math.max(rows.length, 1);
-                          const toLocal = (d) => {
-                            const x = new Date(d);
-                            const local = new Date(x.getTime() - x.getTimezoneOffset() * 60000);
-                            return local.toISOString().slice(0, 16);
-                          };
-                          setRows((prev) =>
-                            prev.map((row, i) => ({
-                              ...row,
-                              startTime: toLocal(new Date(start + step * i)),
-                            })),
-                          );
-                          setServerBanner({ type: "success", text: `Đã tự gán lịch cho ${rows.length} trận trong khoảng thời gian giải.` });
-                        }}
-                      >
-                        Auto schedule
-                      </button>
-                    </div>
-                  )}
-                  {laneStep === "structure" && (
-                    <div className="tsu-preview-head-actions">
-                      {(effectiveFormat === "RoundRobin" || effectiveFormat === "Hybrid") && (
-                        <button
-                          className="tsu-round-add-btn"
-                          onClick={() => addInlineRound("RoundRobin")}
-                        >
-                          + Thêm round RoundRobin
-                        </button>
-                      )}
-                      {(effectiveFormat === "KnockOut" || effectiveFormat === "Hybrid") && (
-                        <button
-                          className="tsu-round-add-btn"
-                          onClick={() => addInlineRound("KnockOut")}
-                        >
-                          + Thêm round KnockOut
-                        </button>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {effectiveFormat === "RoundRobin" &&
@@ -3322,6 +3137,29 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       </>
     )}
     {toast && <div className="ti-toast">{toast}</div>}
+    {resultModal.open && (
+      <div className="tsu-result-overlay" role="dialog" aria-modal="true">
+        <div className="tsu-result-modal">
+          <div className="tsu-result-icon-wrap">
+            {resultModal.type === "success" ? (
+              <CheckCircle2 size={58} className="tsu-result-icon success" />
+            ) : (
+              <AlertCircle size={58} className="tsu-result-icon error" />
+            )}
+          </div>
+          <h4 className="tsu-result-title">
+            {resultModal.type === "success" ? "Thành công" : "Có lỗi xảy ra"}
+          </h4>
+          <p className="tsu-result-message">{resultModal.message}</p>
+          <button
+            className="tsu-btn tsu-btn-primary ui-btn ui-btn-primary"
+            onClick={closeResultModal}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    )}
   </div>
 );
 };
@@ -4108,3 +3946,4 @@ const ReportsTab = ({ tournamentId }) => {
 };
 
 export default TournamentDetail;
+

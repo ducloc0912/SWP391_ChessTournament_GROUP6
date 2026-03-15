@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Calendar, ChevronLeft, ChevronRight, MapPin, Search, Trophy, Users } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Heart, HeartOff, MapPin, Search, Trophy, Users } from "lucide-react";
 import MainHeader from "./MainHeader";
 import "../../assets/css/TournamentPublic.css";
 
@@ -97,8 +97,11 @@ export default function TournamentPublic() {
   const [nameSort, setNameSort] = useState("az");
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(true);
+  const [followingLoading, setFollowingLoading] = useState(false);
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [followingOnly, setFollowingOnly] = useState(false);
+  const [followingIds, setFollowingIds] = useState([]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -150,6 +153,54 @@ export default function TournamentPublic() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const loadFollowingIds = async () => {
+      if (!user?.userId) {
+        setFollowingIds([]);
+        return;
+      }
+      setFollowingLoading(true);
+      try {
+        const res = await axios.get(`${API_BASE}/api/public/tournaments?action=followingIds`, {
+          withCredentials: true,
+        });
+        setFollowingIds(Array.isArray(res?.data) ? res.data.map((v) => Number(v)) : []);
+      } catch {
+        setFollowingIds([]);
+      } finally {
+        setFollowingLoading(false);
+      }
+    };
+    loadFollowingIds();
+  }, [user?.userId]);
+
+  const handleToggleFollow = async (tournamentId) => {
+    if (!user?.userId) {
+      navigate("/login");
+      return;
+    }
+    const normalizedId = Number(tournamentId);
+    const followed = followingIds.includes(normalizedId);
+    try {
+      if (followed) {
+        await axios.delete(
+          `${API_BASE}/api/public/tournaments?action=follow&id=${normalizedId}`,
+          { withCredentials: true },
+        );
+        setFollowingIds((prev) => prev.filter((id) => id !== normalizedId));
+      } else {
+        await axios.post(
+          `${API_BASE}/api/public/tournaments?action=follow&id=${normalizedId}`,
+          {},
+          { withCredentials: true },
+        );
+        setFollowingIds((prev) => (prev.includes(normalizedId) ? prev : [...prev, normalizedId]));
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || "Failed to update follow status.");
+    }
+  };
+
   const filteredTournaments = useMemo(() => {
     const q = searchText.trim().toLowerCase();
     const base = tournaments.filter((t) => {
@@ -179,7 +230,9 @@ export default function TournamentPublic() {
         return true;
       })();
 
-      return matchesSearch && matchesStatus && matchesPrize && matchesFee;
+      const isFollowed = followingIds.includes(Number(t.tournamentId));
+      const matchesFollowing = !followingOnly || isFollowed;
+      return matchesSearch && matchesStatus && matchesPrize && matchesFee && matchesFollowing;
     });
 
     return [...base].sort((a, b) => {
@@ -187,7 +240,7 @@ export default function TournamentPublic() {
       const nameB = String(b.tournamentName || "").toLowerCase();
       return nameSort === "za" ? nameB.localeCompare(nameA) : nameA.localeCompare(nameB);
     });
-  }, [tournaments, searchText, statusFilter, prizeFilter, feeFilter, nameSort]);
+  }, [tournaments, searchText, statusFilter, prizeFilter, feeFilter, nameSort, followingOnly, followingIds]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTournaments.length / PAGE_SIZE));
   const paginatedTournaments = filteredTournaments.slice(
@@ -227,9 +280,15 @@ export default function TournamentPublic() {
             <button
               type="button"
               className="tp-all-btn"
-              onClick={() => navigate("/tournaments/public")}
+              onClick={() => {
+                if (!user?.userId) {
+                  navigate("/login");
+                  return;
+                }
+                setFollowingOnly((prev) => !prev);
+              }}
             >
-              Xem tất cả giải đấu
+              {followingOnly ? "Tất cả giải" : "Các giải đang theo dõi"}
             </button>
           </div>
 
@@ -296,7 +355,11 @@ export default function TournamentPublic() {
               </button>
             </div>
           ) : filteredTournaments.length === 0 ? (
-            <div className="tp-state-card">Không có giải đấu phù hợp với bộ lọc hiện tại.</div>
+            <div className="tp-state-card">
+              {followingOnly
+                ? "You are not following any tournaments yet, or no followed tournaments match current filters."
+                : "No tournaments match the current filters."}
+            </div>
           ) : (
             <>
               <div className="tp-grid">
@@ -355,13 +418,31 @@ export default function TournamentPublic() {
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          className="tp-detail-btn"
-                          onClick={() => navigate(`/tournaments/public/${t.tournamentId}`)}
-                        >
-                          Xem chi tiết
-                        </button>
+                        <div className="tp-card-actions">
+                          <button
+                            type="button"
+                            className={`tp-follow-btn ${followingIds.includes(Number(t.tournamentId)) ? "active" : ""}`}
+                            disabled={followingLoading}
+                            onClick={() => handleToggleFollow(t.tournamentId)}
+                          >
+                            {followingIds.includes(Number(t.tournamentId)) ? (
+                              <>
+                                <HeartOff size={14} /> Unfollow
+                              </>
+                            ) : (
+                              <>
+                                <Heart size={14} /> Follow
+                              </>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            className="tp-detail-btn"
+                            onClick={() => navigate(`/tournaments/public/${t.tournamentId}`)}
+                          >
+                            View details
+                          </button>
+                        </div>
                       </div>
                     </article>
                   );
@@ -409,3 +490,4 @@ export default function TournamentPublic() {
     </div>
   );
 }
+

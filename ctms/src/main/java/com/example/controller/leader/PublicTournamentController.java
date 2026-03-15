@@ -3,10 +3,12 @@ package com.example.controller.leader;
 import com.example.model.dto.TournamentDTO;
 import com.example.model.dto.TournamentPlayerDTO;
 import com.example.model.dto.FeedbackDTO;
+import com.example.model.entity.User;
 import com.example.model.enums.TournamentFormat;
 import com.example.model.enums.TournamentStatus;
 import com.example.service.leader.TournamentService;
 import com.example.DAO.FeedbackDAO;
+import com.example.DAO.TournamentFollowDAO;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import jakarta.servlet.ServletException;
@@ -14,6 +16,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -26,12 +29,14 @@ public class PublicTournamentController extends HttpServlet {
 
     private TournamentService tournamentService;
     private FeedbackDAO feedbackDAO;
+    private TournamentFollowDAO tournamentFollowDAO;
     private Gson gson;
 
     @Override
     public void init() throws ServletException {
         tournamentService = new TournamentService();
         feedbackDAO = new FeedbackDAO();
+        tournamentFollowDAO = new TournamentFollowDAO();
         gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd HH:mm:ss")
                 .create();
@@ -47,7 +52,7 @@ public class PublicTournamentController extends HttpServlet {
             resp.setHeader("Vary", "Origin");
         }
 
-        resp.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+        resp.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
         resp.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
         resp.setHeader("Access-Control-Max-Age", "3600");
     }
@@ -143,6 +148,18 @@ public class PublicTournamentController extends HttpServlet {
             return;
         }
 
+        if ("followingIds".equals(action)) {
+            User currentUser = getCurrentUser(request);
+            if (currentUser == null) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("{\"message\":\"Unauthorized\"}");
+                return;
+            }
+            List<Integer> ids = tournamentFollowDAO.getFollowingTournamentIds(currentUser.getUserId());
+            response.getWriter().write(gson.toJson(ids));
+            return;
+        }
+
         if ("participants".equals(action)) {
             String idParam = request.getParameter("id");
             if (idParam == null || idParam.isBlank()) {
@@ -205,5 +222,83 @@ public class PublicTournamentController extends HttpServlet {
         // GET /api/public/tournaments
         List<TournamentDTO> list = tournamentService.getAllTournamentsWithCurrentPlayers();
         response.getWriter().write(gson.toJson(list));
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        addCors(request, response);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        String action = request.getParameter("action");
+        if (!"follow".equals(action)) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("{\"message\":\"Invalid action\"}");
+            return;
+        }
+
+        User currentUser = getCurrentUser(request);
+        if (currentUser == null) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("{\"message\":\"Unauthorized\"}");
+            return;
+        }
+
+        int tournamentId = parseTournamentId(request, response);
+        if (tournamentId <= 0) return;
+
+        boolean ok = tournamentFollowDAO.followTournament(currentUser.getUserId(), tournamentId);
+        response.getWriter().write("{\"success\": " + ok + "}");
+    }
+
+    @Override
+    protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        addCors(request, response);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        String action = request.getParameter("action");
+        if (!"follow".equals(action)) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("{\"message\":\"Invalid action\"}");
+            return;
+        }
+
+        User currentUser = getCurrentUser(request);
+        if (currentUser == null) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("{\"message\":\"Unauthorized\"}");
+            return;
+        }
+
+        int tournamentId = parseTournamentId(request, response);
+        if (tournamentId <= 0) return;
+
+        boolean ok = tournamentFollowDAO.unfollowTournament(currentUser.getUserId(), tournamentId);
+        response.getWriter().write("{\"success\": " + ok + "}");
+    }
+
+    private User getCurrentUser(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null || !(session.getAttribute("user") instanceof User user)) {
+            return null;
+        }
+        return user;
+    }
+
+    private int parseTournamentId(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String idParam = request.getParameter("id");
+        if (idParam == null || idParam.isBlank()) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("{\"message\":\"Missing tournament id\"}");
+            return -1;
+        }
+        try {
+            return Integer.parseInt(idParam);
+        } catch (NumberFormatException e) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("{\"message\":\"Invalid tournament id\"}");
+            return -1;
+        }
     }
 }

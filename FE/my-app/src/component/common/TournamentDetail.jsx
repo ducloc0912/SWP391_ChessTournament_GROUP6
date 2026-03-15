@@ -60,13 +60,18 @@ function formatMoney(amount) {
   return num.toLocaleString("vi-VN");
 }
 
-function parseResult(str) {
-  if (!str || typeof str !== "string") return { white: "—", black: "—" };
-  const s = str.trim();
-  if (s === "½-½" || s === "0.5-0.5") return { white: "½", black: "½" };
-  const m = s.match(/^(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)$/);
-  if (m) return { white: m[1], black: m[2] };
-  return { white: "—", black: "—" };
+function parseResult(match) {
+  const p1Score = Number(match?.player1Score);
+  const p2Score = Number(match?.player2Score);
+  if (!Number.isNaN(p1Score) && !Number.isNaN(p2Score)) {
+    return { player1: String(p1Score), player2: String(p2Score) };
+  }
+
+  const result = String(match?.result || "").trim().toLowerCase();
+  if (result === "player1") return { player1: "1", player2: "0" };
+  if (result === "player2") return { player1: "0", player2: "1" };
+  if (result === "draw") return { player1: "0.5", player2: "0.5" };
+  return { player1: "-", player2: "-" };
 }
 
 function resolveImageUrl(rawImage) {
@@ -638,9 +643,7 @@ export default function TournamentDetail() {
                           <div className="tdp-round-header">ROUND {round}</div>
                           <div className="tdp-round-matches">
                             {matches.map((m) => {
-                              const scores = m.result
-                                ? parseResult(m.result)
-                                : { white: "—", black: "—" };
+                              const scores = parseResult(m);
                               return (
                                 <div
                                   key={m.matchId}
@@ -649,20 +652,20 @@ export default function TournamentDetail() {
                                   <div className="tdp-match-row">
                                     <span className="tdp-player-avatar" />
                                     <span className="tdp-player-name">
-                                      {m.whitePlayerName || "TBD"}
+                                      {m.player1Name || "TBD"}
                                     </span>
                                     <span className="tdp-score">
-                                      {scores.white}
+                                      {scores.player1}
                                     </span>
                                   </div>
                                   <div className="tdp-match-divider" />
                                   <div className="tdp-match-row">
                                     <span className="tdp-player-avatar" />
                                     <span className="tdp-player-name">
-                                      {m.blackPlayerName || "TBD"}
+                                      {m.player2Name || "TBD"}
                                     </span>
                                     <span className="tdp-score">
-                                      {scores.black}
+                                      {scores.player2}
                                     </span>
                                   </div>
                                   <p className="tdp-match-meta">
@@ -677,7 +680,6 @@ export default function TournamentDetail() {
                       ))
                     )}
                   </div>
-
                   <aside className="tdp-bracket-side">
                     <div className="tdp-side-panel tdp-advances">
                       <h4>ADVANCES</h4>
@@ -716,3 +718,4 @@ export default function TournamentDetail() {
     </div>
   );
 }
+

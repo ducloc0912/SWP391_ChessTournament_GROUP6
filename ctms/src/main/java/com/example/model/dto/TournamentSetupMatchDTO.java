@@ -8,10 +8,10 @@ public class TournamentSetupMatchDTO {
     private String roundName;
     private Integer roundIndex;
     private Integer boardNumber;
-    private Integer whitePlayerId;
-    private String whitePlayerName;
-    private Integer blackPlayerId;
-    private String blackPlayerName;
+    private Integer player1Id;
+    private String player1Name;
+    private Integer player2Id;
+    private String player2Name;
     private Timestamp startTime;
     private Integer refereeId;
     private Integer groupId;
@@ -70,36 +70,36 @@ public class TournamentSetupMatchDTO {
         this.boardNumber = boardNumber;
     }
 
-    public Integer getWhitePlayerId() {
-        return whitePlayerId;
+    public Integer getPlayer1Id() {
+        return player1Id;
     }
 
-    public void setWhitePlayerId(Integer whitePlayerId) {
-        this.whitePlayerId = whitePlayerId;
+    public void setPlayer1Id(Integer player1Id) {
+        this.player1Id = player1Id;
     }
 
-    public String getWhitePlayerName() {
-        return whitePlayerName;
+    public String getPlayer1Name() {
+        return player1Name;
     }
 
-    public void setWhitePlayerName(String whitePlayerName) {
-        this.whitePlayerName = whitePlayerName;
+    public void setPlayer1Name(String player1Name) {
+        this.player1Name = player1Name;
     }
 
-    public Integer getBlackPlayerId() {
-        return blackPlayerId;
+    public Integer getPlayer2Id() {
+        return player2Id;
     }
 
-    public void setBlackPlayerId(Integer blackPlayerId) {
-        this.blackPlayerId = blackPlayerId;
+    public void setPlayer2Id(Integer player2Id) {
+        this.player2Id = player2Id;
     }
 
-    public String getBlackPlayerName() {
-        return blackPlayerName;
+    public String getPlayer2Name() {
+        return player2Name;
     }
 
-    public void setBlackPlayerName(String blackPlayerName) {
-        this.blackPlayerName = blackPlayerName;
+    public void setPlayer2Name(String player2Name) {
+        this.player2Name = player2Name;
     }
 
     public Timestamp getStartTime() {
@@ -109,4 +109,5 @@ public class TournamentSetupMatchDTO {
     public void setStartTime(Timestamp startTime) {
         this.startTime = startTime;
     }
+
 }

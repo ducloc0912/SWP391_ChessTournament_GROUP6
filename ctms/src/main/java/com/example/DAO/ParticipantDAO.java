@@ -28,10 +28,8 @@ public class ParticipantDAO extends DBContext {
         }
         p.setIsPaid(rs.getBoolean("is_paid"));
         p.setPaymentDate(rs.getTimestamp("payment_date"));
-        try {
-            p.setPaymentExpiresAt(rs.getTimestamp("payment_expires_at"));
-            p.setRemovedAt(rs.getTimestamp("removed_at"));
-        } catch (SQLException ignored) {}
+        p.setPaymentExpiresAt(rs.getTimestamp("payment_expires_at"));
+        p.setRemovedAt(rs.getTimestamp("removed_at"));
         p.setRegistrationDate(rs.getTimestamp("registration_date"));
         p.setNotes(rs.getString("notes"));
         return p;
@@ -98,34 +96,10 @@ public class ParticipantDAO extends DBContext {
     }
 
     private Integer createParticipantInternal(Participant p, Timestamp paymentExpiresAt) {
-        Integer id = createParticipantFull(p, paymentExpiresAt);
-        if (id != null) return id;
-        // Fallback: bảng cũ không có payment_expires_at -> INSERT không có cột đó
-        String msg = lastSqlException != null ? lastSqlException.getMessage() : "";
-        if (msg != null && (msg.contains("payment_expires_at") || msg.contains("Invalid column name") || msg.contains("removed_at"))) {
-            return createParticipantLegacy(p);
-        }
-        // Fallback: DB chưa chạy migration PendingPayment (CHECK constraint) -> thử với status Active để tránh 500
-        if (msg != null && (msg.contains("CHECK") || msg.contains("constraint") || msg.contains("PendingPayment") || msg.contains("CK_") || msg.contains("violation"))) {
-            Participant pFallback = new Participant();
-            pFallback.setTournamentId(p.getTournamentId());
-            pFallback.setUserId(p.getUserId());
-            pFallback.setTitleAtRegistration(p.getTitleAtRegistration());
-            pFallback.setSeed(p.getSeed());
-            pFallback.setStatus(ParticipantStatus.Active);
-            pFallback.setIsPaid(p.getIsPaid());
-            pFallback.setPaymentDate(p.getPaymentDate());
-            pFallback.setNotes(p.getNotes());
-            return createParticipantFull(pFallback, paymentExpiresAt);
-        }
-        return null;
+        return createParticipantFull(p, paymentExpiresAt);
     }
 
-    private SQLException lastSqlException;
-
-    /** INSERT đầy đủ (có payment_expires_at). */
     private Integer createParticipantFull(Participant p, Timestamp paymentExpiresAt) {
-        lastSqlException = null;
         String sql = """
             INSERT INTO Participants
             (tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, payment_expires_at, notes)
@@ -142,34 +116,6 @@ public class ParticipantDAO extends DBContext {
             ps.setTimestamp(7, p.getPaymentDate());
             if (paymentExpiresAt != null) ps.setTimestamp(8, paymentExpiresAt); else ps.setNull(8, Types.TIMESTAMP);
             ps.setString(9, p.getNotes());
-            if (ps.executeUpdate() <= 0) return null;
-            try (ResultSet rs = ps.getGeneratedKeys()) {
-                if (rs.next()) return rs.getInt(1);
-            }
-        } catch (SQLException e) {
-            lastSqlException = e;
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    /** INSERT không có payment_expires_at (schema cũ). */
-    private Integer createParticipantLegacy(Participant p) {
-        String sql = """
-            INSERT INTO Participants
-            (tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """;
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setInt(1, p.getTournamentId());
-            ps.setInt(2, p.getUserId());
-            ps.setString(3, p.getTitleAtRegistration());
-            if (p.getSeed() != null) ps.setInt(4, p.getSeed()); else ps.setNull(4, Types.INTEGER);
-            ps.setString(5, p.getStatus() != null ? p.getStatus().name() : "Active");
-            ps.setBoolean(6, p.getIsPaid() != null && p.getIsPaid());
-            ps.setTimestamp(7, p.getPaymentDate());
-            ps.setString(8, p.getNotes());
             if (ps.executeUpdate() <= 0) return null;
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) return rs.getInt(1);
@@ -506,3 +452,5 @@ public class ParticipantDAO extends DBContext {
         return 0;
     }
 }
+
+

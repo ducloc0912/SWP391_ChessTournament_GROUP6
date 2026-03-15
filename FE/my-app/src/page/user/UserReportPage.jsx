@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import MainHeader from "../../component/common/MainHeader";
 import { API_BASE } from "../../config/api";
@@ -13,7 +13,7 @@ export default function UserReportPage() {
     }
   });
 
-  const [kind, setKind] = useState("VIOLATION"); // VIOLATION | SYSTEM
+  const [kind, setKind] = useState("VIOLATION");
   const [description, setDescription] = useState("");
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [selectedTournamentId, setSelectedTournamentId] = useState("");
@@ -42,6 +42,20 @@ export default function UserReportPage() {
     .replace(/[\s_]/g, "");
   const isPlayer = !normalizedRole || normalizedRole === "PLAYER";
 
+  useEffect(() => {
+    if (!isPlayer && kind !== "SYSTEM") {
+      setKind("SYSTEM");
+    }
+  }, [isPlayer, kind]);
+
+  const getErrorMessage = (err, fallback) => {
+    const backend = err?.response?.data?.message;
+    if (backend) return backend;
+    const status = err?.response?.status;
+    if (status) return `${fallback} (HTTP ${status})`;
+    return err?.message ? `${fallback}: ${err.message}` : fallback;
+  };
+
   const loadReports = async () => {
     try {
       setLoadingList(true);
@@ -57,13 +71,10 @@ export default function UserReportPage() {
   };
 
   useEffect(() => {
-    if (user) {
-      loadReports();
-    }
+    if (user) loadReports();
   }, [user]);
 
   useEffect(() => {
-    // Load all public matches for violation report dropdowns
     const loadMatches = async () => {
       try {
         const res = await axios
@@ -77,7 +88,7 @@ export default function UserReportPage() {
     loadMatches();
   }, []);
 
-  const violationTournaments = React.useMemo(() => {
+  const violationTournaments = useMemo(() => {
     const map = new Map();
     matches.forEach((m) => {
       if (!m.tournamentId) return;
@@ -91,17 +102,14 @@ export default function UserReportPage() {
     return Array.from(map.values());
   }, [matches]);
 
-  const matchesInSelectedTournament = React.useMemo(() => {
+  const matchesInSelectedTournament = useMemo(() => {
     if (!selectedTournamentId) return [];
     const tid = Number(selectedTournamentId);
     return matches.filter((m) => Number(m.tournamentId) === tid);
   }, [matches, selectedTournamentId]);
 
-  const selectedMatch = React.useMemo(
-    () =>
-      matchesInSelectedTournament.find(
-        (m) => Number(m.matchId) === Number(selectedMatchId),
-      ),
+  const selectedMatch = useMemo(
+    () => matchesInSelectedTournament.find((m) => Number(m.matchId) === Number(selectedMatchId)),
     [matchesInSelectedTournament, selectedMatchId],
   );
 
@@ -111,61 +119,51 @@ export default function UserReportPage() {
       window.location.href = "/login";
       return;
     }
+
     setSubmitError("");
     setSubmitSuccess("");
 
     if (!description.trim()) {
-      setSubmitError("Vui lòng nhập mô tả.");
+      setSubmitError("Vui long nhap mo ta.");
       return;
     }
 
     if (kind === "VIOLATION") {
       if (!selectedTournamentId) {
-        setSubmitError("Vui lòng chọn giải đấu.");
+        setSubmitError("Vui long chon giai dau.");
         return;
       }
       if (!selectedMatchId) {
-        setSubmitError("Vui lòng chọn trận đấu.");
+        setSubmitError("Vui long chon tran dau.");
         return;
       }
       if (!selectedAccusedId) {
-        setSubmitError("Vui lòng chọn người chơi để tố cáo.");
+        setSubmitError("Vui long chon nguoi choi bi to cao.");
         return;
       }
     }
+
     try {
       setSubmitting(true);
       const payload = {
         description: description.trim(),
+        evidenceUrl: evidenceUrl.trim() || "",
       };
 
       if (kind === "VIOLATION") {
-        payload.type = violationType; // Cheating hoặc Misconduct
+        payload.type = violationType;
         payload.matchId = Number(selectedMatchId);
         payload.accusedId = Number(selectedAccusedId);
       } else {
-        payload.type = "TechnicalIssue"; // map system UI -> TechnicalIssue in DB
-        if (evidenceUrl.trim()) {
-          payload.evidenceUrl = evidenceUrl.trim();
-        } else {
-          payload.evidenceUrl = "";
-        }
-      }
-
-      if (kind === "VIOLATION") {
-        // evidence link không bắt buộc, nhưng nếu có thì gửi
-        if (evidenceUrl.trim()) {
-          payload.evidenceUrl = evidenceUrl.trim();
-        } else {
-          payload.evidenceUrl = "";
-        }
+        payload.type = "TechnicalIssue";
       }
 
       const res = await axios.post(`${API_BASE}/api/reports`, payload, {
         withCredentials: true,
       });
+
       if (res?.data?.success) {
-        setSubmitSuccess("Gửi report thành công.");
+        setSubmitSuccess("Gui report thanh cong.");
         setDescription("");
         setEvidenceUrl("");
         setSelectedTournamentId("");
@@ -173,22 +171,17 @@ export default function UserReportPage() {
         setSelectedAccusedId("");
         await loadReports();
       } else {
-        setSubmitError(
-          res?.data?.message || "Gửi report thất bại. Vui lòng thử lại.",
-        );
+        setSubmitError(res?.data?.message || "Gui report that bai.");
       }
     } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        "Gửi report thất bại. Vui lòng thử lại.";
-      setSubmitError(msg);
+      setSubmitError(getErrorMessage(err, "Gui report that bai"));
     } finally {
       setSubmitting(false);
     }
   };
 
   const formatTime = (v) => {
-    if (!v) return "—";
+    if (!v) return "-";
     try {
       return new Date(v).toLocaleString("vi-VN");
     } catch {
@@ -199,13 +192,13 @@ export default function UserReportPage() {
   const typeLabel = (t) => {
     switch (t) {
       case "Cheating":
-        return "Gian lận";
+        return "Gian lan";
       case "Misconduct":
-        return "Hành vi xấu";
+        return "Hanh vi xau";
       case "TechnicalIssue":
-        return "Lỗi hệ thống";
+        return "Loi he thong";
       default:
-        return t || "Khác";
+        return t || "Khac";
     }
   };
 
@@ -224,95 +217,35 @@ export default function UserReportPage() {
       />
 
       <div className="tdp-container" style={{ maxWidth: 960, marginTop: 24 }}>
-        <div
-          style={{
-            border: "1px solid rgba(15,23,42,0.12)",
-            padding: 20,
-            background: "#fff",
-            marginBottom: 24,
-          }}
-        >
-          <h2 style={{ marginTop: 0 }}>Gửi Report</h2>
-          <p style={{ color: "#6b7280", fontSize: 13 }}>
-            Chọn loại report và cung cấp thông tin tương ứng. Với violation, hãy
-            chọn giải, trận và người chơi liên quan. Với system, chỉ cần mô tả lỗi
-            và đính kèm link nếu có.
-          </p>
-
+        <div style={{ border: "1px solid rgba(15,23,42,0.12)", padding: 20, background: "#fff", marginBottom: 24 }}>
+          <h2 style={{ marginTop: 0 }}>Gui Report</h2>
           <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  marginBottom: 4,
-                }}
-              >
-                Loại report
-              </label>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Loai report</label>
               {isPlayer ? (
-                <select
-                  value={kind}
-                  onChange={(e) => setKind(e.target.value)}
-                  style={{ padding: 8, width: "100%" }}
-                >
-                  <option value="VIOLATION">Violation (tố cáo người chơi)</option>
-                  <option value="SYSTEM">System (lỗi hệ thống)</option>
+                <select value={kind} onChange={(e) => setKind(e.target.value)} style={{ padding: 8, width: "100%" }}>
+                  <option value="VIOLATION">Violation</option>
+                  <option value="SYSTEM">System</option>
                 </select>
               ) : (
-                <>
-                  {kind !== "SYSTEM" && setKind("SYSTEM")}
-                  <div
-                    style={{
-                      padding: 8,
-                      width: "100%",
-                      background: "#f9fafb",
-                      borderRadius: 4,
-                      fontSize: 13,
-                      color: "#374151",
-                    }}
-                  >
-                    System (lỗi hệ thống)
-                  </div>
-                </>
+                <div style={{ padding: 8, width: "100%", background: "#f9fafb", borderRadius: 4, fontSize: 13, color: "#374151" }}>
+                  System
+                </div>
               )}
             </div>
 
             {kind === "VIOLATION" && (
               <>
                 <div>
-                  <label
-                    style={{
-                      display: "block",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      marginBottom: 4,
-                    }}
-                  >
-                    Loại vi phạm
-                  </label>
-                  <select
-                    value={violationType}
-                    onChange={(e) => setViolationType(e.target.value)}
-                    style={{ padding: 8, width: "100%" }}
-                  >
-                    <option value="Cheating">Gian lận (Cheating)</option>
-                    <option value="Misconduct">Hành vi xấu (Misconduct)</option>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Loai vi pham</label>
+                  <select value={violationType} onChange={(e) => setViolationType(e.target.value)} style={{ padding: 8, width: "100%" }}>
+                    <option value="Cheating">Cheating</option>
+                    <option value="Misconduct">Misconduct</option>
                   </select>
                 </div>
 
                 <div>
-                  <label
-                    style={{
-                      display: "block",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      marginBottom: 4,
-                    }}
-                  >
-                    Giải đấu
-                  </label>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Giai dau</label>
                   <select
                     value={selectedTournamentId}
                     onChange={(e) => {
@@ -322,27 +255,16 @@ export default function UserReportPage() {
                     }}
                     style={{ padding: 8, width: "100%" }}
                   >
-                    <option value="">-- Chọn giải đấu --</option>
+                    <option value="">-- Chon giai dau --</option>
                     {violationTournaments.map((t) => (
-                      <option key={t.tournamentId} value={t.tournamentId}>
-                        {t.tournamentName}
-                      </option>
+                      <option key={t.tournamentId} value={t.tournamentId}>{t.tournamentName}</option>
                     ))}
                   </select>
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        marginBottom: 4,
-                      }}
-                    >
-                      Trận đấu
-                    </label>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Tran dau</label>
                     <select
                       value={selectedMatchId}
                       onChange={(e) => {
@@ -352,7 +274,7 @@ export default function UserReportPage() {
                       style={{ padding: 8, width: "100%" }}
                       disabled={!selectedTournamentId}
                     >
-                      <option value="">-- Chọn trận đấu --</option>
+                      <option value="">-- Chon tran dau --</option>
                       {matchesInSelectedTournament.map((m) => (
                         <option key={m.matchId} value={m.matchId}>
                           Match #{m.matchId} (Board {m.boardNumber ?? "?"})
@@ -362,36 +284,23 @@ export default function UserReportPage() {
                   </div>
 
                   <div>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        marginBottom: 4,
-                      }}
-                    >
-                      Người chơi bị tố cáo
-                    </label>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Nguoi choi bi to cao</label>
                     <select
                       value={selectedAccusedId}
                       onChange={(e) => setSelectedAccusedId(e.target.value)}
                       style={{ padding: 8, width: "100%" }}
                       disabled={!selectedMatch}
                     >
-                      <option value="">-- Chọn người chơi --</option>
-                      {selectedMatch && (
-                        <>
-                          {selectedMatch.whitePlayerId && (
-                            <option value={selectedMatch.whitePlayerId}>
-                              White player (ID: {selectedMatch.whitePlayerId})
-                            </option>
-                          )}
-                          {selectedMatch.blackPlayerId && (
-                            <option value={selectedMatch.blackPlayerId}>
-                              Black player (ID: {selectedMatch.blackPlayerId})
-                            </option>
-                          )}
-                        </>
+                      <option value="">-- Chon nguoi choi --</option>
+                      {selectedMatch?.player1Id && (
+                        <option value={selectedMatch.player1Id}>
+                          {selectedMatch.player1Name || "Player 1"} (ID: {selectedMatch.player1Id})
+                        </option>
+                      )}
+                      {selectedMatch?.player2Id && (
+                        <option value={selectedMatch.player2Id}>
+                          {selectedMatch.player2Name || "Player 2"} (ID: {selectedMatch.player2Id})
+                        </option>
                       )}
                     </select>
                   </div>
@@ -400,104 +309,59 @@ export default function UserReportPage() {
             )}
 
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  marginBottom: 4,
-                }}
-              >
-                Mô tả
-              </label>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Mo ta</label>
               <textarea
                 rows={4}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 style={{ width: "100%", padding: 8 }}
-                placeholder="Mô tả chi tiết sự việc..."
               />
             </div>
 
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  marginBottom: 4,
-                }}
-                >
-                  Đường dẫn minh chứng {kind === "VIOLATION" ? "(không bắt buộc)" : "(nếu có)"}
-                </label>
-                <input
-                  type="text"
-                  value={evidenceUrl}
-                  onChange={(e) => setEvidenceUrl(e.target.value)}
-                  style={{ width: "100%", padding: 8 }}
-                  placeholder="Ví dụ: link ảnh/video trên drive, imgur..."
-                />
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Duong dan minh chung (neu co)</label>
+              <input
+                type="text"
+                value={evidenceUrl}
+                onChange={(e) => setEvidenceUrl(e.target.value)}
+                style={{ width: "100%", padding: 8 }}
+              />
             </div>
 
-            {submitError && (
-              <div style={{ color: "#b91c1c", fontSize: 13 }}>{submitError}</div>
-            )}
-            {submitSuccess && (
-              <div style={{ color: "#15803d", fontSize: 13 }}>{submitSuccess}</div>
-            )}
+            {submitError && <div style={{ color: "#b91c1c", fontSize: 13 }}>{submitError}</div>}
+            {submitSuccess && <div style={{ color: "#15803d", fontSize: 13 }}>{submitSuccess}</div>}
 
             <div>
               <button
                 type="submit"
                 disabled={submitting}
-                style={{
-                  padding: "8px 18px",
-                  background: "#2563eb",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                }}
+                style={{ padding: "8px 18px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
               >
-                {submitting ? "Đang gửi..." : "Gửi report"}
+                {submitting ? "Dang gui..." : "Gui report"}
               </button>
             </div>
           </form>
         </div>
 
-        <div
-          style={{
-            border: "1px solid rgba(15,23,42,0.12)",
-            padding: 20,
-            background: "#fff",
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>Lịch sử report của bạn</h3>
+        <div style={{ border: "1px solid rgba(15,23,42,0.12)", padding: 20, background: "#fff" }}>
+          <h3 style={{ marginTop: 0 }}>Lich su report cua ban</h3>
           {loadingList ? (
-            <div>Đang tải...</div>
+            <div>Dang tai...</div>
           ) : reports.length === 0 ? (
-            <div>Bạn chưa gửi report nào.</div>
+            <div>Ban chua gui report nao.</div>
           ) : (
             <div style={{ overflowX: "auto" }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  fontSize: 13,
-                }}
-              >
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr>
                     <th style={{ textAlign: "left", padding: 8 }}>ID</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Loại</th>
+                    <th style={{ textAlign: "left", padding: 8 }}>Loai</th>
                     <th style={{ textAlign: "left", padding: 8 }}>Accused</th>
                     <th style={{ textAlign: "left", padding: 8 }}>Match</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Mô tả</th>
+                    <th style={{ textAlign: "left", padding: 8 }}>Mo ta</th>
                     <th style={{ textAlign: "left", padding: 8 }}>Status</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>
-                      Phản hồi
-                    </th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Tạo lúc</th>
+                    <th style={{ textAlign: "left", padding: 8 }}>Phan hoi</th>
+                    <th style={{ textAlign: "left", padding: 8 }}>Tao luc</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -505,15 +369,11 @@ export default function UserReportPage() {
                     <tr key={r.reportId}>
                       <td style={{ padding: 8 }}>{r.reportId}</td>
                       <td style={{ padding: 8 }}>{typeLabel(r.type)}</td>
-                      <td style={{ padding: 8 }}>{r.accusedId ?? "—"}</td>
-                      <td style={{ padding: 8 }}>{r.matchId ?? "—"}</td>
-                      <td style={{ padding: 8 }}>
-                        {r.description?.length > 60
-                          ? `${r.description.slice(0, 60)}…`
-                          : r.description}
-                      </td>
+                      <td style={{ padding: 8 }}>{r.accusedId ?? "-"}</td>
+                      <td style={{ padding: 8 }}>{r.matchId ?? "-"}</td>
+                      <td style={{ padding: 8 }}>{r.description?.length > 60 ? `${r.description.slice(0, 60)}...` : r.description}</td>
                       <td style={{ padding: 8 }}>{r.status}</td>
-                      <td style={{ padding: 8 }}>{r.note || "—"}</td>
+                      <td style={{ padding: 8 }}>{r.note || "-"}</td>
                       <td style={{ padding: 8 }}>{formatTime(r.createAt)}</td>
                     </tr>
                   ))}
@@ -526,4 +386,3 @@ export default function UserReportPage() {
     </div>
   );
 }
-

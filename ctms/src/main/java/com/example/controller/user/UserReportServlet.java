@@ -35,6 +35,7 @@ public class UserReportServlet extends HttpServlet {
             response.getWriter().write("{\"message\":\"Unauthorized\"}");
             return;
         }
+
         User currentUser = (User) session.getAttribute("user");
         List<ReportDTO> list = reportService.getReportsByReporter(currentUser.getUserId());
         response.getWriter().write(gson.toJson(list));
@@ -51,7 +52,7 @@ public class UserReportServlet extends HttpServlet {
         if (session == null || !(session.getAttribute("user") instanceof User)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             result.put("success", false);
-            result.put("message", "Vui lòng đăng nhập trước khi gửi report.");
+            result.put("message", "Vui long dang nhap truoc khi gui report.");
             response.getWriter().write(gson.toJson(result));
             return;
         }
@@ -61,21 +62,15 @@ public class UserReportServlet extends HttpServlet {
         try {
             Map<String, Object> body = gson.fromJson(request.getReader(), Map.class);
             if (body == null) {
-                throw new IllegalArgumentException("Dữ liệu report không hợp lệ.");
+                throw new IllegalArgumentException("Du lieu report khong hop le.");
             }
 
             String type = body.get("type") != null ? body.get("type").toString() : null;
             String description = body.get("description") != null ? body.get("description").toString() : null;
             String evidenceUrl = body.get("evidenceUrl") != null ? body.get("evidenceUrl").toString() : null;
 
-            Integer accusedId = null;
-            if (body.get("accusedId") != null) {
-                accusedId = ((Double) body.get("accusedId")).intValue();
-            }
-            Integer matchId = null;
-            if (body.get("matchId") != null) {
-                matchId = ((Double) body.get("matchId")).intValue();
-            }
+            Integer accusedId = toInteger(body.get("accusedId"));
+            Integer matchId = toInteger(body.get("matchId"));
 
             ReportDTO dto = new ReportDTO();
             dto.setReporterId(currentUser.getUserId());
@@ -89,13 +84,17 @@ public class UserReportServlet extends HttpServlet {
             if (id > 0) {
                 result.put("success", true);
                 result.put("reportId", id);
-                result.put("message", "Gửi report thành công.");
+                result.put("message", "Gui report thanh cong.");
             } else {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 result.put("success", false);
-                result.put("message", "Gửi report thất bại. Vui lòng thử lại sau.");
+                result.put("message", "Gui report that bai.");
             }
         } catch (IllegalArgumentException e) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            result.put("success", false);
+            result.put("message", e.getMessage());
+        } catch (IllegalStateException e) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             result.put("success", false);
             result.put("message", e.getMessage());
@@ -103,10 +102,21 @@ public class UserReportServlet extends HttpServlet {
             e.printStackTrace();
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             result.put("success", false);
-            result.put("message", "Có lỗi xảy ra khi gửi report.");
+            result.put("message", "Khong the gui report do loi he thong.");
         }
 
         response.getWriter().write(gson.toJson(result));
     }
-}
 
+    private Integer toInteger(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number n) return n.intValue();
+        String raw = value.toString().trim();
+        if (raw.isEmpty()) return null;
+        try {
+            return Integer.parseInt(raw);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Gia tri so khong hop le: " + raw);
+        }
+    }
+}

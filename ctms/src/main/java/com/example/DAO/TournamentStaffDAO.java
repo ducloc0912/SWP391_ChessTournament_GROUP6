@@ -72,7 +72,7 @@ public class TournamentStaffDAO extends DBContext {
                                                 ApprovalAction action, String note) {
         String updateSql = "UPDATE Tournaments SET status = ? WHERE tournament_id = ?";
         String logSql = """
-            INSERT INTO Tournament_Approval_Log (tournament_id, staff_id, action, from_status, to_status, note, created_at)
+            INSERT INTO Tournament_Approval_Log (tournament_id, staff_id, action, from_status, to_status, note, create_at)
             VALUES (?, ?, ?, ?, ?, ?, GETDATE())
         """;
 
@@ -503,3 +503,4 @@ public class TournamentStaffDAO extends DBContext {
         return TournamentStaffRole.valueOf(value);
     }
 }
+

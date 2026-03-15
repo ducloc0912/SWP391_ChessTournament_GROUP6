@@ -340,27 +340,6 @@
   cursor: not-allowed;
   opacity: 0.85;
 }
-.tsu-step-item.tsu-step-locked .tsu-step-label {
-  color: #94a3b8;
-}
-.tsu-step-unlock-inline {
-  margin-left: 8px;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--tsu-accent, #ff4655);
-  background: transparent;
-  border: 1px solid var(--tsu-accent, #ff4655);
-  border-radius: 4px;
-  cursor: pointer;
-}
-.tsu-step-unlock-inline:hover:not(:disabled) {
-  background: rgba(255, 70, 85, 0.08);
-}
-.tsu-step-unlock-inline:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
 
  .tsu-stepper-hint {
   margin: 4px 0 12px;
@@ -659,11 +638,11 @@
   color: #111827;
 }
 
-.tsu-preview-player.white .tsu-preview-seat {
+.tsu-preview-player.player1 .tsu-preview-seat {
   background: #ffffff;
 }
 
-.tsu-preview-player.black .tsu-preview-seat {
+.tsu-preview-player.player2 .tsu-preview-seat {
   background: #111827;
   color: #fff;
   border-color: #111827;
@@ -1032,4 +1011,55 @@
 .tsu-shell * {
   border-radius: 0 !important;
 }
+
+/* Result modal (Finalize/Publish) */
+.tsu-result-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: 16px;
+}
+
+.tsu-result-modal {
+  width: min(520px, 94vw);
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.24);
+  padding: 22px 18px;
+  text-align: center;
+}
+
+.tsu-result-icon-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.tsu-result-icon.success {
+  color: #16a34a;
+}
+
+.tsu-result-icon.error {
+  color: #dc2626;
+}
+
+.tsu-result-title {
+  margin: 0 0 8px;
+  font-size: 30px;
+  line-height: 1.15;
+  font-weight: 900;
+  color: #111827;
+}
+
+.tsu-result-message {
+  margin: 0 0 16px;
+  color: #4b5563;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
 

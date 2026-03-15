@@ -1,7 +1,9 @@
 package com.example.service.leader;
 
 import com.example.DAO.RefereeInvitationDAO;
+import com.example.DAO.NotificationDAO;
 import com.example.DAO.TournamentDAO;
+import com.example.DAO.TournamentFollowDAO;
 import com.example.DAO.TournamentRefereeDAO;
 import com.example.DAO.ReportDAO;
 import com.example.DAO.MatchDAO;
@@ -17,6 +19,7 @@ import com.example.model.dto.TournamentSetupStateDTO;
 import com.example.model.enums.SetupStep;
 import com.example.DAO.ParticipantDAO;
 import com.example.DAO.PrizeTemplateDAO;
+import com.example.model.entity.Notification;
 import com.example.model.entity.PrizeTemplate;
 import com.example.util.PasswordUtil;
 
@@ -34,7 +37,7 @@ import java.util.stream.Collectors;
 /**
  * Service chính cho giải đấu: CRUD, players, referees, reports, setup wizard.
  * Setup flow: Structure → Players → Schedule → Referee → COMPLETED.
- * Dùng TournamentSetupService cho finalize/unlock; dùng TournamentSetupDAO cho persist.
+ * Dùng TournamentSetupService cho finalize; dùng TournamentSetupDAO cho persist.
  */
 public class TournamentService {
     private static final String STEP_STRUCTURE = "STRUCTURE";
@@ -51,6 +54,8 @@ public class TournamentService {
     private final MatchDAO matchDAO;
     private final TournamentSetupDAO setupDAO;
     private final PrizeTemplateDAO prizeTemplateDAO;
+    private final TournamentFollowDAO tournamentFollowDAO;
+    private final NotificationDAO notificationDAO;
 
     public TournamentService() {
         this.tournamentDAO = new TournamentDAO();
@@ -61,6 +66,8 @@ public class TournamentService {
         this.matchDAO = new MatchDAO();
         this.setupDAO = new TournamentSetupDAO();
         this.prizeTemplateDAO = new PrizeTemplateDAO();
+        this.tournamentFollowDAO = new TournamentFollowDAO();
+        this.notificationDAO = new NotificationDAO();
     }
 
     public List<TournamentDTO> getAllTournamentsWithCurrentPlayers() {
@@ -234,7 +241,11 @@ public class TournamentService {
         String normalizedCover = coverImageUrl == null || coverImageUrl.isBlank()
                 ? null
                 : coverImageUrl.trim();
-        return tournamentDAO.saveTournamentImages(tournamentId, normalizedCover, normalized);
+        boolean success = tournamentDAO.saveTournamentImages(tournamentId, normalizedCover, normalized);
+        if (success) {
+            notifyFollowersAboutTournamentUpdate(tournamentId, "Tournament image updated");
+        }
+        return success;
     }
 
     public TournamentRefereeDTO createRefereeUser(
@@ -343,8 +354,6 @@ public class TournamentService {
         if (STEP_STRUCTURE.equals(targetStep)) {
             SetupValidationResult validStructure = validateStructureStep(format, matches);
             if (!validStructure.isValid()) return validStructure;
-            boolean saved = setupDAO.replaceManualSetup(tournamentId, format, matches);
-            if (!saved) return SetupValidationResult.invalid("Không thể lưu structure bracket.");
             if (!setupDAO.upsertSetupStep(tournamentId, STEP_PLAYERS)) {
                 return SetupValidationResult.invalid("Không thể cập nhật setup step (PLAYERS).");
             }
@@ -371,6 +380,9 @@ public class TournamentService {
     public SetupValidationResult saveManualSetup(int tournamentId, TournamentManualSetupRequestDTO request) {
         if (request == null) {
             return SetupValidationResult.invalid("Thiếu dữ liệu setup.");
+        }
+        if (isSetupPublished(tournamentId)) {
+            return SetupValidationResult.invalid("Giải đã được Save & Publish. Không thể cập nhật Schedule.");
         }
         String currentStep = getCurrentSetupStep(tournamentId);
         if (!STEP_SCHEDULE.equals(currentStep)) {
@@ -403,7 +415,7 @@ public class TournamentService {
     }
 
     /**
-     * Lưu gán trọng tài cho các trận: validate Schedule đã FINALIZED → updateMatchReferees → current_step = COMPLETED.
+     * Lưu gán trọng tài cho các trận: validate Schedule đã FINALIZED → updateMatchReferees.
      * Chỉ chấp nhận referee đã được thêm vào giải (Tournament_Referee).
      */
     public SetupValidationResult saveRefereeAssignments(int tournamentId, List<TournamentSetupMatchDTO> matches) {
@@ -417,20 +429,10 @@ public class TournamentService {
         }
         Map<String, String> statuses = state.getStepStatuses();
         if (statuses == null) statuses = Map.of();
-        String scheduleStatus = statuses.get("SCHEDULE");
+        if (!"FINALIZED".equalsIgnoreCase(statuses.get("SCHEDULE"))) {
+            return SetupValidationResult.invalid("Bạn cần Finalize Schedule trước khi lưu trọng tài.");
+        }
         String stateStep = state.getCurrentStep();
-        // Dùng một nguồn state duy nhất (TournamentSetupStateDTO) - không dùng getCurrentSetupStep()
-        boolean scheduleFinalized = "FINALIZED".equalsIgnoreCase(scheduleStatus);
-        if (!scheduleFinalized) {
-            // Đã ở bước Referee (REFEREE/REFEREES) hoặc COMPLETED nghĩa là Schedule đã hoàn tất
-            String step = stateStep != null ? stateStep.trim().toUpperCase() : "";
-            if ("REFEREE".equals(step) || "REFEREES".equals(step) || "COMPLETED".equals(step)) {
-                scheduleFinalized = true;
-            }
-        }
-        if (!scheduleFinalized) {
-            return SetupValidationResult.invalid("Bạn cần hoàn tất Schedule (nhấn Finalize Schedule) trước khi gán trọng tài.");
-        }
         String step = stateStep != null ? stateStep.trim().toUpperCase() : "";
         if (!"REFEREE".equals(step) && !"REFEREES".equals(step) && !"COMPLETED".equals(step)) {
             setupDAO.upsertSetupStep(tournamentId, SetupStep.REFEREES.toDbValue());
@@ -453,10 +455,16 @@ public class TournamentService {
         if (!ok) {
             return SetupValidationResult.invalid("Không thể lưu gán trọng tài. Kiểm tra match_id có tồn tại trong giải không.");
         }
-        if (!setupDAO.upsertSetupStep(tournamentId, SetupStep.COMPLETED.toDbValue())) {
-            return SetupValidationResult.invalid("Lưu trọng tài thành công nhưng không thể cập nhật trạng thái setup.");
-        }
-        return SetupValidationResult.valid("Lưu và công bố giải đấu thành công.");
+        return SetupValidationResult.valid("Lưu gán trọng tài thành công.");
+    }
+
+    private boolean isSetupPublished(int tournamentId) {
+        if (tournamentId <= 0) return false;
+        TournamentSetupStateDTO state = setupDAO.getSetupStateFull(tournamentId);
+        if (state == null) return false;
+        if ("COMPLETED".equalsIgnoreCase(state.getCurrentStep())) return true;
+        Map<String, String> statuses = state.getStepStatuses();
+        return statuses != null && "FINALIZED".equalsIgnoreCase(statuses.get("REFEREES"));
     }
 
     // =========================
@@ -545,7 +553,43 @@ if (isBlank(t.getTournamentName())) return false;
         if (t.getMinPlayer() == null || t.getMaxPlayer() == null) return false;
         if (t.getMinPlayer() > t.getMaxPlayer()) return false;
 
-        return tournamentDAO.updateTournament(t);
+        boolean success = tournamentDAO.updateTournament(t);
+        if (success) {
+            notifyFollowersAboutTournamentUpdate(t.getTournamentId(), "Tournament information has been updated");
+        }
+        return success;
+    }
+
+    private void notifyFollowersAboutTournamentUpdate(int tournamentId, String fallbackMessage) {
+        if (tournamentId <= 0) return;
+        TournamentDTO tournament = tournamentDAO.getTournamentById(tournamentId);
+        String tournamentName = (tournament != null && tournament.getTournamentName() != null
+                && !tournament.getTournamentName().isBlank())
+                ? tournament.getTournamentName().trim()
+                : "Tournament";
+        List<Integer> followerIds = tournamentFollowDAO.getFollowerUserIds(tournamentId);
+        if (followerIds == null || followerIds.isEmpty()) return;
+
+        String title = "Tournament Updated";
+        String message = (fallbackMessage == null || fallbackMessage.isBlank()
+                ? "The tournament has new updates"
+                : fallbackMessage) + ": " + tournamentName;
+        String actionUrl = "/tournaments/public/" + tournamentId;
+
+        for (Integer userId : followerIds) {
+            if (userId == null || userId <= 0) continue;
+            Notification n = new Notification();
+            n.setTitle(title);
+            n.setMessage(message);
+            n.setType("TOURNAMENT_UPDATE");
+            n.setActionUrl(actionUrl);
+            n.setUserId(userId);
+            try {
+                notificationDAO.createNotification(n);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     // =========================
@@ -645,40 +689,40 @@ if (isBlank(t.getTournamentName())) return false;
 
         for (TournamentSetupMatchDTO m : matches) {
             String stage = normalizeStage(m.getStage(), format);
-            Integer white = m.getWhitePlayerId();
-            Integer black = m.getBlackPlayerId();
+            Integer player1 = m.getPlayer1Id();
+            Integer player2 = m.getPlayer2Id();
             int roundIndex = m.getRoundIndex() == null ? 1 : m.getRoundIndex();
 
-            if (white != null && !participantIds.contains(white)) {
+            if (player1 != null && !participantIds.contains(player1)) {
                 return SetupValidationResult.invalid("Có người chơi trắng không thuộc danh sách đã duyệt.");
             }
-            if (black != null && !participantIds.contains(black)) {
+            if (player2 != null && !participantIds.contains(player2)) {
                 return SetupValidationResult.invalid("Có người chơi đen không thuộc danh sách đã duyệt.");
             }
-            if (white != null && black != null && white.equals(black)) {
+            if (player1 != null && player2 != null && player1.equals(player2)) {
                 return SetupValidationResult.invalid("Một trận không thể có cùng 1 người chơi ở 2 bên.");
             }
 
             if ("RoundRobin".equals(stage)) {
-                if (white == null || black == null) {
+                if (player1 == null || player2 == null) {
                     return SetupValidationResult.invalid("Round Robin yêu cầu đủ 2 người chơi cho mọi trận.");
                 }
-                String key = toPairKey(white, black);
+                String key = toPairKey(player1, player2);
                 if (!roundRobinPairs.add(key)) {
                     return SetupValidationResult.invalid("Cặp đấu Round Robin bị trùng.");
                 }
                 continue;
             }
 
-            if (white != null) {
-                String wKey = roundIndex + "::" + white;
-                if (!koRoundPlayerSlots.add(wKey)) {
+            if (player1 != null) {
+                String player1Key = roundIndex + "::" + player1;
+                if (!koRoundPlayerSlots.add(player1Key)) {
                     return SetupValidationResult.invalid("Một người chơi đang bị xếp 2 trận trong cùng round Knock Out.");
                 }
             }
-            if (black != null) {
-                String bKey = roundIndex + "::" + black;
-                if (!koRoundPlayerSlots.add(bKey)) {
+            if (player2 != null) {
+                String player2Key = roundIndex + "::" + player2;
+                if (!koRoundPlayerSlots.add(player2Key)) {
                     return SetupValidationResult.invalid("Một người chơi đang bị xếp 2 trận trong cùng round Knock Out.");
                 }
             }
@@ -704,8 +748,8 @@ if (isBlank(t.getTournamentName())) return false;
             copy.setRoundName(m.getRoundName());
             copy.setRoundIndex(m.getRoundIndex() == null || m.getRoundIndex() <= 0 ? 1 : m.getRoundIndex());
             copy.setBoardNumber(m.getBoardNumber() == null || m.getBoardNumber() <= 0 ? null : m.getBoardNumber());
-            copy.setWhitePlayerId(m.getWhitePlayerId());
-            copy.setBlackPlayerId(m.getBlackPlayerId());
+            copy.setPlayer1Id(m.getPlayer1Id());
+            copy.setPlayer2Id(m.getPlayer2Id());
             copy.setStartTime(normalizeTimestamp(m.getStartTime()));
             normalized.add(copy);
         }
@@ -846,8 +890,8 @@ if (isBlank(t.getTournamentName())) return false;
     }
 
     /**
-     * Generate auto setup: structure + players (where applicable) + schedule times.
-     * Uses MatchGenerationService. Does NOT persist; FE receives matches and can save via manualSetup/finalizeStep.
+     * Generate auto setup cho Structure.
+     * Chỉ dựng bracket, không auto add players và không auto schedule.
      */
     public AutoSetupResult  generateAutoSetup(int tournamentId) {
         if (tournamentId <= 0) return AutoSetupResult.error("Tournament id không hợp lệ.");
@@ -885,23 +929,48 @@ if (isBlank(t.getTournamentName())) return false;
             return AutoSetupResult.error("Auto setup chưa tạo được trận phù hợp. Vui lòng dùng manual.");
         }
 
-        // Auto schedule: distribute start times between tournament start and end
-        Timestamp start = tournament.getStartDate();
-        Timestamp end = tournament.getEndDate();
-        if (start != null && end != null && end.after(start) && !generated.isEmpty()) {
-            long startMs = start.getTime();
-            long endMs = end.getTime();
-            long step = (endMs - startMs) / Math.max(generated.size(), 1);
-            for (int i = 0; i < generated.size(); i++) {
-                generated.get(i).setStartTime(new Timestamp(startMs + step * i));
-            }
-            warnings.add("Đã tự gán lịch thi đấu trong khoảng thời gian giải.");
+        // Chỉ giữ structure: xóa player/startTime để tách riêng Auto Fill Players và Auto Schedule.
+        for (TournamentSetupMatchDTO m : generated) {
+            if (m == null) continue;
+            m.setPlayer1Id(null);
+            m.setPlayer2Id(null);
+            m.setStartTime(null);
         }
 
-        String successMsg = "Đã tạo " + generated.size() + " trận (structure)";
-        if (start != null && end != null) successMsg += " và lịch thi đấu";
-        successMsg += ". Bracket chưa gán người — nhấn Finalize Structure để lưu, sau đó vào bước 2 để Auto add players hoặc chọn tay.";
+        String successMsg = "Đã tạo " + generated.size() + " trận structure. Chưa gán player và chưa gán lịch.";
         return new AutoSetupResult(true, successMsg, generated, warnings);
+    }
+
+    /**
+     * Auto schedule cho danh sách match hiện tại (không chỉnh structure/player).
+     */
+    public AutoSetupResult autoScheduleMatches(int tournamentId, List<TournamentSetupMatchDTO> sourceMatches) {
+        if (tournamentId <= 0) return AutoSetupResult.error("Tournament id không hợp lệ.");
+        if (sourceMatches == null || sourceMatches.isEmpty()) {
+            return AutoSetupResult.error("Chưa có match để auto schedule.");
+        }
+        TournamentDTO tournament = tournamentDAO.getTournamentById(tournamentId);
+        if (tournament == null) return AutoSetupResult.error("Không tìm thấy giải đấu.");
+        Timestamp start = tournament.getStartDate();
+        Timestamp end = tournament.getEndDate();
+        if (start == null || end == null || !end.after(start)) {
+            return AutoSetupResult.error("Khoảng thời gian giải không hợp lệ để auto schedule.");
+        }
+
+        List<TournamentSetupMatchDTO> sorted = sourceMatches.stream()
+                .map(this::copyMatch)
+                .sorted(Comparator
+                        .comparing((TournamentSetupMatchDTO m) -> m.getRoundIndex() == null ? 1 : m.getRoundIndex())
+                        .thenComparing(m -> m.getBoardNumber() == null ? 1 : m.getBoardNumber()))
+                .collect(Collectors.toList());
+
+        long startMs = start.getTime();
+        long endMs = end.getTime();
+        long stepMs = Math.max(1L, (endMs - startMs) / Math.max(sorted.size(), 1));
+        for (int i = 0; i < sorted.size(); i++) {
+            sorted.get(i).setStartTime(new Timestamp(startMs + stepMs * i));
+        }
+        return new AutoSetupResult(true, "Đã auto schedule cho " + sorted.size() + " trận.", sorted, List.of());
     }
 
     private static int nextPowerOf2(int n) {
@@ -959,7 +1028,7 @@ if (isBlank(t.getTournamentName())) return false;
                 if (posInRound >= 0 && posInRound < genRound.size()) {
                     TournamentSetupMatchDTO gm = genRound.get(posInRound);
                     if (gm != null) {
-                        rrFilledByStructIdx.put(structIdx, new int[]{gm.getWhitePlayerId(), gm.getBlackPlayerId()});
+                        rrFilledByStructIdx.put(structIdx, new int[]{gm.getPlayer1Id(), gm.getPlayer2Id()});
                     }
                 }
             }
@@ -974,10 +1043,10 @@ if (isBlank(t.getTournamentName())) return false;
             }
         }
         for (int i = 0; i < koStructIndices.size(); i++) {
-            int white = ids.get((i * 2) % ids.size());
-            int black = ids.get((i * 2 + 1) % ids.size());
-            if (black == white) black = ids.get((i * 2 + 2) % ids.size());
-            koFilledByStructIdx.put(koStructIndices.get(i), new int[]{white, black});
+            int player1 = ids.get((i * 2) % ids.size());
+            int player2 = ids.get((i * 2 + 1) % ids.size());
+            if (player2 == player1) player2 = ids.get((i * 2 + 2) % ids.size());
+            koFilledByStructIdx.put(koStructIndices.get(i), new int[]{player1, player2});
         }
 
         List<TournamentSetupMatchDTO> result = new ArrayList<>();
@@ -988,17 +1057,17 @@ if (isBlank(t.getTournamentName())) return false;
             if ("RoundRobin".equals(stage)) {
                 int[] pair = rrFilledByStructIdx.get(i);
                 if (pair != null) {
-                    copy.setWhitePlayerId(pair[0]);
-                    copy.setBlackPlayerId(pair[1]);
+                    copy.setPlayer1Id(pair[0]);
+                    copy.setPlayer2Id(pair[1]);
                 }
             } else if ("KnockOut".equals(stage)) {
                 int[] pair = koFilledByStructIdx.get(i);
                 if (pair != null) {
-                    copy.setWhitePlayerId(pair[0]);
-                    copy.setBlackPlayerId(pair[1]);
+                    copy.setPlayer1Id(pair[0]);
+                    copy.setPlayer2Id(pair[1]);
                 } else if ((m.getRoundIndex() == null ? 1 : m.getRoundIndex()) > 1) {
-                    copy.setWhitePlayerId(null);
-                    copy.setBlackPlayerId(null);
+                    copy.setPlayer1Id(null);
+                    copy.setPlayer2Id(null);
                 }
             }
             result.add(copy);
@@ -1027,8 +1096,8 @@ if (isBlank(t.getTournamentName())) return false;
         c.setRoundName(m.getRoundName());
         c.setRoundIndex(m.getRoundIndex());
         c.setBoardNumber(m.getBoardNumber());
-        c.setWhitePlayerId(m.getWhitePlayerId());
-        c.setBlackPlayerId(m.getBlackPlayerId());
+        c.setPlayer1Id(m.getPlayer1Id());
+        c.setPlayer2Id(m.getPlayer2Id());
         c.setStartTime(m.getStartTime());
         c.setRefereeId(m.getRefereeId());
         return c;
@@ -1061,3 +1130,7 @@ if (isBlank(t.getTournamentName())) return false;
         }
     }
 }
+
+
+
+

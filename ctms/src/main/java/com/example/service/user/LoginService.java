@@ -11,7 +11,7 @@ public class LoginService {
 
     public HashMap<String, Object> login(String email, String password) {
         HashMap<String, Object> result = new HashMap<>();
-        if (email == null || email.trim().isEmpty() ) {
+        if (email == null || email.trim().isEmpty()) {
             result.put("success", false);
             result.put("message", "Email is required");
             return result;
@@ -22,6 +22,7 @@ public class LoginService {
             result.put("message", "Password is required");
             return result;
         }
+
         UserDAO dao = new UserDAO();
         String hashedPassword = PasswordUtil.hashPassword(password);
         UserRole userRole = dao.findUserWithRole(email, hashedPassword);
@@ -35,15 +36,11 @@ public class LoginService {
         String roleName = userRole.getRoleName();
         String role = (roleName != null && !roleName.isBlank()) ? roleName.toUpperCase() : "PLAYER";
 
-        // Lấy full User để đưa vào token/FE nếu cần thêm field
         User user = dao.getUserById(userRole.getUserId());
         if (user == null) {
-            // fallback: map tối thiểu từ UserRole
-            user = new User();
-            user.setUserId(userRole.getUserId());
-            user.setUsername(userRole.getUsername());
-            user.setEmail(userRole.getEmail());
-            user.setAvatar(userRole.getAvatar());
+            result.put("success", false);
+            result.put("message", "User account is not available");
+            return result;
         }
 
         result.put("success", true);
@@ -53,5 +50,4 @@ public class LoginService {
 
         return result;
     }
-
 }

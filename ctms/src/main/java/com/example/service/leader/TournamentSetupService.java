@@ -5,7 +5,6 @@ import com.example.model.dto.TournamentSetupMatchDTO;
 import com.example.model.dto.TournamentSetupStateDTO;
 import com.example.model.dto.TournamentManualSetupRequestDTO;
 import com.example.model.enums.SetupStep;
-import com.google.gson.Gson;
 
 import java.util.List;
 import java.util.Map;
@@ -18,7 +17,6 @@ public class TournamentSetupService {
 
     private final TournamentSetupDAO setupDAO;
     private final TournamentService tournamentService;
-    private final Gson gson = new Gson();
 
     public TournamentSetupService() {
         this.setupDAO = new TournamentSetupDAO();
@@ -39,8 +37,8 @@ public class TournamentSetupService {
     // ==================== FINALIZE ====================
 
     /**
-     * Validate trước khi finalize: bước trước phải FINALIZED; không có bước sau đã FINALIZED.
-     * Sau đó validate dữ liệu theo từng bước (structure, players, schedule, referee).
+     * Validate trước khi finalize: bước trước phải FINALIZED.
+     * Finalize vẫn là cổng validate nghiệp vụ, nhưng không khóa điều hướng step ở FE.
      */
     public ValidationResult validateBeforeFinalize(int tournamentId, SetupStep step, TournamentManualSetupRequestDTO request) {
         if (tournamentId <= 0 || step == null) {
@@ -55,22 +53,13 @@ public class TournamentSetupService {
         if (step != SetupStep.BRACKET) {
             SetupStep prev = previous(step);
             if (prev != null && !"FINALIZED".equalsIgnoreCase(statuses.get(prev.name()))) {
-                return ValidationResult.invalid("Bạn cần hoàn tất bước trước (" + prev.name() + ") trước khi finalize bước này.");
+                return ValidationResult.invalid("Bạn cần Finalize bước trước (" + prev.name() + ") trước khi Finalize bước này.");
             }
         }
 
-        int currentOrder = step.order();
-        for (SetupStep s : SetupStep.values()) {
-            if (s == SetupStep.COMPLETED) continue;
-            if (s.order() > currentOrder) {
-                String st = statuses.get(s.name());
-                if ("FINALIZED".equalsIgnoreCase(st)) {
-                    return ValidationResult.invalid(
-                        "Không thể finalize lại bước " + step.name() +
-                        " khi bước " + s.name() + " đã ở trạng thái FINALIZED. Vui lòng dùng chức năng Unlock trước."
-                    );
-                }
-            }
+        // Sau khi đã Save & Publish chỉ cho phép chỉnh Add Players và Referees.
+        if (isSetupPublished(state) && step != SetupStep.PLAYERS && step != SetupStep.REFEREES) {
+            return ValidationResult.invalid("Giải đã được Save & Publish. Chỉ có thể cập nhật Add Players và Referees.");
         }
 
         switch (step) {
@@ -94,15 +83,21 @@ public class TournamentSetupService {
         ValidationResult validation = validateBeforeFinalize(tournamentId, step, request);
         if (!validation.isValid()) return validation;
 
-        TournamentSetupStateDTO before = getSetupState(tournamentId);
-        String beforeJson = gson.toJson(before);
-
         if (step == SetupStep.BRACKET || step == SetupStep.PLAYERS || step == SetupStep.SCHEDULE) {
             if (request != null) {
                 TournamentService.SetupValidationResult saveResult = saveStepData(tournamentId, step, request);
                 if (!saveResult.isValid()) {
                     return ValidationResult.invalid(saveResult.getMessage());
                 }
+            }
+        } else if (step == SetupStep.REFEREES) {
+            if (request == null || request.getMatches() == null) {
+                return ValidationResult.invalid("Thiếu dữ liệu trọng tài. Gửi matches để finalize bước Referee.");
+            }
+            TournamentService.SetupValidationResult saveResult =
+                    tournamentService.saveRefereeAssignments(tournamentId, request.getMatches());
+            if (!saveResult.isValid()) {
+                return ValidationResult.invalid(saveResult.getMessage());
             }
         }
 
@@ -113,54 +108,83 @@ public class TournamentSetupService {
             ok = setupDAO.finalizeStep(tournamentId, step, userId);
         }
         if (!ok) return ValidationResult.invalid("Không thể cập nhật trạng thái bước. Kiểm tra bảng Tournament_Setup_State đã có dòng cho giải này chưa (chạy scripts/ensure_tournament_setup_state_rows.sql).");
-
-        TournamentSetupStateDTO after = getSetupState(tournamentId);
-        setupDAO.insertAuditLog(tournamentId, step.name(), "FINALIZE", beforeJson, gson.toJson(after), userId);
         return ValidationResult.valid();
     }
 
-    /** Lưu dữ liệu bracket/schedule (replaceManualSetup) cho bước BRACKET/PLAYERS/SCHEDULE. */
+    public ValidationResult markDirtyFromStep(int tournamentId, SetupStep step, Integer userId) {
+        if (tournamentId <= 0 || step == null || step == SetupStep.COMPLETED) {
+            return ValidationResult.invalid("Invalid tournament or step.");
+        }
+        setupDAO.ensureSetupStateRow(tournamentId);
+        boolean ok = setupDAO.markDirtyFromStep(tournamentId, step, userId);
+        if (!ok) {
+            return ValidationResult.invalid("Không thể chuyển bước về DIRTY.");
+        }
+        return ValidationResult.valid();
+    }
+
+    public ValidationResult publishSetup(int tournamentId) {
+        if (tournamentId <= 0) {
+            return ValidationResult.invalid("Invalid tournament.");
+        }
+        TournamentSetupStateDTO state = getSetupState(tournamentId);
+        if (state == null) {
+            return ValidationResult.invalid("Could not load setup state.");
+        }
+        Map<String, String> statuses = state.getStepStatuses();
+        if (statuses == null) statuses = Map.of();
+        if (!"FINALIZED".equalsIgnoreCase(statuses.get("BRACKET"))
+                || !"FINALIZED".equalsIgnoreCase(statuses.get("PLAYERS"))
+                || !"FINALIZED".equalsIgnoreCase(statuses.get("SCHEDULE"))
+                || !"FINALIZED".equalsIgnoreCase(statuses.get("REFEREES"))) {
+            return ValidationResult.invalid("Chỉ có thể Publish khi cả 4 bước đều đã FINALIZED.");
+        }
+        boolean ok = setupDAO.upsertSetupStep(tournamentId, SetupStep.COMPLETED.toDbValue());
+        if (!ok) {
+            return ValidationResult.invalid("Không thể cập nhật trạng thái Publish.");
+        }
+        return ValidationResult.valid("Save & Publish thành công.");
+    }
+
+    /** Lưu dữ liệu cho bước PLAYERS/SCHEDULE. BRACKET chỉ validate structure, chưa ghi Matches. */
     private TournamentService.SetupValidationResult saveStepData(int tournamentId, SetupStep step, TournamentManualSetupRequestDTO request) {
         String format = tournamentService.getNormalizedFormat(request.getFormat());
         List<TournamentSetupMatchDTO> matches = tournamentService.normalizeMatchesInternal(request.getMatches(), format);
         if (step == SetupStep.BRACKET) {
-            boolean saved = setupDAO.replaceManualSetup(tournamentId, format, matches);
-            if (!saved) return TournamentService.SetupValidationResult.invalid("Không thể lưu structure bracket.");
-            return TournamentService.SetupValidationResult.valid("Hoàn tất Structure.");
+            return TournamentService.SetupValidationResult.valid("Hoàn tất Structure. Chưa gán player ở bước này.");
         }
         if (step == SetupStep.PLAYERS) {
             boolean saved = setupDAO.replaceManualSetup(tournamentId, format, matches);
-            if (!saved) return TournamentService.SetupValidationResult.invalid("Không thể lưu Add Players.");
+            if (!saved) {
+                String daoError = setupDAO.getLastReplaceManualSetupError();
+                String message = (daoError == null || daoError.isBlank())
+                        ? "Không thể lưu Add Players."
+                        : "Không thể lưu Add Players. " + daoError;
+                return TournamentService.SetupValidationResult.invalid(message);
+            }
             return TournamentService.SetupValidationResult.valid("Hoàn tất Add Players.");
         }
         if (step == SetupStep.SCHEDULE) {
             boolean saved = setupDAO.replaceManualSetup(tournamentId, format, matches);
-            if (!saved) return TournamentService.SetupValidationResult.invalid("Không thể lưu lịch đấu.");
+            if (!saved) {
+                String daoError = setupDAO.getLastReplaceManualSetupError();
+                String message = (daoError == null || daoError.isBlank())
+                        ? "Không thể lưu lịch đấu."
+                        : "Không thể lưu lịch đấu. " + daoError;
+                return TournamentService.SetupValidationResult.invalid(message);
+            }
             return TournamentService.SetupValidationResult.valid("Lưu lịch thành công.");
         }
         return TournamentService.SetupValidationResult.invalid("Step không hợp lệ.");
     }
 
-    // ==================== UNLOCK ====================
-
-    /**
-     * Unlock bước K: set bước K và các bước sau về DRAFT, current_step = bước K. Ghi audit log.
-     */
-    public ValidationResult unlockStep(int tournamentId, SetupStep step, Integer userId) {
-        if (tournamentId <= 0 || step == null) {
-            return ValidationResult.invalid("Invalid tournament or step.");
-        }
-        if (step == SetupStep.COMPLETED) {
-            step = SetupStep.REFEREES;
-        }
-        setupDAO.ensureSetupStateRow(tournamentId);
-        TournamentSetupStateDTO before = getSetupState(tournamentId);
-        String beforeJson = gson.toJson(before);
-        boolean ok = setupDAO.unlockStep(tournamentId, step, userId);
-        if (!ok) return ValidationResult.invalid("Không thể mở khóa bước.");
-        TournamentSetupStateDTO after = getSetupState(tournamentId);
-        setupDAO.insertAuditLog(tournamentId, step.name(), "UNLOCK", beforeJson, gson.toJson(after), userId);
-        return ValidationResult.valid();
+    private boolean isSetupPublished(TournamentSetupStateDTO state) {
+        if (state == null) return false;
+        String current = state.getCurrentStep();
+        if ("COMPLETED".equalsIgnoreCase(current)) return true;
+        Map<String, String> statuses = state.getStepStatuses();
+        if (statuses == null) return false;
+        return "FINALIZED".equalsIgnoreCase(statuses.get("REFEREES"));
     }
 
     // ==================== VALIDATION HELPERS ====================
@@ -208,6 +232,14 @@ public class TournamentSetupService {
     }
 
     private ValidationResult validateRefereesStep(int tournamentId) {
+        TournamentSetupStateDTO state = getSetupState(tournamentId);
+        if (state == null) {
+            return ValidationResult.invalid("Không thể tải trạng thái setup.");
+        }
+        Map<String, String> statuses = state.getStepStatuses();
+        if (statuses == null || !"FINALIZED".equalsIgnoreCase(statuses.get("SCHEDULE"))) {
+            return ValidationResult.invalid("Bạn cần Finalize Schedule trước khi Finalize Referee.");
+        }
         return ValidationResult.valid();
     }
 
@@ -226,6 +258,10 @@ public class TournamentSetupService {
             return new ValidationResult(true, null);
         }
 
+        public static ValidationResult valid(String message) {
+            return new ValidationResult(true, message);
+        }
+
         public static ValidationResult invalid(String message) {
             return new ValidationResult(false, message);
         }
@@ -234,3 +270,5 @@ public class TournamentSetupService {
         public String getMessage() { return message; }
     }
 }
+
+
