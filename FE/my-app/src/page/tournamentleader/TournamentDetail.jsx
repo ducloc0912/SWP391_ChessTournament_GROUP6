@@ -1282,8 +1282,8 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
       console.error("Update participant status failed:", err);
       window.alert(
         err?.response?.data?.message ||
-          err.message ||
-          "Không thể cập nhật trạng thái người chơi.",
+        err.message ||
+        "Không thể cập nhật trạng thái người chơi.",
       );
     } finally {
       setActionLoadingId(null);
@@ -1951,7 +1951,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
     });
     setRowErrors(next);
   };
-
   const handleDeleteRow = (id) => {
     void markDirtyFromStep("BRACKET");
     setRowErrors((prev) => {
@@ -2576,11 +2575,11 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
             <span className="tsu-schedule-time">
               {match.startTime
                 ? (() => {
-                    const d = new Date(match.startTime);
-                    return Number.isNaN(d.getTime())
-                      ? match.startTime
-                      : d.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
-                  })()
+                  const d = new Date(match.startTime);
+                  return Number.isNaN(d.getTime())
+                    ? match.startTime
+                    : d.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+                })()
                 : "—"}
             </span>
           </div>
@@ -2714,13 +2713,12 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                 <div
                   className="tsu-ko-column-list"
                   style={{
-                    "--tsu-ko-level-gap": `${
-                      14 * Math.max(1, 2 ** (Number(round.roundIndex || 1) - 1))
-                    }px`,
+                    "--tsu-ko-level-gap": `${14 * Math.max(1, 2 ** (Number(round.roundIndex || 1) - 1))
+                      }px`,
                     "--tsu-ko-level-top": `${Math.round(
                       22 *
-                        (Math.max(1, 2 ** (Number(round.roundIndex || 1) - 1)) -
-                          1),
+                      (Math.max(1, 2 ** (Number(round.roundIndex || 1) - 1)) -
+                        1),
                     )}px`,
                   }}
                 >
@@ -2769,7 +2767,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                           <div className="tsu-ko-player-row">
                             <span className="tsu-ko-seat">P1</span>
                             {laneStep === "players" &&
-                            Number(match.roundIndex || 1) > 1 ? (
+                              Number(match.roundIndex || 1) > 1 ? (
                               <span className="tsu-readonly-value">
                                 {getKoWinnerRefs(match).player1Ref}
                               </span>
@@ -2810,7 +2808,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                           <div className="tsu-ko-player-row">
                             <span className="tsu-ko-seat">P2</span>
                             {laneStep === "players" &&
-                            Number(match.roundIndex || 1) > 1 ? (
+                              Number(match.roundIndex || 1) > 1 ? (
                               <span className="tsu-readonly-value">
                                 {getKoWinnerRefs(match).player2Ref}
                               </span>
@@ -2868,11 +2866,11 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                             <span className="tsu-schedule-time">
                               {match.startTime
                                 ? (() => {
-                                    const d = new Date(match.startTime);
-                                    return Number.isNaN(d.getTime())
-                                      ? match.startTime
-                                      : d.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
-                                  })()
+                                  const d = new Date(match.startTime);
+                                  return Number.isNaN(d.getTime())
+                                    ? match.startTime
+                                    : d.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+                                })()
                                 : "—"}
                             </span>
                           </div>
@@ -3067,34 +3065,29 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
             {laneStep === "referee" ? (
               <>
                 <div className="tsu-referee-step">
-                <div className="tsu-preview-head">
-                  <div>
-                    <h3>4. Select Referee</h3>
-                    <p>
-                      Gán trọng tài cho từng ván đấu. Trọng tài phải được thêm
-                      vào giải trước (tab Referees).
-                    </p>
-                    {tournamentReferees.length === 0 && (
-                      <p className="tsu-referee-empty-hint">
-                        Chưa có trọng tài nào. Vào tab Referees để thêm trọng
-                        tài vào giải trước.
+                  <div className="tsu-preview-head">
+                    <div>
+                      <h3>4. Select Referee</h3>
+                      <p>
+                        Gán trọng tài cho từng ván đấu. Trọng tài phải được thêm
+                        vào giải trước (tab Referees).
                       </p>
                     )}
                   </div>
                 </div>
-              </div>
-              {effectiveFormat === "RoundRobin" &&
-                renderRoundRobinPreview(
-                  stageRows.nativeRounds,
-                  "Round Robin - Chọn trọng tài",
-                )}
-              {effectiveFormat === "KnockOut" &&
-                renderKnockoutPreview(
-                  stageRows.nativeRounds,
-                  "Knock Out - Chọn trọng tài",
-                )}
+
+                {effectiveFormat === "RoundRobin" &&
+                  renderRoundRobinPreview(
+                    stageRows.nativeRounds,
+                    "Round Robin - Chọn trọng tài",
+                  )}
+                {effectiveFormat === "KnockOut" &&
+                  renderKnockoutPreview(
+                    stageRows.nativeRounds,
+                    "Knock Out - Chọn trọng tài",
+                  )}
               </>
-          ) : (
+            ) : (
               <div className="tsu-schedule-wrap">
                 <div className="tsu-preview-head">
                   <div>
@@ -3316,30 +3309,20 @@ const RefereeTab = ({ tournamentId }) => {
         address: "",
       });
       await fetchReferees();
-      if (
-        created?.email &&
-        tournamentId &&
-        confirm(
-          "Tạo trọng tài thành công. Bạn có muốn gửi lời mời tham gia giải này không?",
-        )
-      ) {
+      if (created?.refereeId != null && tournamentId) {
         try {
-          const invitePayload = {
-            email: String(created.email).trim(),
-            refereeRole: assignRole,
-          };
-          const inviteRes = await axios.post(
-            `${API_BASE}/api/tournaments?action=inviteReferee&id=${tournamentId}`,
-            invitePayload,
-            { withCredentials: true },
+          await axios.post(
+            `${API_BASE}/api/tournaments?action=assignReferee&id=${tournamentId}`,
+            { refereeId: created.refereeId, refereeRole: assignRole || "Assistant" },
+            { withCredentials: true }
           );
-          alert(inviteRes?.data?.message || "Đã gửi lời mời cho trọng tài.");
-        } catch (inviteErr) {
-          alert(
-            inviteErr?.response?.data?.message ||
-              "Gửi lời mời trọng tài thất bại.",
-          );
+          await fetchReferees();
+          alert("Đã tạo trọng tài và thêm vào giải.");
+        } catch (assignErr) {
+          alert(assignErr?.response?.data?.message || "Thêm trọng tài vào giải thất bại.");
         }
+      } else if (created) {
+        alert("Tạo trọng tài thành công.");
       }
     } catch (err) {
       alert(err?.response?.data?.message || "Tạo trọng tài thất bại.");
@@ -3847,7 +3830,6 @@ const ReportsTab = ({ tournamentId }) => {
           <h3>Báo cáo vi phạm</h3>
           <p>Danh sách report liên quan đến các trận trong giải này.</p>
         </div>
-
         <div className="td-reports-filter">
           <select
             value={statusFilter}

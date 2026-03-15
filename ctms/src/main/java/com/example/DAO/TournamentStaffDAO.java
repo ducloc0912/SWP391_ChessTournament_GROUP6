@@ -51,6 +51,21 @@ public class TournamentStaffDAO extends DBContext {
         return list;
     }
 
+    public List<Tournament> getNonPendingTournamentsForStaff() {
+        List<Tournament> list = new ArrayList<>();
+        String sql = "SELECT * FROM Tournaments WHERE status != 'Pending' ORDER BY create_at DESC";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(mapResultSetToTournament(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
     public Tournament getTournamentById(int id) {
         String sql = "SELECT * FROM Tournaments WHERE tournament_id = ?";
         try (Connection conn = getConnection();
