@@ -73,6 +73,11 @@ public class StaffTournamentController extends HttpServlet {
             return;
         }
 
+        if ("allNonPending".equals(action)) {
+            resp.getWriter().write(gson.toJson(service.getNonPendingTournaments()));
+            return;
+        }
+
         if ("transactionsSummary".equals(action)) {
             resp.getWriter().write(gson.toJson(service.getTransactionSummary()));
             return;
@@ -115,6 +120,16 @@ public class StaffTournamentController extends HttpServlet {
 
                 boolean success = service.updateTournamentStatus(tournamentId, staffId, status, approvalAction, note);
                 responseMap.put("success", success);
+            } else if ("cancelTournament".equals(action)) {
+                Map<String, Object> body = gson.fromJson(req.getReader(), Map.class);
+                int tournamentId = ((Double) body.get("tournamentId")).intValue();
+                int staffId = ((Double) body.get("staffId")).intValue();
+                String note = (String) body.get("note");
+                boolean success = service.cancelTournamentWithRefund(tournamentId, staffId, note);
+                responseMap.put("success", success);
+                if (success) {
+                    responseMap.put("message", "Đã hủy giải đấu và hoàn tiền thành công.");
+                }
             } else if ("assign".equals(action)) {
                 TournamentStaff assignment = gson.fromJson(req.getReader(), TournamentStaff.class);
                 boolean success = service.assignStaff(assignment);

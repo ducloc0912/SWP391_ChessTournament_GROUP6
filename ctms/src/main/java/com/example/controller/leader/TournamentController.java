@@ -876,9 +876,28 @@ public class TournamentController extends HttpServlet {
             response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament\"}");
             return;
         }
-        Integer tournamentId = tournamentService.createTournament(tournament);
-        boolean success = tournamentId != null;
-        if (success && root.has("prizeTemplates")) {
+
+        // Đảm bảo createBy được set từ session
+        Integer sessionUserId = getUserIdFromSession(request);
+        if (sessionUserId != null && (tournament.getCreateBy() == null || tournament.getCreateBy() <= 0)) {
+            tournament.setCreateBy(sessionUserId);
+        }
+
+        // Sử dụng createTournamentWithWallet để kiểm tra ví và trừ tiền
+        TournamentService.CreateTournamentResult createResult = tournamentService.createTournamentWithWallet(tournament);
+
+        if (!createResult.isSuccess()) {
+            // Trả lỗi cụ thể (thiếu tiền, validation, v.v.)
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            Map<String, Object> errPayload = new HashMap<>();
+            errPayload.put("success", false);
+            errPayload.put("message", createResult.getErrorMessage());
+            response.getWriter().write(gson.toJson(errPayload));
+            return;
+        }
+
+        Integer tournamentId = createResult.getTournamentId();
+        if (tournamentId != null && root.has("prizeTemplates")) {
             try {
                 com.google.gson.JsonArray arr = root.getAsJsonArray("prizeTemplates");
                 if (arr != null && arr.size() > 0) {
@@ -903,8 +922,8 @@ public class TournamentController extends HttpServlet {
             }
         }
         Map<String, Object> payload = new HashMap<>();
-        payload.put("success", success);
-        if (success) payload.put("tournamentId", tournamentId);
+        payload.put("success", true);
+        payload.put("tournamentId", tournamentId);
         response.getWriter().write(gson.toJson(payload));
     }
 

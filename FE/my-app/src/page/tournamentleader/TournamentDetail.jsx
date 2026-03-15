@@ -1280,8 +1280,8 @@ const WaitingListTab = ({ tournamentId, onApprovedChanged }) => {
       console.error("Update participant status failed:", err);
       window.alert(
         err?.response?.data?.message ||
-          err.message ||
-          "Không thể cập nhật trạng thái người chơi.",
+        err.message ||
+        "Không thể cập nhật trạng thái người chơi.",
       );
     } finally {
       setActionLoadingId(null);
@@ -1876,7 +1876,6 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
     });
     setRowErrors(next);
   };
-
   const handleDeleteRow = (id) => {
     setRowErrors((prev) => {
       if (!prev[id]) return prev;
@@ -1917,26 +1916,26 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
       prev.map((row) =>
         row.id === id
           ? (() => {
-              const nextValue =
-                field === "roundIndex" || field === "boardNumber"
-                  ? Number(value || 1)
-                  : value;
-              const nextRow = { ...row, [field]: nextValue };
-              if (
-                laneStep === "structure" &&
-                structureFields.has(field) &&
-                (row.whitePlayerId || row.blackPlayerId || row.startTime)
-              ) {
-                nextRow.whitePlayerId = "";
-                nextRow.blackPlayerId = "";
-                nextRow.startTime = "";
-                setServerBanner({
-                  type: "error",
-                  text: "Bạn đã đổi structure, hệ thống reset player/schedule của match này để tránh lệch dữ liệu.",
-                });
-              }
-              return nextRow;
-            })()
+            const nextValue =
+              field === "roundIndex" || field === "boardNumber"
+                ? Number(value || 1)
+                : value;
+            const nextRow = { ...row, [field]: nextValue };
+            if (
+              laneStep === "structure" &&
+              structureFields.has(field) &&
+              (row.whitePlayerId || row.blackPlayerId || row.startTime)
+            ) {
+              nextRow.whitePlayerId = "";
+              nextRow.blackPlayerId = "";
+              nextRow.startTime = "";
+              setServerBanner({
+                type: "error",
+                text: "Bạn đã đổi structure, hệ thống reset player/schedule của match này để tránh lệch dữ liệu.",
+              });
+            }
+            return nextRow;
+          })()
           : row,
       ),
     );
@@ -2573,11 +2572,11 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
             <span className="tsu-schedule-time">
               {match.startTime
                 ? (() => {
-                    const d = new Date(match.startTime);
-                    return Number.isNaN(d.getTime())
-                      ? match.startTime
-                      : d.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
-                  })()
+                  const d = new Date(match.startTime);
+                  return Number.isNaN(d.getTime())
+                    ? match.startTime
+                    : d.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+                })()
                 : "—"}
             </span>
           </div>
@@ -2678,13 +2677,12 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                 <div
                   className="tsu-ko-column-list"
                   style={{
-                    "--tsu-ko-level-gap": `${
-                      14 * Math.max(1, 2 ** (Number(round.roundIndex || 1) - 1))
-                    }px`,
+                    "--tsu-ko-level-gap": `${14 * Math.max(1, 2 ** (Number(round.roundIndex || 1) - 1))
+                      }px`,
                     "--tsu-ko-level-top": `${Math.round(
                       22 *
-                        (Math.max(1, 2 ** (Number(round.roundIndex || 1) - 1)) -
-                          1),
+                      (Math.max(1, 2 ** (Number(round.roundIndex || 1) - 1)) -
+                        1),
                     )}px`,
                   }}
                 >
@@ -2746,7 +2744,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                           <div className="tsu-ko-player-row">
                             <span className="tsu-ko-seat">W</span>
                             {laneStep === "players" &&
-                            Number(match.roundIndex || 1) > 1 ? (
+                              Number(match.roundIndex || 1) > 1 ? (
                               <span className="tsu-readonly-value">
                                 {getKoWinnerRefs(match).whiteRef}
                               </span>
@@ -2777,7 +2775,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                             ) : (
                               <span className="tsu-readonly-value">
                                 {Number(match.roundIndex || 1) > 1 &&
-                                !match.whitePlayerId
+                                  !match.whitePlayerId
                                   ? getKoWinnerRefs(match).whiteRef
                                   : labelForPlayer(match.whitePlayerId)}
                               </span>
@@ -2786,7 +2784,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                           <div className="tsu-ko-player-row">
                             <span className="tsu-ko-seat">B</span>
                             {laneStep === "players" &&
-                            Number(match.roundIndex || 1) > 1 ? (
+                              Number(match.roundIndex || 1) > 1 ? (
                               <span className="tsu-readonly-value">
                                 {getKoWinnerRefs(match).blackRef}
                               </span>
@@ -2817,7 +2815,7 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                             ) : (
                               <span className="tsu-readonly-value">
                                 {Number(match.roundIndex || 1) > 1 &&
-                                !match.blackPlayerId
+                                  !match.blackPlayerId
                                   ? getKoWinnerRefs(match).blackRef
                                   : labelForPlayer(match.blackPlayerId)}
                               </span>
@@ -2842,11 +2840,11 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                             <span className="tsu-schedule-time">
                               {match.startTime
                                 ? (() => {
-                                    const d = new Date(match.startTime);
-                                    return Number.isNaN(d.getTime())
-                                      ? match.startTime
-                                      : d.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
-                                  })()
+                                  const d = new Date(match.startTime);
+                                  return Number.isNaN(d.getTime())
+                                    ? match.startTime
+                                    : d.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+                                })()
                                 : "—"}
                             </span>
                           </div>
@@ -3243,59 +3241,26 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
                       )}
                     </p>
                   </div>
-                  {laneStep === "schedule" && (
-                    <div className="tsu-preview-head-actions">
-                      <button
-                        type="button"
-                        className="tsu-round-add-btn"
-                        onClick={() => {
-                          if (!tournamentStartDate || !tournamentEndDate || rows.length === 0) {
-                            setServerBanner({ type: "error", text: "Cần có khoảng thời gian giải (start/end) để auto lịch." });
-                            return;
-                          }
-                          const start = new Date(tournamentStartDate).getTime();
-                          const end = new Date(tournamentEndDate).getTime();
-                          if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
-                            setServerBanner({ type: "error", text: "Ngày bắt đầu/kết thúc giải không hợp lệ." });
-                            return;
-                          }
-                          const step = (end - start) / Math.max(rows.length, 1);
-                          const toLocal = (d) => {
-                            const x = new Date(d);
-                            const local = new Date(x.getTime() - x.getTimezoneOffset() * 60000);
-                            return local.toISOString().slice(0, 16);
-                          };
-                          setRows((prev) =>
-                            prev.map((row, i) => ({
-                              ...row,
-                              startTime: toLocal(new Date(start + step * i)),
-                            })),
-                          );
-                          setServerBanner({ type: "success", text: `Đã tự gán lịch cho ${rows.length} trận trong khoảng thời gian giải.` });
-                        }}
-                      >
-                        Auto schedule
-                      </button>
-                    </div>
-                  )}
                   {laneStep === "structure" && (
                     <div className="tsu-preview-head-actions">
-                      {(effectiveFormat === "RoundRobin" || effectiveFormat === "Hybrid") && (
-                        <button
-                          className="tsu-round-add-btn"
-                          onClick={() => addInlineRound("RoundRobin")}
-                        >
-                          + Thêm round RoundRobin
-                        </button>
-                      )}
-                      {(effectiveFormat === "KnockOut" || effectiveFormat === "Hybrid") && (
-                        <button
-                          className="tsu-round-add-btn"
-                          onClick={() => addInlineRound("KnockOut")}
-                        >
-                          + Thêm round KnockOut
-                        </button>
-                      )}
+                      {(effectiveFormat === "RoundRobin" ||
+                        effectiveFormat === "Hybrid") && (
+                          <button
+                            className="tsu-round-add-btn"
+                            onClick={() => addInlineRound("RoundRobin")}
+                          >
+                            + Thêm round RoundRobin
+                          </button>
+                        )}
+                      {(effectiveFormat === "KnockOut" ||
+                        effectiveFormat === "Hybrid") && (
+                          <button
+                            className="tsu-round-add-btn"
+                            onClick={() => addInlineRound("KnockOut")}
+                          >
+                            + Thêm round KnockOut
+                          </button>
+                        )}
                     </div>
                   )}
                 </div>
@@ -3314,12 +3279,11 @@ const BracketTab = ({ tournamentId, tournamentFormat, approvedPlayers = [], tour
               </div>
             )}
           </div>
-
-      </>
-    )}
-    {toast && <div className="ti-toast">{toast}</div>}
-  </div>
-);
+        </>
+      )}
+      {toast && <div className="ti-toast">{toast}</div>}
+    </div>
+  );
 };
 
 const RefereeTab = ({ tournamentId }) => {
@@ -3995,7 +3959,6 @@ const ReportsTab = ({ tournamentId }) => {
           <h3>Báo cáo vi phạm</h3>
           <p>Danh sách report liên quan đến các trận trong giải này.</p>
         </div>
-
         <div className="td-reports-filter">
           <select
             value={statusFilter}

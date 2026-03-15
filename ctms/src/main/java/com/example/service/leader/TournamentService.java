@@ -6,6 +6,8 @@ import com.example.DAO.TournamentRefereeDAO;
 import com.example.DAO.ReportDAO;
 import com.example.DAO.MatchDAO;
 import com.example.DAO.TournamentSetupDAO;
+import com.example.DAO.PaymentDAO;
+import com.example.DAO.UserDAO;
 import com.example.util.EmailUtil;
 import com.example.model.dto.TournamentManualSetupRequestDTO;
 import com.example.model.dto.TournamentSetupMatchDTO;
@@ -51,6 +53,8 @@ public class TournamentService {
     private final MatchDAO matchDAO;
     private final TournamentSetupDAO setupDAO;
     private final PrizeTemplateDAO prizeTemplateDAO;
+    private final PaymentDAO paymentDAO;
+    private final UserDAO userDAO;
 
     public TournamentService() {
         this.tournamentDAO = new TournamentDAO();
@@ -61,6 +65,8 @@ public class TournamentService {
         this.matchDAO = new MatchDAO();
         this.setupDAO = new TournamentSetupDAO();
         this.prizeTemplateDAO = new PrizeTemplateDAO();
+        this.paymentDAO = new PaymentDAO();
+        this.userDAO = new UserDAO();
     }
 
     public List<TournamentDTO> getAllTournamentsWithCurrentPlayers() {
@@ -484,7 +490,105 @@ public class TournamentService {
     // =========================
     // CREATE
     // =========================
-    /** Returns the new tournament ID, or null on failure. */
+
+    /** Kết quả tạo giải đấu: tournamentId, success, errorMessage. */
+    public static class CreateTournamentResult {
+        private final Integer tournamentId;
+        private final boolean success;
+        private final String errorMessage;
+
+        private CreateTournamentResult(Integer tournamentId, boolean success, String errorMessage) {
+            this.tournamentId = tournamentId;
+            this.success = success;
+            this.errorMessage = errorMessage;
+        }
+
+        public static CreateTournamentResult ok(int tournamentId) {
+            return new CreateTournamentResult(tournamentId, true, null);
+        }
+
+        public static CreateTournamentResult error(String message) {
+            return new CreateTournamentResult(null, false, message);
+        }
+
+        public Integer getTournamentId() { return tournamentId; }
+        public boolean isSuccess() { return success; }
+        public String getErrorMessage() { return errorMessage; }
+    }
+
+    /**
+     * Tạo giải đấu. Nếu prizePool > 0, sẽ trừ tiền từ ví leader.
+     * Trả về CreateTournamentResult để phân biệt lỗi validation và thiếu tiền.
+     */
+    public CreateTournamentResult createTournamentWithWallet(TournamentDTO t) {
+
+        if (t == null) return CreateTournamentResult.error("Dữ liệu giải đấu không hợp lệ.");
+
+        // ---- REQUIRED FIELDS ----
+        if (isBlank(t.getTournamentName())) return CreateTournamentResult.error("Tên giải đấu không được trống.");
+        if (isBlank(t.getFormat())) return CreateTournamentResult.error("Thể thức không được trống.");
+
+        // ---- PLAYER VALIDATION ----
+        if (t.getMinPlayer() == null || t.getMaxPlayer() == null) return CreateTournamentResult.error("Số lượng người chơi không hợp lệ.");
+        if (t.getMinPlayer() < 0 || t.getMaxPlayer() < 0) return CreateTournamentResult.error("Số lượng người chơi không hợp lệ.");
+        if (t.getMinPlayer() > t.getMaxPlayer()) return CreateTournamentResult.error("Số người chơi tối thiểu phải nhỏ hơn tối đa.");
+
+        String normalizedFormat = normalizeFormat(t.getFormat());
+        if (normalizedFormat == null) return CreateTournamentResult.error("Thể thức không hợp lệ. Chỉ hỗ trợ RoundRobin, KnockOut.");
+        int min = t.getMinPlayer();
+        int max = t.getMaxPlayer();
+        if ("RoundRobin".equals(normalizedFormat)) {
+            if (min < 4 || max > 8) return CreateTournamentResult.error("Round Robin: 4-8 người chơi.");
+        } else if ("KnockOut".equals(normalizedFormat)) {
+            if (min < 8 || max > 32) return CreateTournamentResult.error("Knock Out: 8-32 người chơi.");
+        }
+
+        // ---- DEFAULT VALUES ----
+        if (t.getEntryFee() == null) {
+            t.setEntryFee(BigDecimal.ZERO);
+        }
+        if (t.getPrizePool() == null) {
+            t.setPrizePool(BigDecimal.ZERO);
+        }
+
+        // ---- KIỂM TRA SỐ DƯ VÍ LEADER ----
+        BigDecimal prizePool = t.getPrizePool();
+        int creatorId = t.getCreateBy();
+        if (prizePool.compareTo(BigDecimal.ZERO) > 0) {
+            // Lấy balance hiện tại để kiểm tra
+            com.example.model.entity.User leader = userDAO.getUserById(creatorId);
+            if (leader == null) {
+                return CreateTournamentResult.error("Không tìm thấy tài khoản leader.");
+            }
+            BigDecimal balance = leader.getBalance() != null ? leader.getBalance() : BigDecimal.ZERO;
+            if (balance.compareTo(prizePool) < 0) {
+                return CreateTournamentResult.error(
+                    "Số dư ví không đủ để tạo giải đấu. Cần " + prizePool.toPlainString()
+                    + " VNĐ nhưng ví chỉ còn " + balance.toPlainString() + " VNĐ. Vui lòng nạp thêm tiền.");
+            }
+        }
+
+        // ---- TẠO GIẢI ----
+        Integer tournamentId = tournamentDAO.createTournament(t);
+        if (tournamentId == null) {
+            return CreateTournamentResult.error("Không thể tạo giải đấu. Vui lòng thử lại.");
+        }
+
+        // ---- TRỪ TIỀN LEADER ----
+        if (prizePool.compareTo(BigDecimal.ZERO) > 0) {
+            boolean deducted = paymentDAO.deductBalanceForTournamentCreation(creatorId, tournamentId, prizePool);
+            if (!deducted) {
+                // Rollback: xóa giải vừa tạo
+                tournamentDAO.deleteTournament(tournamentId);
+                return CreateTournamentResult.error(
+                    "Không thể trừ tiền từ ví. Số dư không đủ hoặc có lỗi xảy ra. Vui lòng nạp thêm tiền và thử lại.");
+            }
+        }
+
+        return CreateTournamentResult.ok(tournamentId);
+    }
+
+    /** Returns the new tournament ID, or null on failure. (Legacy - backward compatible) */
     public Integer createTournament(TournamentDTO t) {
 
         if (t == null) return null;
@@ -503,10 +607,8 @@ public class TournamentService {
         int min = t.getMinPlayer();
         int max = t.getMaxPlayer();
         if ("RoundRobin".equals(normalizedFormat)) {
-            // Round robin: 4–8 players
             if (min < 4 || max > 8) return null;
         } else if ("KnockOut".equals(normalizedFormat)) {
-            // Knockout: 8–32 players
             if (min < 8 || max > 32) return null;
         }
 
@@ -560,12 +662,47 @@ if (isBlank(t.getTournamentName())) return false;
     }
 
     // =========================
-    // CANCEL (SOFT DELETE)
+    // CANCEL (SOFT DELETE) + REFUND
     // =========================
+    /**
+     * Hủy giải đấu và hoàn tiền:
+     * - Hoàn prizePool cho leader (nếu prizePool > 0)
+     * - Hoàn entryFee cho tất cả người chơi đã thanh toán (nếu entryFee > 0)
+     */
     public boolean cancelTournament(int tournamentId, String reason) {
         if (tournamentId <= 0) return false;
         if (reason == null || reason.trim().isEmpty()) return false;
-        return tournamentDAO.cancelTournament(tournamentId, reason);
+
+        // Lấy thông tin giải trước khi hủy
+        TournamentDTO tournament = tournamentDAO.getTournamentById(tournamentId);
+        if (tournament == null) return false;
+
+        // Hủy giải
+        boolean cancelled = tournamentDAO.cancelTournament(tournamentId, reason);
+        if (!cancelled) return false;
+
+        // Hoàn tiền nếu giải có phí
+        BigDecimal prizePool = tournament.getPrizePool();
+        BigDecimal entryFee = tournament.getEntryFee();
+        int leaderId = tournament.getCreateBy();
+
+        boolean needRefundPrize = prizePool != null && prizePool.compareTo(BigDecimal.ZERO) > 0;
+        boolean needRefundEntry = entryFee != null && entryFee.compareTo(BigDecimal.ZERO) > 0;
+
+        if (needRefundPrize || needRefundEntry) {
+            java.util.List<Integer> paidUserIds = needRefundEntry
+                    ? paymentDAO.getPaidUserIdsByTournament(tournamentId)
+                    : java.util.List.of();
+
+            boolean refunded = paymentDAO.refundTournamentCancellation(
+                    tournamentId, leaderId, prizePool, entryFee, paidUserIds);
+
+            if (!refunded) {
+                System.err.println("[WARNING] Giải đấu #" + tournamentId + " đã bị hủy nhưng hoàn tiền thất bại!");
+            }
+        }
+
+        return true;
     }
 
     // =========================
