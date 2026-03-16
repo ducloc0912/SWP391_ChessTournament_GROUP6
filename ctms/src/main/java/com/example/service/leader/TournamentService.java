@@ -1,5 +1,6 @@
 package com.example.service.leader;
 
+import com.example.DAO.NotificationDAO;
 import com.example.DAO.RefereeInvitationDAO;
 import com.example.DAO.TournamentDAO;
 import com.example.DAO.TournamentRefereeDAO;
@@ -53,8 +54,7 @@ public class TournamentService {
     private final MatchDAO matchDAO;
     private final TournamentSetupDAO setupDAO;
     private final PrizeTemplateDAO prizeTemplateDAO;
-    private final PaymentDAO paymentDAO;
-    private final UserDAO userDAO;
+    private final NotificationDAO notificationDAO;
 
     public TournamentService() {
         this.tournamentDAO = new TournamentDAO();
@@ -65,8 +65,7 @@ public class TournamentService {
         this.matchDAO = new MatchDAO();
         this.setupDAO = new TournamentSetupDAO();
         this.prizeTemplateDAO = new PrizeTemplateDAO();
-        this.paymentDAO = new PaymentDAO();
-        this.userDAO = new UserDAO();
+        this.notificationDAO = new NotificationDAO();
     }
 
     public List<TournamentDTO> getAllTournamentsWithCurrentPlayers() {
@@ -151,7 +150,23 @@ public class TournamentService {
             return false;
         }
         String normalizedRole = "Chief".equalsIgnoreCase(role) ? "Chief" : "Assistant";
-        return refereeDAO.assignReferee(tournamentId, refereeId, normalizedRole, assignedBy, note);
+        boolean ok = refereeDAO.assignReferee(tournamentId, refereeId, normalizedRole, assignedBy, note);
+        if (ok) {
+            try {
+                TournamentDTO t = tournamentDAO.getTournamentById(tournamentId);
+                String tName = t != null ? t.getTournamentName() : "giải đấu #" + tournamentId;
+                com.example.model.entity.Notification n = new com.example.model.entity.Notification();
+                n.setUserId(refereeId);
+                n.setType("Tournament");
+                n.setTitle("Bạn được giao làm trọng tài giải đấu");
+                n.setMessage("Bạn đã được chỉ định làm trọng tài (" + normalizedRole + ") cho giải đấu '" + tName + "'.");
+                n.setActionUrl("/referee/matches");
+                notificationDAO.createNotification(n);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return ok;
     }
 
     public boolean removeRefereeFromTournament(int tournamentId, int refereeId) {
@@ -474,6 +489,26 @@ public class TournamentService {
         if (!setupDAO.upsertSetupStep(tournamentId, SetupStep.COMPLETED.toDbValue())) {
             return SetupValidationResult.invalid("Lưu trọng tài thành công nhưng không thể cập nhật trạng thái setup.");
         }
+        // Notify each unique referee assigned to matches
+        try {
+            TournamentDTO t = tournamentDAO.getTournamentById(tournamentId);
+            String tName = t != null ? t.getTournamentName() : "giải đấu #" + tournamentId;
+            Set<Integer> notifiedReferees = new HashSet<>();
+            for (TournamentSetupMatchDTO m : matches) {
+                Integer refId = m.getRefereeId();
+                if (refId == null || refId <= 0 || notifiedReferees.contains(refId)) continue;
+                notifiedReferees.add(refId);
+                com.example.model.entity.Notification n = new com.example.model.entity.Notification();
+                n.setUserId(refId);
+                n.setType("Match");
+                n.setTitle("Bạn được giao trọng tài trận đấu");
+                n.setMessage("Bạn đã được phân công làm trọng tài cho các trận trong giải đấu '" + tName + "'.");
+                n.setActionUrl("/referee/matches");
+                notificationDAO.createNotification(n);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return SetupValidationResult.valid("Lưu và công bố giải đấu thành công.");
     }
 
@@ -622,7 +657,21 @@ public class TournamentService {
             t.setPrizePool(BigDecimal.ZERO);
         }
 
-        return tournamentDAO.createTournament(t);
+        Integer newId = tournamentDAO.createTournament(t);
+        if (newId != null) {
+            try {
+                notificationDAO.createNotificationsForRole(
+                        "Staff",
+                        "Yêu cầu tạo giải đấu mới",
+                        "Tournament Leader đã gửi yêu cầu tạo giải đấu '" + t.getTournamentName() + "'. Vui lòng xem xét và phê duyệt.",
+                        "Tournament",
+                        "/staff/tournaments"
+                );
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return newId;
     }
 
     public boolean savePrizeTemplates(int tournamentId, List<PrizeTemplate> templates) {
@@ -715,37 +764,23 @@ if (isBlank(t.getTournamentName())) return false;
     public boolean cancelTournament(int tournamentId, String reason) {
         if (tournamentId <= 0) return false;
         if (reason == null || reason.trim().isEmpty()) return false;
-
-        // Lấy thông tin giải trước khi hủy
-        TournamentDTO tournament = tournamentDAO.getTournamentById(tournamentId);
-        if (tournament == null) return false;
-
-        // Hủy giải
-        boolean cancelled = tournamentDAO.cancelTournament(tournamentId, reason);
-        if (!cancelled) return false;
-
-        // Hoàn tiền nếu giải có phí
-        BigDecimal prizePool = tournament.getPrizePool();
-        BigDecimal entryFee = tournament.getEntryFee();
-        int leaderId = tournament.getCreateBy();
-
-        boolean needRefundPrize = prizePool != null && prizePool.compareTo(BigDecimal.ZERO) > 0;
-        boolean needRefundEntry = entryFee != null && entryFee.compareTo(BigDecimal.ZERO) > 0;
-
-        if (needRefundPrize || needRefundEntry) {
-            java.util.List<Integer> paidUserIds = needRefundEntry
-                    ? paymentDAO.getPaidUserIdsByTournament(tournamentId)
-                    : java.util.List.of();
-
-            boolean refunded = paymentDAO.refundTournamentCancellation(
-                    tournamentId, leaderId, prizePool, entryFee, paidUserIds);
-
-            if (!refunded) {
-                System.err.println("[WARNING] Giải đấu #" + tournamentId + " đã bị hủy nhưng hoàn tiền thất bại!");
+        TournamentDTO existing = tournamentDAO.getTournamentById(tournamentId);
+        String name = existing != null ? existing.getTournamentName() : "Giải đấu #" + tournamentId;
+        boolean ok = tournamentDAO.cancelTournament(tournamentId, reason);
+        if (ok) {
+            try {
+                notificationDAO.createNotificationsForRole(
+                        "Staff",
+                        "Giải đấu đã bị hủy",
+                        "Tournament Leader đã hủy giải đấu '" + name + "'.",
+                        "Tournament",
+                        "/staff/tournaments"
+                );
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
-
-        return true;
+        return ok;
     }
 
     // =========================
