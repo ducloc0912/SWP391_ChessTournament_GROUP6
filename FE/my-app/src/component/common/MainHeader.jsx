@@ -318,6 +318,26 @@ export default function MainHeader({
     }
   };
 
+  const handleMarkAsRead = async (id) => {
+    try {
+      await axios.post(`${API_BASE}/api/notifications?action=markRead`, {
+        notificationId: id
+      }, { withCredentials: true });
+      setNotifications(prev => prev.map(n => n.notificationId === id ? { ...n, isRead: true } : n));
+    } catch (err) {
+      console.error("Mark as read failed:", err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await axios.post(`${API_BASE}/api/notifications?action=markAllRead`, {}, { withCredentials: true });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error("Mark all as read failed:", err);
+    }
+  };
+
   const handleMenuAction = (item) => {
     if (item.to) {
       navigate(item.to);
@@ -523,6 +543,11 @@ export default function MainHeader({
                           ))}
                         </ul>
                       )}
+                      <div className="notification-footer" style={{ textAlign: 'center', padding: '10px', borderTop: '1px solid #334155' }}>
+                         <button type="button" style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '13px', cursor: 'pointer' }} onClick={() => navigate('/notifications')}>
+                           Xem tất cả
+                         </button>
+                      </div>
                     </div>
                   )}
                 </div>

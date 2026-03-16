@@ -8,7 +8,11 @@ import com.example.model.entity.TournamentApprovalLog;
 import com.example.model.entity.TournamentStaff;
 import com.example.model.enums.ApprovalAction;
 import com.example.model.enums.TournamentStatus;
+import com.example.model.dto.TournamentSetupStateDTO;
+import com.example.service.leader.TournamentSetupService;
+import com.example.service.leader.TournamentNotificationService;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +26,10 @@ public class TournamentStaffService {
 
     public List<Tournament> getPendingTournaments() {
         return tournamentStaffDAO.getPendingTournamentsForStaff();
+    }
+
+    public List<Tournament> getNonPendingTournaments() {
+        return tournamentStaffDAO.getNonPendingTournamentsForStaff();
     }
 
     public Tournament getTournamentById(int id) {
@@ -90,3 +98,4 @@ public class TournamentStaffService {
         return tournamentStaffDAO.rejectWithdrawal(withdrawalId, staffId, reason);
     }
 }
+

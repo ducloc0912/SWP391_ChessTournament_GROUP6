@@ -35,8 +35,8 @@ public class MatchGenerationService {
                 m.setRoundName(roundName);
                 m.setRoundIndex(roundIndex);
                 m.setBoardNumber(i + 1);
-                m.setWhitePlayerId(w);
-                m.setBlackPlayerId(b);
+                m.setPlayer1Id(w);
+                m.setPlayer2Id(b);
                 out.add(m);
             }
             if (n > 2) {
@@ -52,8 +52,8 @@ public class MatchGenerationService {
                 m2.setRoundName("Round " + (m.getRoundIndex() + baseRounds) + " (leg 2)");
                 m2.setRoundIndex(m.getRoundIndex() + baseRounds);
                 m2.setBoardNumber(m.getBoardNumber());
-                m2.setWhitePlayerId(m.getBlackPlayerId());
-                m2.setBlackPlayerId(m.getWhitePlayerId());
+                m2.setPlayer1Id(m.getPlayer2Id());
+                m2.setPlayer2Id(m.getPlayer1Id());
                 out.add(m2);
             }
         }
@@ -84,8 +84,8 @@ public class MatchGenerationService {
                 if (roundIndex == 1) {
                     int wIdx = bracketLeftSlot(pow, i);
                     int bIdx = bracketRightSlot(pow, i);
-                    m.setWhitePlayerId(wIdx < order.size() ? order.get(wIdx) : null);
-                    m.setBlackPlayerId(bIdx < order.size() ? order.get(bIdx) : null);
+                    m.setPlayer1Id(wIdx < order.size() ? order.get(wIdx) : null);
+                    m.setPlayer2Id(bIdx < order.size() ? order.get(bIdx) : null);
                 }
                 out.add(m);
             }
@@ -102,27 +102,38 @@ public class MatchGenerationService {
         return p;
     }
 
+    /**
+     * Compute left-slot indices for round-1 of a bracket of `size` (must be power of 2).
+     * Uses the recursive expansion rule: for each slot v at bracket size n,
+     * expand to [v, n-1-v] to get bracket size 2n.
+     * Size 2  → [0]         (seed 1 vs seed 2)
+     * Size 4  → [0, 1]      (1v4, 2v3)
+     * Size 8  → [0,3,1,2]   (1v8, 4v5, 2v7, 3v6)
+     * Size 16 → [0,7,3,4,1,6,2,5]  ...and so on for 32, 64, etc.
+     */
+    private static int[] buildBracketLeftSlots(int size) {
+        int[] slots = { 0 };
+        int cur = 2;
+        while (cur < size) {
+            int[] expanded = new int[slots.length * 2];
+            for (int i = 0; i < slots.length; i++) {
+                expanded[2 * i]     = slots[i];
+                expanded[2 * i + 1] = cur - 1 - slots[i];
+            }
+            slots = expanded;
+            cur *= 2;
+        }
+        return slots;
+    }
+
     private static int bracketLeftSlot(int size, int matchIndex) {
-        if (size == 8) {
-            int[] left = { 0, 3, 1, 2 };
-            return matchIndex < left.length ? left[matchIndex] : matchIndex * 2;
-        }
-        if (size == 16) {
-            int[] left = { 0, 7, 3, 4, 1, 6, 2, 5 };
-            return matchIndex < left.length ? left[matchIndex] : matchIndex * 2;
-        }
-        return matchIndex * 2;
+        int[] left = buildBracketLeftSlots(size);
+        return matchIndex < left.length ? left[matchIndex] : matchIndex * 2;
     }
 
     private static int bracketRightSlot(int size, int matchIndex) {
-        if (size == 8) {
-            int[] right = { 7, 4, 6, 5 };
-            return matchIndex < right.length ? right[matchIndex] : matchIndex * 2 + 1;
-        }
-        if (size == 16) {
-            int[] right = { 15, 8, 12, 11, 14, 9, 13, 10 };
-            return matchIndex < right.length ? right[matchIndex] : matchIndex * 2 + 1;
-        }
-        return matchIndex * 2 + 1;
+        int[] left = buildBracketLeftSlots(size);
+        int leftIdx = matchIndex < left.length ? left[matchIndex] : matchIndex * 2;
+        return (size - 1) - leftIdx;
     }
 }

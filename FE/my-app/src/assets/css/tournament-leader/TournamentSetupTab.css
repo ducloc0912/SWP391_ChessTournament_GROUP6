@@ -4,6 +4,79 @@
   --tsu-bg: #ece8e1;
 }
 
+/* ── Finalize result modal ── */
+.tsu-finalize-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.tsu-finalize-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 40px 48px;
+  min-width: 320px;
+  max-width: 480px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.tsu-finalize-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tsu-finalize-success .tsu-finalize-icon { color: #16a34a; }
+.tsu-finalize-error   .tsu-finalize-icon { color: #dc2626; }
+
+.tsu-finalize-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.tsu-finalize-success .tsu-finalize-title { color: #15803d; }
+.tsu-finalize-error   .tsu-finalize-title { color: #b91c1c; }
+
+.tsu-finalize-message {
+  margin: 0;
+  font-size: 15px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.tsu-finalize-ok-btn {
+  margin-top: 8px;
+  padding: 10px 40px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.tsu-finalize-ok-btn:hover { opacity: 0.85; }
+
+.tsu-finalize-success .tsu-finalize-ok-btn {
+  background: #16a34a;
+  color: #fff;
+}
+
+.tsu-finalize-error .tsu-finalize-ok-btn {
+  background: #dc2626;
+  color: #fff;
+}
+
 .tsu-shell {
   background: #fff;
   border: 1px solid rgba(15, 23, 42, 0.12);
@@ -659,11 +732,11 @@
   color: #111827;
 }
 
-.tsu-preview-player.white .tsu-preview-seat {
+.tsu-preview-player.p1 .tsu-preview-seat {
   background: #ffffff;
 }
 
-.tsu-preview-player.black .tsu-preview-seat {
+.tsu-preview-player.p2 .tsu-preview-seat {
   background: #111827;
   color: #fff;
   border-color: #111827;
@@ -796,6 +869,17 @@
   position: relative;
   min-height: 78px;
 }
+
+.tsu-ko-result-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-bottom: 5px;
+  display: inline-block;
+}
+.tsu-ko-result-badge.win  { background: #dcfce7; color: #15803d; }
+.tsu-ko-result-badge.draw { background: #fef9c3; color: #854d0e; }
 
 /* Red connector lines removed per design */
 
