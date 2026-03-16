@@ -364,29 +364,13 @@ public class TournamentSetupDAO extends DBContext {
         }
     }
 
-    /** Ghi audit log cho finalize/unlock. */
-    public void insertAuditLog(int tournamentId, String step, String action, String beforeJson, String afterJson, Integer createdBy) {
-        String sql = "INSERT INTO Setup_Audit_Log (tournament_id, step, action, before_json, after_json, created_by) VALUES (?, ?, ?, ?, ?, ?)";
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, tournamentId);
-            ps.setString(2, step);
-            ps.setString(3, action);
-            ps.setString(4, beforeJson);
-            ps.setString(5, afterJson);
-            ps.setObject(6, createdBy);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
 
     // ==================== PARTICIPANTS ====================
 
     /** Lấy danh sách user_id của participants (để validate player assignment). */
     public Set<Integer> getParticipantUserIds(int tournamentId) {
         Set<Integer> ids = new HashSet<>();
-        String sql = "SELECT user_id FROM Participants WHERE tournament_id = ?";
+        String sql = "SELECT user_id FROM Participants WHERE tournament_id = ? AND status = 'Active'";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, tournamentId);
@@ -443,20 +427,23 @@ public class TournamentSetupDAO extends DBContext {
                 SELECT
                     m.match_id,
                     m.board_number,
-                    m.white_player_id,
-                    m.black_player_id,
+                    m.player1_id,
+                    m.player2_id,
                     m.start_time,
+                    m.result,
+                    m.status AS match_status,
+                    m.winner_id,
                     r.name AS round_name,
                     r.round_index,
                     b.type AS bracket_type,
-                    LTRIM(RTRIM(COALESCE(uw.first_name, '') + ' ' + COALESCE(uw.last_name, ''))) AS white_name,
-                    LTRIM(RTRIM(COALESCE(ub.first_name, '') + ' ' + COALESCE(ub.last_name, ''))) AS black_name,
+                    COALESCE(NULLIF(LTRIM(RTRIM(COALESCE(uw.first_name, '') + ' ' + COALESCE(uw.last_name, ''))), ''), uw.username) AS player1_name,
+                    COALESCE(NULLIF(LTRIM(RTRIM(COALESCE(ub.first_name, '') + ' ' + COALESCE(ub.last_name, ''))), ''), ub.username) AS player2_name,
                     (SELECT TOP 1 mr.referee_id FROM Match_Referee mr WHERE mr.match_id = m.match_id) AS referee_id
                 FROM Matches m
                 LEFT JOIN Round r ON r.round_id = m.round_id
                 LEFT JOIN Bracket b ON b.bracket_id = r.bracket_id
-                LEFT JOIN Users uw ON uw.user_id = m.white_player_id
-                LEFT JOIN Users ub ON ub.user_id = m.black_player_id
+                LEFT JOIN Users uw ON uw.user_id = m.player1_id
+                LEFT JOIN Users ub ON ub.user_id = m.player2_id
                 WHERE m.tournament_id = ?
                 ORDER BY
                     CASE b.type WHEN 'RoundRobin' THEN 1 WHEN 'KnockOut' THEN 2 ELSE 3 END,
@@ -472,14 +459,18 @@ public class TournamentSetupDAO extends DBContext {
                     TournamentSetupMatchDTO dto = new TournamentSetupMatchDTO();
                     dto.setMatchId(rs.getInt("match_id"));
                     dto.setBoardNumber((Integer) rs.getObject("board_number"));
-                    dto.setWhitePlayerId((Integer) rs.getObject("white_player_id"));
-                    dto.setBlackPlayerId((Integer) rs.getObject("black_player_id"));
+                    dto.setPlayer1Id((Integer) rs.getObject("player1_id"));
+                    dto.setPlayer2Id((Integer) rs.getObject("player2_id"));
                     dto.setStartTime(rs.getTimestamp("start_time"));
                     dto.setRoundName(rs.getString("round_name"));
                     dto.setRoundIndex((Integer) rs.getObject("round_index"));
                     dto.setStage(rs.getString("bracket_type"));
-                    dto.setWhitePlayerName(rs.getString("white_name"));
-                    dto.setBlackPlayerName(rs.getString("black_name"));
+                    dto.setPlayer1Name(rs.getString("player1_name"));
+                    dto.setPlayer2Name(rs.getString("player2_name"));
+                    dto.setResult(rs.getString("result"));
+                    dto.setMatchStatus(rs.getString("match_status"));
+                    Object winnerObj = rs.getObject("winner_id");
+                    if (winnerObj != null) dto.setWinnerId(((Number) winnerObj).intValue());
                     Object refObj = rs.getObject("referee_id");
                     if (refObj != null) dto.setRefereeId(((Number) refObj).intValue());
                     list.add(dto);
@@ -512,7 +503,7 @@ public class TournamentSetupDAO extends DBContext {
                 """;
         String insertMatchSql = """
                 INSERT INTO Matches
-                (tournament_id, round_id, group_id, board_number, white_player_id, black_player_id, status, start_time)
+                (tournament_id, round_id, group_id, board_number, player1_id, player2_id, status, start_time)
                 VALUES (?, ?, NULL, ?, ?, ?, 'Scheduled', ?)
                 """;
 
@@ -590,10 +581,10 @@ public class TournamentSetupDAO extends DBContext {
                         ps.setInt(2, roundId);
                         if (match.getBoardNumber() == null) ps.setNull(3, java.sql.Types.INTEGER);
                         else ps.setInt(3, match.getBoardNumber());
-                        if (match.getWhitePlayerId() == null) ps.setNull(4, java.sql.Types.INTEGER);
-                        else ps.setInt(4, match.getWhitePlayerId());
-                        if (match.getBlackPlayerId() == null) ps.setNull(5, java.sql.Types.INTEGER);
-                        else ps.setInt(5, match.getBlackPlayerId());
+                        if (match.getPlayer1Id() == null) ps.setNull(4, java.sql.Types.INTEGER);
+                        else ps.setInt(4, match.getPlayer1Id());
+                        if (match.getPlayer2Id() == null) ps.setNull(5, java.sql.Types.INTEGER);
+                        else ps.setInt(5, match.getPlayer2Id());
                         if (match.getStartTime() == null) ps.setNull(6, java.sql.Types.TIMESTAMP);
                         else ps.setTimestamp(6, match.getStartTime());
                         ps.executeUpdate();
@@ -676,6 +667,21 @@ public class TournamentSetupDAO extends DBContext {
             e.printStackTrace();
         }
         return false;
+    }
+    public int getAssignedRefereeCount(int tournamentId) {
+        String sql = "SELECT COUNT(mr.referee_id) FROM Match_Referee mr " +
+                     "JOIN Matches m ON m.match_id = mr.match_id " +
+                     "WHERE m.tournament_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 
     private String normalizeStage(String inputStage, String format) {

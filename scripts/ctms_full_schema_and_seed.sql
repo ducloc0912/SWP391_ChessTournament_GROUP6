@@ -114,6 +114,17 @@ CREATE TABLE Tournament_Images (
 );
 GO
 
+CREATE TABLE Tournament_Follow (
+    follow_id INT IDENTITY(1,1) PRIMARY KEY,
+    user_id INT NOT NULL,
+    tournament_id INT NOT NULL,
+    create_at DATETIME DEFAULT GETDATE(),
+    CONSTRAINT uq_tournament_follow UNIQUE (user_id, tournament_id),
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (tournament_id) REFERENCES Tournaments(tournament_id) ON DELETE CASCADE
+);
+GO
+
 CREATE TABLE Tournament_Staff (
     tournament_id INT,
     staff_id INT,
@@ -198,7 +209,7 @@ CREATE TABLE Bracket (
     bracket_name NVARCHAR(50),
     tournament_id INT,
     type NVARCHAR(20) NOT NULL CHECK (type IN ('RoundRobin','KnockOut','Swiss')),
-    status NVARCHAR(20) DEFAULT 'Pending' CHECK (status IN ('Pending','Ongoing','Completed')),
+    status NVARCHAR(20) DEFAULT 'Pending' CHECK (status IN ('Pending','Ongoing','Completed','Published')),
     FOREIGN KEY (tournament_id) REFERENCES Tournaments(tournament_id) ON DELETE CASCADE
 );
 GO
@@ -240,14 +251,14 @@ CREATE TABLE Matches (
     round_id INT,
     group_id INT NULL,
     board_number INT,
-    player1_id INT NOT NULL,
-    player2_id INT NOT NULL,
+    player1_id INT,
+    player2_id INT,
     player1_score DECIMAL(3,1) DEFAULT 0,
     player2_score DECIMAL(3,1) DEFAULT 0,
     winner_id INT NULL,
     result NVARCHAR(20) CHECK (result IN ('player1','player2','draw','pending','none')),
     status NVARCHAR(20) DEFAULT 'Scheduled'
-        CHECK (status IN ('Scheduled','Ongoing','Completed')),
+        CHECK (status IN ('Scheduled','Ongoing','Completed','Published')),
     start_time DATETIME,
     end_time DATETIME,
     FOREIGN KEY (tournament_id) REFERENCES Tournaments(tournament_id) ON DELETE CASCADE,
@@ -266,8 +277,8 @@ CREATE TABLE Mini_matches (
     match_id INT NOT NULL,
     game_number INT NOT NULL,
     is_tiebreak BIT DEFAULT 0,
-    white_player_id INT NOT NULL,
-    black_player_id INT NOT NULL,
+    white_player_id INT,
+    black_player_id INT,
     result NVARCHAR(10)
         CHECK (result IN ('1-0','0-1','1/2-1/2','*')),
     termination NVARCHAR(50)
@@ -410,10 +421,10 @@ GO
 
 CREATE TABLE Blog_Post (
     blog_post_id INT IDENTITY(1,1) PRIMARY KEY,
-    title NVARCHAR(200) NOT NULL,
-    summary NVARCHAR(500),
+    title NVARCHAR(Max) NOT NULL,
+    summary NVARCHAR(Max),
     content NVARCHAR(MAX),
-    thumbnail_url NVARCHAR(500),
+    thumbnail_url NVARCHAR(Max),
     author_id INT NOT NULL,
     categories NVARCHAR(50) CHECK (categories IN ('Strategy','News','Guide')),
     status NVARCHAR(20) DEFAULT 'Draft' CHECK (status IN ('Draft','Public','Private')),
@@ -427,8 +438,8 @@ CREATE TABLE Blog_Post (
 CREATE TABLE Blog_Image (
     image_id INT IDENTITY(1,1) PRIMARY KEY,
     blog_post_id INT NOT NULL,
-    image_url NVARCHAR(500) NOT NULL,
-    caption NVARCHAR(200),
+    image_url NVARCHAR(Max) NOT NULL,
+    caption NVARCHAR(Max),
     sort_order INT DEFAULT 0,
     create_at DATETIME DEFAULT GETDATE(),
     FOREIGN KEY (blog_post_id) REFERENCES Blog_Post(blog_post_id) ON DELETE CASCADE
@@ -493,7 +504,7 @@ CREATE TABLE Payment_Transaction (
     transaction_id INT IDENTITY(1,1) PRIMARY KEY,
     user_id INT NOT NULL,
     tournament_id INT NULL,
-    type NVARCHAR(30) NOT NULL CHECK (type IN ('EntryFee','Prize','Refund','Deposit','Withdrawal')),
+    type NVARCHAR(30) NOT NULL CHECK (type IN ('EntryFee','Prize','Refund','Deposit','Withdrawal','TournamentCreation')),
     amount DECIMAL(18,2) NOT NULL,
     balance_after DECIMAL(18,2),
     description NVARCHAR(500),

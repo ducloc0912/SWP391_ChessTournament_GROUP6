@@ -381,14 +381,14 @@ export default function UserReportPage() {
                       <option value="">-- Chọn người chơi --</option>
                       {selectedMatch && (
                         <>
-                          {selectedMatch.whitePlayerId && (
-                            <option value={selectedMatch.whitePlayerId}>
-                              White player (ID: {selectedMatch.whitePlayerId})
+                          {selectedMatch.player1Id && (
+                            <option value={selectedMatch.player1Id}>
+                              White player (ID: {selectedMatch.player1Id})
                             </option>
                           )}
-                          {selectedMatch.blackPlayerId && (
-                            <option value={selectedMatch.blackPlayerId}>
-                              Black player (ID: {selectedMatch.blackPlayerId})
+                          {selectedMatch.player2Id && (
+                            <option value={selectedMatch.player2Id}>
+                              Black player (ID: {selectedMatch.player2Id})
                             </option>
                           )}
                         </>

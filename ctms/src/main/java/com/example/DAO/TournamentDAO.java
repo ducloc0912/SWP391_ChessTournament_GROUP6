@@ -150,6 +150,32 @@ public class TournamentDAO extends DBContext {
         return list;
     }
 
+    public boolean isBracketPublished(int tournamentId) {
+        String sql = "SELECT COUNT(1) AS total FROM Bracket WHERE tournament_id = ? AND status = 'Published'";
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt("total") > 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean publishBracket(int tournamentId) {
+        String sql = "UPDATE Bracket SET status = 'Published' WHERE tournament_id = ?";
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     public List<TournamentDTO> getTournamentsByCreator(int creatorId) {
         List<TournamentDTO> list = new ArrayList<>();
         String sql = "SELECT * FROM Tournaments WHERE create_by = ? ORDER BY create_at DESC, tournament_id DESC";
