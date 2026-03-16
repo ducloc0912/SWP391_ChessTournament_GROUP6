@@ -591,7 +591,7 @@ const StaffTournament = ({ currentUser }) => {
             {/* ===================== MODAL: APPROVAL DETAIL ===================== */}
             {selectedTournament && activeTab === 'approvals' && (
                 <div className="modal-overlay" onClick={() => setSelectedTournament(null)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-content modal-wide" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
                             <div>
                                 <h3 className="modal-title">{selectedTournament.tournamentName}</h3>
@@ -601,53 +601,102 @@ const StaffTournament = ({ currentUser }) => {
                                 <XCircle size={24} />
                             </button>
                         </div>
+
                         <div className="modal-body">
-                            <div className="modal-section">
-                                <div className="info-row">
-                                    <p><strong>Format:</strong> {selectedTournament.format?.name || selectedTournament.format}</p>
-                                    <p><strong>Địa điểm:</strong> {selectedTournament.location}</p>
+                            {/* ── Thông tin cơ bản ── */}
+                            <p className="approval-section-title">Thông tin giải đấu</p>
+                            <div className="approval-info-grid">
+                                <div className="approval-info-card">
+                                    <span className="approval-info-label">Thể thức</span>
+                                    <span className="approval-info-value">{selectedTournament.format?.name || selectedTournament.format || '--'}</span>
                                 </div>
-                                <div className="info-row">
-                                    <p><strong>Phí tham gia:</strong> {currency(selectedTournament.entryFee)}</p>
-                                    <p><strong>Quỹ thưởng:</strong> {currency(selectedTournament.prizePool)}</p>
+                                <div className="approval-info-card">
+                                    <span className="approval-info-label">Địa điểm</span>
+                                    <span className="approval-info-value">{selectedTournament.location || '--'}</span>
                                 </div>
-                                <div className="info-row">
-                                    <p><strong>Min - Max Player:</strong> {selectedTournament.minPlayer} - {selectedTournament.maxPlayer}</p>
+                                <div className="approval-info-card highlight">
+                                    <span className="approval-info-label">Phí tham gia</span>
+                                    <span className="approval-info-value">{currency(selectedTournament.entryFee)}</span>
                                 </div>
-                                <div className="info-row">
-                                    <p><strong>Registration Deadline:</strong> {formatDateTime(selectedTournament.registrationDeadline)}</p>
-                                    <p><strong>Bắt đầu:</strong> {formatDateTime(selectedTournament.startDate)}</p>
+                                <div className="approval-info-card highlight">
+                                    <span className="approval-info-label">Quỹ thưởng</span>
+                                    <span className="approval-info-value">{currency(selectedTournament.prizePool)}</span>
                                 </div>
-                                {selectedTournament.description && (
-                                    <div className="content-preview">
-                                        <strong>Mô tả:</strong><br />
-                                        {selectedTournament.description}
-                                    </div>
-                                )}
-                                {selectedTournament.rules && (
-                                    <div className="content-preview">
-                                        <strong>Luật:</strong><br />
-                                        {selectedTournament.rules}
-                                    </div>
-                                )}
+                                <div className="approval-info-card">
+                                    <span className="approval-info-label">Số người chơi</span>
+                                    <span className="approval-info-value">
+                                        {selectedTournament.minPlayer} &mdash; {selectedTournament.maxPlayer} người
+                                    </span>
+                                </div>
                             </div>
 
-                            <div className="modal-section update-status-area">
-                                <h4>Ghi chú staff</h4>
+                            {/* ── Lịch trình ── */}
+                            <p className="approval-section-title">Lịch trình</p>
+                            <div className="approval-timeline">
+                                <div className="timeline-item">
+                                    <span className="timeline-dot dot-reg" />
+                                    <span className="timeline-label">Đóng đăng ký</span>
+                                    <span className="timeline-value">{formatDateTime(selectedTournament.registrationDeadline)}</span>
+                                </div>
+                                <div className="timeline-connector" />
+                                <div className="timeline-item">
+                                    <span className="timeline-dot dot-start" />
+                                    <span className="timeline-label">Bắt đầu giải</span>
+                                    <span className="timeline-value">{formatDateTime(selectedTournament.startDate)}</span>
+                                </div>
+                                <div className="timeline-connector" />
+                                <div className="timeline-item">
+                                    <span className="timeline-dot dot-end" />
+                                    <span className="timeline-label">Kết thúc giải</span>
+                                    <span className="timeline-value">{formatDateTime(selectedTournament.endDate)}</span>
+                                </div>
+                            </div>
+
+                            {/* ── Mô tả & Luật ── */}
+                            {(selectedTournament.description || selectedTournament.rules) && (
+                                <>
+                                    <p className="approval-section-title">Mô tả &amp; Luật thi đấu</p>
+                                    {selectedTournament.description && (
+                                        <div className="content-preview" style={{ marginBottom: 10 }}>
+                                            <p style={{ margin: 0 }}>{selectedTournament.description}</p>
+                                        </div>
+                                    )}
+                                    {selectedTournament.rules && (
+                                        <div className="content-preview">
+                                            <strong style={{ display: 'block', marginBottom: 6, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Luật thi đấu</strong>
+                                            <p style={{ margin: 0 }}>{selectedTournament.rules}</p>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            {/* ── Ghi chú leader ── */}
+                            {selectedTournament.notes && (
+                                <>
+                                    <p className="approval-section-title">Ghi chú từ leader</p>
+                                    <div className="content-preview">
+                                        <p style={{ margin: 0 }}>{selectedTournament.notes}</p>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* ── Hành động staff ── */}
+                            <div className="approval-action-area">
+                                <p className="approval-section-title" style={{ margin: '0 0 12px', borderBottom: 'none' }}>Ghi chú staff</p>
                                 <div className="form-group">
                                     <textarea
                                         className="form-control"
                                         value={approvalNote}
                                         onChange={(e) => setApprovalNote(e.target.value)}
                                         placeholder="Nhập ghi chú hoặc lý do xử lý..."
-                                        style={{ minHeight: '100px' }}
+                                        style={{ minHeight: '90px' }}
                                     />
                                 </div>
                                 <div className="staff-modal-actions">
-                                    <button className="btn-secondary danger" onClick={() => submitApproval('Rejected')}>
+                                    <button className="btn-secondary danger" onClick={() => submitApproval('Rejected')} disabled={submitting}>
                                         <XCircle size={18} /> Reject
                                     </button>
-                                    <button className="btn-primary" onClick={() => submitApproval('Upcoming')}>
+                                    <button className="btn-primary" onClick={() => submitApproval('Upcoming')} disabled={submitting}>
                                         <Save size={18} /> Accept và chuyển Upcoming
                                     </button>
                                 </div>
@@ -663,7 +712,7 @@ const StaffTournament = ({ currentUser }) => {
                 const transitions = ALLOWED_TRANSITIONS[statusStr] || [];
                 return (
                     <div className="modal-overlay" onClick={() => setSelectedTournament(null)}>
-                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-content modal-wide" onClick={(e) => e.stopPropagation()}>
                             <div className="modal-header">
                                 <div>
                                     <h3 className="modal-title">{selectedTournament.tournamentName}</h3>
@@ -674,33 +723,87 @@ const StaffTournament = ({ currentUser }) => {
                                 </button>
                             </div>
                             <div className="modal-body">
-                                <div className="modal-section">
-                                    <div className="info-row">
-                                        <p><strong>Format:</strong> {selectedTournament.format?.name || selectedTournament.format}</p>
-                                        <p><strong>Địa điểm:</strong> {selectedTournament.location}</p>
+                                {/* ── Thông tin cơ bản ── */}
+                                <p className="approval-section-title">Thông tin giải đấu</p>
+                                <div className="approval-info-grid">
+                                    <div className="approval-info-card">
+                                        <span className="approval-info-label">Thể thức</span>
+                                        <span className="approval-info-value">{selectedTournament.format?.name || selectedTournament.format || '--'}</span>
                                     </div>
-                                    <div className="info-row">
-                                        <p><strong>Phí tham gia:</strong> {currency(selectedTournament.entryFee)}</p>
-                                        <p><strong>Quỹ thưởng:</strong> {currency(selectedTournament.prizePool)}</p>
+                                    <div className="approval-info-card">
+                                        <span className="approval-info-label">Địa điểm</span>
+                                        <span className="approval-info-value">{selectedTournament.location || '--'}</span>
                                     </div>
-                                    <div className="info-row">
-                                        <p><strong>Min - Max Player:</strong> {selectedTournament.minPlayer} - {selectedTournament.maxPlayer}</p>
+                                    <div className="approval-info-card highlight">
+                                        <span className="approval-info-label">Phí tham gia</span>
+                                        <span className="approval-info-value">{currency(selectedTournament.entryFee)}</span>
                                     </div>
-                                    <div className="info-row">
-                                        <p><strong>Bắt đầu:</strong> {formatDateTime(selectedTournament.startDate)}</p>
-                                        <p><strong>Kết thúc:</strong> {formatDateTime(selectedTournament.endDate)}</p>
+                                    <div className="approval-info-card highlight">
+                                        <span className="approval-info-label">Quỹ thưởng</span>
+                                        <span className="approval-info-value">{currency(selectedTournament.prizePool)}</span>
                                     </div>
-                                    {selectedTournament.description && (
-                                        <div className="content-preview">
-                                            <strong>Mô tả:</strong><br />
-                                            {selectedTournament.description}
-                                        </div>
-                                    )}
+                                    <div className="approval-info-card">
+                                        <span className="approval-info-label">Số người chơi</span>
+                                        <span className="approval-info-value">
+                                            {selectedTournament.minPlayer} &mdash; {selectedTournament.maxPlayer} người
+                                        </span>
+                                    </div>
                                 </div>
 
+                                {/* ── Lịch trình ── */}
+                                <p className="approval-section-title">Lịch trình</p>
+                                <div className="approval-timeline">
+                                    <div className="timeline-item">
+                                        <span className="timeline-dot dot-reg" />
+                                        <span className="timeline-label">Đóng đăng ký</span>
+                                        <span className="timeline-value">{formatDateTime(selectedTournament.registrationDeadline)}</span>
+                                    </div>
+                                    <div className="timeline-connector" />
+                                    <div className="timeline-item">
+                                        <span className="timeline-dot dot-start" />
+                                        <span className="timeline-label">Bắt đầu giải</span>
+                                        <span className="timeline-value">{formatDateTime(selectedTournament.startDate)}</span>
+                                    </div>
+                                    <div className="timeline-connector" />
+                                    <div className="timeline-item">
+                                        <span className="timeline-dot dot-end" />
+                                        <span className="timeline-label">Kết thúc giải</span>
+                                        <span className="timeline-value">{formatDateTime(selectedTournament.endDate)}</span>
+                                    </div>
+                                </div>
+
+                                {/* ── Mô tả & Luật ── */}
+                                {(selectedTournament.description || selectedTournament.rules) && (
+                                    <>
+                                        <p className="approval-section-title">Mô tả &amp; Luật thi đấu</p>
+                                        {selectedTournament.description && (
+                                            <div className="content-preview" style={{ marginBottom: 10 }}>
+                                                <p style={{ margin: 0 }}>{selectedTournament.description}</p>
+                                            </div>
+                                        )}
+                                        {selectedTournament.rules && (
+                                            <div className="content-preview">
+                                                <strong style={{ display: 'block', marginBottom: 6, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Luật thi đấu</strong>
+                                                <p style={{ margin: 0 }}>{selectedTournament.rules}</p>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* ── Ghi chú leader ── */}
+                                {selectedTournament.notes && (
+                                    <>
+                                        <p className="approval-section-title">Ghi chú từ leader</p>
+                                        <div className="content-preview">
+                                            <p style={{ margin: 0 }}>{selectedTournament.notes}</p>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* ── Cập nhật trạng thái ── */}
                                 {transitions.length > 0 && (
-                                    <div className="modal-section update-status-area">
-                                        <h4>Cập nhật trạng thái giải đấu</h4>
+                                    <div className="approval-action-area">
+                                        <p className="approval-section-title" style={{ margin: '0 0 12px', borderBottom: 'none' }}>Cập nhật trạng thái giải đấu</p>
                                         <div className="form-group">
                                             <textarea
                                                 className="form-control"
@@ -710,13 +813,13 @@ const StaffTournament = ({ currentUser }) => {
                                                 style={{ minHeight: '80px' }}
                                             />
                                         </div>
-                                        <div className="staff-modal-actions" style={{ flexDirection: 'column', gap: '10px' }}>
+                                        <div className="mgmt-action-buttons">
                                             {transitions.map((tr) => (
                                                 <button
                                                     key={tr.status}
                                                     className={tr.isCancel ? 'btn-secondary danger' : 'btn-primary'}
                                                     style={{
-                                                        width: '100%',
+                                                        flex: 1,
                                                         backgroundColor: tr.isCancel ? undefined : tr.color,
                                                         display: 'flex',
                                                         alignItems: 'center',
@@ -739,7 +842,7 @@ const StaffTournament = ({ currentUser }) => {
                                 )}
 
                                 {transitions.length === 0 && (
-                                    <div className="modal-section" style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>
+                                    <div className="approval-action-area" style={{ textAlign: 'center', color: '#94a3b8' }}>
                                         Giải đấu ở trạng thái <strong>{statusStr}</strong> — không thể cập nhật thêm.
                                     </div>
                                 )}
