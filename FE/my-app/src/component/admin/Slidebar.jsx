@@ -2,41 +2,92 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import chessForgot from "../../assets/img/logo.jpg";
 import { NAVIGATION_ITEMS, ICONS, BRAND } from "../../constants";
-import { useAuth } from "../common/AuthContext"; // đúng theo cây thư mục của bạn
-
+import { useAuth } from "../common/AuthContext";
 import { API_BASE } from "../../config/api";
 
 export const Slidebar = ({ activeTab, onNavigate }) => {
   const navigate = useNavigate();
 
-  // ✅ FIX: useAuth() có thể null nếu Slidebar chưa được bọc bởi <AuthProvider>
   const auth = useAuth();
-  const logoutLocal = auth?.logout; // có thể undefined
+  const logoutLocal = auth?.logout;
 
   const handleLogout = async () => {
     try {
-      // ✅ gọi BE để invalidate session
       await fetch(`${API_BASE}/api/logout`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}), // AuthServlet đọc body => gửi {} cho chắc
+        body: JSON.stringify({}),
       });
     } catch (e) {
       console.error("Logout request failed:", e);
     } finally {
-      // ✅ logout FE (nếu có AuthProvider)
       if (typeof logoutLocal === "function") {
         logoutLocal();
       } else {
-        // ✅ fallback nếu không có Provider: tự clear localStorage
         localStorage.removeItem("auth_data");
       }
 
-      // ✅ về homepage
       navigate("/home", { replace: true });
     }
   };
+
+  const isCreateUserMenu = (item) => {
+    const id = String(item?.id || "")
+      .trim()
+      .toLowerCase();
+    const label = String(item?.label || "")
+      .trim()
+      .toLowerCase();
+
+    return (
+      id === "create-user" ||
+      id === "create_account" ||
+      id === "create-account" ||
+      id === "createaccount" ||
+      label === "tạo người dùng" ||
+      label === "tạo tài khoản"
+    );
+  };
+
+  const isHiddenMenu = (item) => {
+    const id = String(item?.id || "")
+      .trim()
+      .toLowerCase();
+    const label = String(item?.label || "")
+      .trim()
+      .toLowerCase();
+
+    return (
+      label === "kết quả & xếp hạng" ||
+      label === "tin tức & thông báo" ||
+      id === "results" ||
+      id === "rankings" ||
+      id === "results-rankings" ||
+      id === "result_rank" ||
+      id === "news" ||
+      id === "notifications" ||
+      id === "news-notifications" ||
+      id === "news_notification"
+    );
+  };
+
+  const handleMenuClick = (item) => {
+    if (isCreateUserMenu(item)) {
+      if (typeof onNavigate === "function") {
+        onNavigate("create_account");
+      }
+      return;
+    }
+
+    if (typeof onNavigate === "function") {
+      onNavigate(item.id);
+    }
+  };
+
+  const visibleNavigationItems = NAVIGATION_ITEMS.filter(
+    (item) => !isHiddenMenu(item),
+  );
 
   return (
     <aside className="sidebar">
@@ -52,13 +103,16 @@ export const Slidebar = ({ activeTab, onNavigate }) => {
       <div className="sidebarSection">Menu chính</div>
 
       <nav className="sidebarNav">
-        {NAVIGATION_ITEMS.map((item) => {
-          const isActive = activeTab === item.id;
+        {visibleNavigationItems.map((item) => {
+          const isActive =
+            activeTab === item.id ||
+            (activeTab === "create_account" && isCreateUserMenu(item));
+
           return (
             <button
               key={item.id}
               type="button"
-              onClick={() => onNavigate(item.id)}
+              onClick={() => handleMenuClick(item)}
               className={`navItem ${isActive ? "navItemActive" : ""}`}
             >
               <span className="navItemIcon">{item.icon}</span>
@@ -69,11 +123,6 @@ export const Slidebar = ({ activeTab, onNavigate }) => {
       </nav>
 
       <div className="sidebarBottom">
-        <button type="button" className="sidebarAction">
-          <span className="navItemIcon">{ICONS.Settings}</span>
-          <span>Cài đặt</span>
-        </button>
-
         <button
           type="button"
           className="sidebarAction sidebarLogout"

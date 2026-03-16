@@ -214,12 +214,17 @@ const ROLE_OPTIONS = [
   { value: "player", label: "Player" },
 ];
 
-export const AccountListScreen = ({ onViewAccount, onEditAccount, onEditRole }) => {
+export const AccountListScreen = ({
+  searchKeyword = "",
+  onViewAccount,
+  onEditAccount,
+  onEditRole,
+}) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchKeyword || "");
   const [role, setRole] = useState("all");
 
   const [togglingIds, setTogglingIds] = useState(() => new Set());
@@ -227,9 +232,11 @@ export const AccountListScreen = ({ onViewAccount, onEditAccount, onEditRole }) 
   const fetchUsers = async ({ q, role }) => {
     setLoading(true);
     setErr("");
+
     try {
       const params = new URLSearchParams();
       const qTrim = (q ?? "").trim();
+
       if (qTrim) params.set("q", qTrim);
       if (role && role !== "all") params.set("role", role);
 
@@ -248,16 +255,21 @@ export const AccountListScreen = ({ onViewAccount, onEditAccount, onEditRole }) 
   };
 
   useEffect(() => {
-    fetchUsers({ q: "", role: "all" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setSearch(searchKeyword || "");
+  }, [searchKeyword]);
 
-  const onSearch = () => fetchUsers({ q: search, role });
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchUsers({ q: search, role });
+    }, 250);
+
+    return () => clearTimeout(timeoutId);
+  }, [search, role]);
 
   const total = users.length;
   const activeCount = useMemo(
     () => users.filter((u) => u.isActive === true).length,
-    [users]
+    [users],
   );
   const lockedCount = total - activeCount;
 
@@ -266,7 +278,7 @@ export const AccountListScreen = ({ onViewAccount, onEditAccount, onEditRole }) 
     const who = usernameOrEmail ? ` (${usernameOrEmail})` : "";
 
     const okConfirm = window.confirm(
-      `Bạn có chắc muốn ${nextLabel} tài khoản${who} không?`
+      `Bạn có chắc muốn ${nextLabel} tài khoản${who} không?`,
     );
     if (!okConfirm) return;
 
@@ -300,7 +312,6 @@ export const AccountListScreen = ({ onViewAccount, onEditAccount, onEditRole }) 
     if (typeof onViewAccount === "function") onViewAccount(id);
   };
 
-  // ✅ SỬA: không navigate nữa để tránh "No routes matched"
   const handleEdit = (id) => {
     if (typeof onEditAccount === "function") onEditAccount(id);
   };
@@ -424,24 +435,6 @@ export const AccountListScreen = ({ onViewAccount, onEditAccount, onEditRole }) 
           font-weight: 800;
           color:#0b0f1a;
           outline: none;
-        }
-
-        .al-btnGhost{
-          display:inline-flex;
-          align-items:center;
-          gap: 8px;
-          border-radius: 14px;
-          padding: 10px 12px;
-          border: 1px solid rgba(15,23,42,0.12);
-          background: rgba(255,255,255,0.9);
-          box-shadow: 0 10px 24px rgba(15,23,42,0.06);
-          color:#0b0f1a;
-          font-weight: 900;
-          cursor:pointer;
-        }
-        .al-btnGhost:hover{
-          border-color: rgba(15,23,42,0.18);
-          box-shadow: 0 14px 28px rgba(15,23,42,0.08);
         }
 
         .al-tableCard{
@@ -582,9 +575,6 @@ export const AccountListScreen = ({ onViewAccount, onEditAccount, onEditRole }) 
               placeholder="Nhập username hoặc email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onSearch();
-              }}
             />
           </div>
 
@@ -599,10 +589,6 @@ export const AccountListScreen = ({ onViewAccount, onEditAccount, onEditRole }) 
               </option>
             ))}
           </select>
-
-          <button className="al-btnGhost" onClick={onSearch} title="Tìm kiếm">
-            <IconSearch /> Tìm kiếm
-          </button>
         </div>
 
         <div className="al-tableCard">

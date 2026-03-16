@@ -210,6 +210,104 @@ public class UserDAO extends DBContext {
         }
         return -1;
     }
+
+    public boolean createStaffAccount(User user) {
+        Connection conn = null;
+        PreparedStatement psUser = null;
+        PreparedStatement psRole = null;
+        ResultSet rs = null;
+
+        try {
+            conn = getConnection();
+            conn.setAutoCommit(false);
+
+            String sqlUser = """
+                INSERT INTO Users
+                (username, first_name, last_name, email, phone_number, address, birthday, password, is_active, create_at, balance)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, GETDATE(), 0)
+            """;
+
+            psUser = conn.prepareStatement(sqlUser, Statement.RETURN_GENERATED_KEYS);
+            psUser.setString(1, user.getUsername());
+            psUser.setString(2, user.getFirstName());
+            psUser.setString(3, user.getLastName());
+            psUser.setString(4, user.getEmail());
+            psUser.setString(5, user.getPhoneNumber());
+            psUser.setString(6, user.getAddress());
+
+            if (user.getBirthday() != null) {
+                psUser.setDate(7, new java.sql.Date(user.getBirthday().getTime()));
+            } else {
+                psUser.setNull(7, Types.DATE);
+            }
+
+            psUser.setString(8, user.getPassword());
+
+            int affected = psUser.executeUpdate();
+            if (affected == 0) {
+                throw new SQLException("Insert staff user failed.");
+            }
+
+            rs = psUser.getGeneratedKeys();
+            if (!rs.next()) {
+                throw new SQLException("No user_id returned.");
+            }
+
+            int newUserId = rs.getInt(1);
+            int staffRoleId = getRoleIdByName(conn, "Staff");
+
+            if (staffRoleId == 0) {
+                throw new SQLException("Role 'Staff' not found in Roles table.");
+            }
+
+            String sqlRole = "INSERT INTO User_Role(user_id, role_id) VALUES(?, ?)";
+            psRole = conn.prepareStatement(sqlRole);
+            psRole.setInt(1, newUserId);
+            psRole.setInt(2, staffRoleId);
+            psRole.executeUpdate();
+
+            conn.commit();
+            return true;
+
+        } catch (Exception e) {
+            try {
+                if (conn != null) {
+                    conn.rollback();
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+            e.printStackTrace();
+            return false;
+
+        } finally {
+            try {
+                if (rs != null) {
+                    rs.close();
+                }
+            } catch (SQLException ignored) {
+            }
+            try {
+                if (psUser != null) {
+                    psUser.close();
+                }
+            } catch (SQLException ignored) {
+            }
+            try {
+                if (psRole != null) {
+                    psRole.close();
+                }
+            } catch (SQLException ignored) {
+            }
+            try {
+                if (conn != null) {
+                    conn.close();
+                }
+            } catch (SQLException ignored) {
+            }
+        }
+    }
+
 public UserRole findUserWithRole(String email, String password) {
     String sql = """
         SELECT u.user_id,

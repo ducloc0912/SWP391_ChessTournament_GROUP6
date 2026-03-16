@@ -1,6 +1,8 @@
 package com.example.service.staff;
 
+import com.example.DAO.NotificationDAO;
 import com.example.DAO.TournamentStaffDAO;
+import com.example.model.entity.Notification;
 import com.example.model.entity.Tournament;
 import com.example.model.entity.TournamentApprovalLog;
 import com.example.model.entity.TournamentStaff;
@@ -12,6 +14,7 @@ import java.util.Map;
 
 public class TournamentStaffService {
     private final TournamentStaffDAO tournamentStaffDAO = new TournamentStaffDAO();
+    private final NotificationDAO notificationDAO = new NotificationDAO();
 
     public List<Tournament> getAllTournaments() {
         return tournamentStaffDAO.getAllTournamentsForStaff();
@@ -26,25 +29,37 @@ public class TournamentStaffService {
     }
 
     public boolean approveTournament(int tournamentId, int staffId, String note) {
-        Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
-        if (t == null) return false;
-        return tournamentStaffDAO.updateTournamentStatusAndLog(
-                tournamentId, staffId, t.getStatus(), TournamentStatus.Upcoming, ApprovalAction.Approve, note);
+        return updateTournamentStatus(tournamentId, staffId, TournamentStatus.Upcoming, ApprovalAction.Approve, note);
     }
 
     public boolean rejectTournament(int tournamentId, int staffId, String note) {
-        Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
-        if (t == null) return false;
-        return tournamentStaffDAO.updateTournamentStatusAndLog(
-                tournamentId, staffId, t.getStatus(), TournamentStatus.Rejected, ApprovalAction.Reject, note);
+        return updateTournamentStatus(tournamentId, staffId, TournamentStatus.Rejected, ApprovalAction.Reject, note);
     }
 
     public boolean updateTournamentStatus(int tournamentId, int staffId, TournamentStatus newStatus,
                                           ApprovalAction action, String note) {
         Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
         if (t == null) return false;
-        return tournamentStaffDAO.updateTournamentStatusAndLog(
+        boolean ok = tournamentStaffDAO.updateTournamentStatusAndLog(
                 tournamentId, staffId, t.getStatus(), newStatus, action, note);
+        if (ok && t.getCreateBy() != null) {
+            try {
+                boolean approved = (action == ApprovalAction.Approve);
+                Notification n = new Notification();
+                n.setTitle(approved ? "Giải đấu của bạn đã được duyệt" : "Giải đấu của bạn không được duyệt");
+                n.setMessage(approved
+                        ? "Giải đấu '" + t.getTournamentName() + "' đã được staff chấp thuận. Giải đấu sẵn sàng mở đăng ký."
+                        : "Giải đấu '" + t.getTournamentName() + "' chưa được chấp thuận."
+                            + (note != null && !note.isBlank() ? " Lý do: " + note : ""));
+                n.setType("Tournament");
+                n.setActionUrl("/leader/tournaments");
+                n.setUserId(t.getCreateBy());
+                notificationDAO.createNotification(n);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return ok;
     }
 
     public List<TournamentApprovalLog> getTournamentLogs(int tournamentId) {
