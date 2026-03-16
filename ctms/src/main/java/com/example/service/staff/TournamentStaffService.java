@@ -62,23 +62,18 @@ public class TournamentStaffService {
         Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
         if (t == null) return false;
 
-        if (newStatus == TournamentStatus.Upcoming || newStatus == TournamentStatus.Ongoing) {
-            TournamentSetupService setupService = new TournamentSetupService();
-            TournamentSetupStateDTO state = setupService.getSetupState(tournamentId);
-            if (state == null || state.getStepStatuses() == null) {
-                throw new IllegalArgumentException("Chưa hoàn tất các bước setup (Structure, Players, Schedule, Referee).");
-            }
-            java.util.Map<String, String> statuses = state.getStepStatuses();
-            if (!"FINALIZED".equalsIgnoreCase(statuses.get("BRACKET")) ||
-                !"FINALIZED".equalsIgnoreCase(statuses.get("PLAYERS")) ||
-                !"FINALIZED".equalsIgnoreCase(statuses.get("SCHEDULE")) ||
-                !"FINALIZED".equalsIgnoreCase(statuses.get("REFEREES"))) {
-                throw new IllegalArgumentException("Không thể duyệt giải hoặc công khai giải! Leader cần finalize đủ 4 bước (Structure, Players, Schedule, Referee).");
-            }
+        boolean success = tournamentStaffDAO.updateTournamentStatusAndLog(
+                tournamentId, staffId, t.getStatus(), newStatus, action, note);
+
+        // Nếu chuyển sang trạng thái Completed:
+        // 1. Chia lợi nhuận (entry fee đã thu) cho Leader
+        // 2. Chia giải thưởng (prize_pool) cho người chơi theo bảng xếp hạng
+        if (success && newStatus == TournamentStatus.Completed) {
+            paymentDAO.payoutLeaderProfit(tournamentId, t.getCreateBy());
+            paymentDAO.distributePrizes(tournamentId, t.getPrizePool());
         }
 
-        return tournamentStaffDAO.updateTournamentStatusAndLog(
-                tournamentId, staffId, t.getStatus(), newStatus, action, note);
+        return success;
     }
 
     /**
