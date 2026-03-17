@@ -316,15 +316,7 @@ const TournamentDetail = () => {
             >
               <Trash2 size={18} />
             </button>
-            {false && laneStep === "referee" && (
-              <button
-                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                onClick={handlePublishBracket}
-                disabled={publishingBracket || stepStatuses?.REFEREES !== "FINALIZED" || bracketPublished}
-              >
-                {publishingBracket ? "Äang publish..." : bracketPublished ? "Published" : "Publish"}
-              </button>
-            )}
+
           </div>
           <div className="tdp-hero-content">
             <div className="td-leader-hero-badges">
@@ -927,8 +919,6 @@ const ImageManagerModal = ({ tournament, onClose, onSaved }) => {
       setSaving(false);
     }
   };
-
-  const noopPublishBracket = async () => {};
 
   const openPreview = (idx) => {
     setPreviewIdx(idx);
@@ -1566,6 +1556,25 @@ const BracketTab = ({
       });
   }, [approvedPlayers]);
 
+  const nextPowerOf2 = (n) => {
+    if (n <= 1) return 1;
+    let p = 1;
+    while (p < n) p *= 2;
+    return p;
+  };
+
+  const knockOutLimits = useMemo(() => {
+    const count = availablePlayers.length;
+    if (count < 8) return { bracketSize: 8, maxRounds: 3, matchesPerRound: {} };
+    const bracketSize = nextPowerOf2(count);
+    const maxRounds = Math.log2(bracketSize);
+    const matchesPerRound = {};
+    for (let k = 1; k <= maxRounds; k++) {
+      matchesPerRound[k] = bracketSize / Math.pow(2, k);
+    }
+    return { bracketSize, maxRounds, matchesPerRound };
+  }, [availablePlayers]);
+
   const roundRobinLimits = useMemo(() => {
     const participantCount = availablePlayers.length;
     if (participantCount <= 0) {
@@ -1837,6 +1846,29 @@ const BracketTab = ({
       }
     }
 
+
+    if (effectiveFormat === "KnockOut") {
+      const { matchesPerRound: expectedPerRound } = knockOutLimits;
+      const koRows = rows.filter((r) => (r.stage || stageOptions[0]) === "KnockOut");
+      const koRoundCounts = new Map();
+      koRows.forEach((r) => {
+        const ri = Number(r.roundIndex || 1);
+        koRoundCounts.set(ri, (koRoundCounts.get(ri) || 0) + 1);
+      });
+      const koRoundIndices = [...koRoundCounts.keys()].sort((a, b) => a - b);
+      for (let i = 0; i < koRoundIndices.length; i++) {
+        if (koRoundIndices[i] !== i + 1) {
+          errors.push(`Knock Out: Round index phải liên tục từ 1 (thiếu round ${i + 1}).`);
+          break;
+        }
+      }
+      for (const [ri, cnt] of koRoundCounts.entries()) {
+        const expected = expectedPerRound[ri];
+        if (expected !== undefined && cnt !== expected) {
+          errors.push(`Round ${ri} của Knock Out phải có đúng ${expected} trận (hiện có ${cnt}).`);
+        }
+      }
+    }
     let hasRr = false;
     let hasKo = false;
     const rrPairs = new Set();
@@ -2065,6 +2097,23 @@ const BracketTab = ({
         return;
       }
     }
+    if (stage === "KnockOut") {
+      const { matchesPerRound: expectedPerRound } = knockOutLimits;
+      const ri = Number(roundIndex || 1);
+      const maxForRound = expectedPerRound[ri];
+      if (maxForRound !== undefined) {
+        const currentCount = rows.filter(
+          (r) => r.stage === "KnockOut" && Number(r.roundIndex || 1) === ri,
+        ).length;
+        if (currentCount >= maxForRound) {
+          setServerBanner({
+            type: "error",
+            text: `Round ${ri} của Knock Out chỉ được tối đa ${maxForRound} trận.`,
+          });
+          return;
+        }
+      }
+    }
     setRows((prev) => [
       ...prev,
       makeRow({ stage, roundIndex, boardNumber: 1 }),
@@ -2075,7 +2124,7 @@ const BracketTab = ({
 
   // Round Robin: tối đa 10 round, đủ full vòng theo luật quốc tế (8 người = 7 round, 28 trận).
   const MAX_ROUND_ROBIN_ROUNDS = roundRobinLimits.rounds;
-  const MAX_KNOCKOUT_ROUNDS = 4;
+  const MAX_KNOCKOUT_ROUNDS = knockOutLimits.maxRounds;
 
   const addInlineRound = (stage) => {
     if (bracketPublished) {
@@ -2283,11 +2332,25 @@ const BracketTab = ({
         setFinalizeResult({ success: false, message: msg });
         return;
       }
+      // Kiểm tra trọng tài trùng lịch ở FE trước khi gọi API
+      const refTimeMap = {};
+      for (const m of rows) {
+        if (!m.refereeId || !m.startTime) continue;
+        const key = `${m.refereeId}__${m.startTime}`;
+        if (refTimeMap[key]) {
+          const msg = `Trọng tài bị phân công 2 trận cùng giờ (${m.startTime}). Vui lòng phân công lại.`;
+          setServerBanner({ type: "error", text: msg });
+          setFinalizeResult({ success: false, message: msg });
+          return;
+        }
+        refTimeMap[key] = true;
+      }
       const assignments = rows
         .filter((r) => r.matchId && r.refereeId)
         .map((r) => ({
           matchId: Number(r.matchId),
           refereeId: Number(r.refereeId),
+          startTime: r.startTime ? toSqlDateTime(r.startTime) : null,
         }));
       if (assignments.length === 0) {
         const msg = "Vui lòng chọn ít nhất một trọng tài cho các trận đấu trước khi Finalize.";
@@ -2457,66 +2520,6 @@ const BracketTab = ({
     return availablePlayers.filter(
       (p) => p.userId === currentId || !taken.has(p.userId),
     );
-  };
-
-  const autoFillPlayersIntoStructure = async () => {
-    if (rows.length === 0) {
-      setServerBanner({
-        type: "error",
-        text: "Chưa có structure bracket để auto add players.",
-      });
-      return;
-    }
-    try {
-      const payload = {
-        matches: rows.map((r) => ({
-          matchId: r.matchId ? Number(r.matchId) : null,
-          stage: r.stage || effectiveFormat,
-          roundName: r.roundName || `Round ${Math.max(1, Number(r.roundIndex || 1))}`,
-          roundIndex: Math.max(1, Number(r.roundIndex || 1)),
-          boardNumber: Math.max(1, Number(r.boardNumber || 1)),
-          player1Id: r.player1Id ? Number(r.player1Id) : null,
-          player2Id: r.player2Id ? Number(r.player2Id) : null,
-          startTime: toSqlDateTime(r.startTime),
-        })),
-      };
-      const res = await axios.post(
-        `${API_BASE}/api/tournaments?action=autoFillPlayers&id=${tournamentId}`,
-        payload,
-        { withCredentials: true },
-      );
-      const data = res?.data;
-      if (!data?.success || !Array.isArray(data.matches)) {
-        setServerBanner({
-          type: "error",
-          text: data?.message || "Auto add players thất bại.",
-        });
-        return;
-      }
-      const filled = data.matches.map((m, idx) => ({
-        id: rows[idx]?.id || `sv-${m.matchId || idx + 1}`,
-        matchId: m.matchId,
-        stage: m.stage || effectiveFormat,
-        roundName: m.roundName || "",
-        roundIndex: Number(m.roundIndex || 1),
-        boardNumber: Number(m.boardNumber || idx + 1),
-        player1Id: m.player1Id ? String(m.player1Id) : "",
-        player2Id: m.player2Id ? String(m.player2Id) : "",
-        startTime: toDateTimeLocal(m.startTime),
-        refereeId: rows[idx]?.refereeId || "",
-      }));
-      setRows(filled);
-      setRowErrors({});
-      setServerBanner({
-        type: "success",
-        text: data.message || "Auto add players đã áp dụng vào structure hiện tại.",
-      });
-    } catch (err) {
-      setServerBanner({
-        type: "error",
-        text: err?.response?.data?.message || "Auto add players thất bại.",
-      });
-    }
   };
 
   const handleSaveScheduleDraft = async () => {

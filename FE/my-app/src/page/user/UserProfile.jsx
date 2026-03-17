@@ -566,9 +566,13 @@ export default function UserProfile() {
   const [unauthorized, setUnauthorized] = useState(false);
   const [tab, setTab] = useState("tournaments");
 
-  // search & filter for tournaments
+  // search & filter for tournaments (profile table)
   const [searchTournament, setSearchTournament] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  // search & filter for modal
+  const [modalSearch, setModalSearch] = useState("");
+  const [modalFilterStatus, setModalFilterStatus] = useState("all");
 
   // edit modal state
   const [editOpen, setEditOpen] = useState(false);
@@ -688,6 +692,14 @@ export default function UserProfile() {
     }
     return list;
   }, [tournaments, searchTournament, filterStatus]);
+
+  const filteredModalTournaments = useMemo(() => {
+    let list = tournaments;
+    const q = (modalSearch || "").trim().toLowerCase();
+    if (q) list = list.filter((t) => (t.tournamentName || "").toLowerCase().includes(q));
+    if (modalFilterStatus !== "all") list = list.filter((t) => (t.tournamentStatus || "") === modalFilterStatus);
+    return list;
+  }, [tournaments, modalSearch, modalFilterStatus]);
 
   const isPlayer = role === "Player";
   const isLeader = role === "TournamentLeader";
@@ -1115,15 +1127,6 @@ export default function UserProfile() {
                       <div className="up-ref-stat-label">TRẬN ĐÃ TRỌNG TÀI</div>
                       <div className="up-ref-stat-hint">Tổng</div>
                     </div>
-                    <div className="up-ref-stat-card up-ref-stat-card--orange">
-                      <div className="up-ref-stat-value up-ref-stat-value--stars">
-                        {averageRating != null
-                          ? renderStars(averageRating)
-                          : "—"}
-                      </div>
-                      <div className="up-ref-stat-label">RATING</div>
-                      <div className="up-ref-stat-hint">Từ feedback</div>
-                    </div>
                   </>
                 )}
                 {(isStaff || isAdmin) && (
@@ -1227,30 +1230,24 @@ export default function UserProfile() {
                   </p>
                 </div>
                 <div className="up-ref-filter-row">
-                  <div className="up-ref-search-wrap">
-                    <Search size={18} />
-                    <input
-                      type="text"
-                      className="up-ref-search-input"
-                      placeholder="Tìm giải đấu..."
-                      value={searchTournament}
-                      onChange={(e) => setSearchTournament(e.target.value)}
-                    />
-                  </div>
-                  <div className="up-ref-filter-wrap">
-                    <Filter size={18} />
-                    <select
-                      className="up-ref-filter-select"
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                    >
-                      <option value="all">Tất cả</option>
-                      <option value="Completed">Kết thúc</option>
-                      <option value="Ongoing">Đang diễn ra</option>
-                      <option value="Pending">Sắp diễn ra</option>
-                      <option value="Cancelled">Đã hủy</option>
-                    </select>
-                  </div>
+                  <input
+                    type="text"
+                    className="up-ref-search-input"
+                    placeholder="Tìm giải đấu..."
+                    value={searchTournament}
+                    onChange={(e) => setSearchTournament(e.target.value)}
+                  />
+                  <select
+                    className="up-ref-filter-select"
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                  >
+                    <option value="all">Tất cả</option>
+                    <option value="Completed">Kết thúc</option>
+                    <option value="Ongoing">Đang diễn ra</option>
+                    <option value="Pending">Sắp diễn ra</option>
+                    <option value="Cancelled">Đã hủy</option>
+                  </select>
                 </div>
               </div>
               <div className="up-ref-table-wrap">
@@ -1275,21 +1272,12 @@ export default function UserProfile() {
                   </thead>
                   <tbody>
                     {filteredTournaments.length ? (
-                      filteredTournaments.map((t) => (
+                      filteredTournaments.slice(0, 10).map((t) => (
                         <tr
                           key={`${t.tournamentId}-${t.joinedDate || t.createdAt || t.assignedAt || ""}`}
-                          className={
-                            isLeader ? "up-ref-table-row--clickable" : ""
-                          }
-                          onClick={
-                            isLeader
-                              ? () => {
-                                  setSelectedTournamentForDetail(t);
-                                  setShowAllTournamentsModal(true);
-                                }
-                              : undefined
-                          }
-                          role={isLeader ? "button" : undefined}
+                          className="up-ref-table-row--clickable"
+                          onClick={() => navigate(`/tournaments/public/${t.tournamentId}`)}
+                          role="button"
                         >
                           <td>
                             <div className="up-ref-t-name">
@@ -1362,6 +1350,7 @@ export default function UserProfile() {
                 </table>
               </div>
               <div className="up-ref-viewall">
+                {!isPlayer && (
                 <button
                   type="button"
                   className="up-ref-viewall-btn"
@@ -1370,11 +1359,23 @@ export default function UserProfile() {
                     setShowAllTournamentsModal(true);
                   }}
                 >
-                  {isPlayer && "Xem tất cả lịch sử giải đấu "}
                   {isLeader && "Xem tất cả giải đã tạo →"}
                   {isReferee && "Xem tất cả giải đã trọng tài →"}
                   {(isStaff || isAdmin) && "Xem tất cả →"}
                 </button>
+                )}
+                {isPlayer && (
+                  <button
+                    type="button"
+                    className="up-ref-viewall-btn"
+                    onClick={() => {
+                      setSelectedTournamentForDetail(null);
+                      setShowAllTournamentsModal(true);
+                    }}
+                  >
+                    Xem tất cả lịch sử giải đấu
+                  </button>
+                )}
                 {isPlayer && (
                   <button
                     type="button"
@@ -1394,34 +1395,6 @@ export default function UserProfile() {
                     <div className="up-ref-ach-label">GIẢI QUÂN QUÂN</div>
                     <div className="up-ref-ach-hint">
                       +{championCount} trong tháng này
-                    </div>
-                  </div>
-                  <div className="up-ref-ach-card up-ref-ach-card--purple">
-                    <User size={24} className="up-ref-ach-icon" />
-                    <div className="up-ref-ach-value">ELITE IV</div>
-                    <div className="up-ref-ach-label">CẤP ĐỘ NGƯỜI CHƠI</div>
-                    <div className="up-ref-ach-hint">920/1000 EXP</div>
-                  </div>
-                </div>
-              )}
-              {(isLeader || isReferee) && (
-                <div className="up-ref-achievements">
-                  <div className="up-ref-ach-card up-ref-ach-card--purple">
-                    <Star
-                      size={24}
-                      className="up-ref-ach-icon"
-                      fill="currentColor"
-                    />
-                    <div className="up-ref-ach-value up-ref-ach-value--stars">
-                      {averageRating != null
-                        ? renderStars(averageRating)
-                        : "Chưa có"}
-                    </div>
-                    <div className="up-ref-ach-label">RATING (SAO)</div>
-                    <div className="up-ref-ach-hint">
-                      {isLeader
-                        ? "Từ feedback về giải bạn tạo"
-                        : "Từ feedback trận bạn trọng tài"}
                     </div>
                   </div>
                 </div>
@@ -1498,196 +1471,61 @@ export default function UserProfile() {
           >
             <div className="up-modal__head">
               <div className="up-modal__title">
-                {selectedTournamentForDetail
-                  ? "Chi tiết giải đấu"
-                  : isPlayer
-                    ? "Lịch sử giải đã tham gia"
-                    : isLeader
-                      ? "Lịch sử giải đã tạo (điều hành)"
-                      : isReferee
-                        ? "Giải đã tham gia (trọng tài)"
-                        : "Danh sách giải đấu"}
+                {isPlayer
+                  ? "Lịch sử giải đã tham gia"
+                  : isLeader
+                    ? "Lịch sử giải đã tạo (điều hành)"
+                    : isReferee
+                      ? "Giải đã tham gia (trọng tài)"
+                      : "Danh sách giải đấu"}
               </div>
               <button
                 type="button"
                 className="up-iconBtn"
                 onClick={() => {
-                  if (selectedTournamentForDetail)
-                    setSelectedTournamentForDetail(null);
-                  else {
-                    setShowAllTournamentsModal(false);
-                    setSelectedTournamentForDetail(null);
-                  }
+                  setShowAllTournamentsModal(false);
+                  setModalSearch("");
+                  setModalFilterStatus("all");
                 }}
-                aria-label={selectedTournamentForDetail ? "Quay lại" : "Đóng"}
+                aria-label="Đóng"
               >
-                {selectedTournamentForDetail ? "← Quay lại" : "✕"}
+                ✕
               </button>
             </div>
+            <div className="up-modal__filters">
+              <input
+                type="text"
+                className="up-ref-search-input"
+                placeholder="Tìm giải đấu..."
+                value={modalSearch}
+                onChange={(e) => setModalSearch(e.target.value)}
+              />
+              <select
+                className="up-ref-filter-select"
+                value={modalFilterStatus}
+                onChange={(e) => setModalFilterStatus(e.target.value)}
+              >
+                <option value="all">Tất cả</option>
+                <option value="Completed">Kết thúc</option>
+                <option value="Ongoing">Đang diễn ra</option>
+                <option value="Pending">Sắp diễn ra</option>
+                <option value="Cancelled">Đã hủy</option>
+              </select>
+            </div>
             <div className="up-modal__body">
-              {selectedTournamentForDetail ? (
-                <div className="up-tournament-detail">
-                  <div className="up-tournament-detail__name">
-                    <Trophy size={20} />{" "}
-                    {selectedTournamentForDetail.tournamentName}
-                  </div>
-                  <div className="up-tournament-detail__row">
-                    <span className="up-tournament-detail__label">
-                      Trạng thái:
-                    </span>
-                    <Pill
-                      variant={getStatusVariant(
-                        selectedTournamentForDetail.tournamentStatus,
-                      )}
-                    >
-                      {statusLabelVi(
-                        selectedTournamentForDetail.tournamentStatus,
-                      )}
-                    </Pill>
-                  </div>
-                  {isLeader && (
-                    <>
-                      <div className="up-tournament-detail__row">
-                        <span className="up-tournament-detail__label">
-                          Ngày tạo:
-                        </span>
-                        <span>
-                          {formatDate(selectedTournamentForDetail.createdAt)}
-                        </span>
-                      </div>
-                      <div className="up-tournament-detail__row">
-                        <span className="up-tournament-detail__label">
-                          Hạn đăng ký:
-                        </span>
-                        <span>
-                          {formatDate(
-                            selectedTournamentForDetail.registrationDeadline,
-                          )}
-                        </span>
-                      </div>
-                      <div className="up-tournament-detail__row">
-                        <span className="up-tournament-detail__label">
-                          Ngày bắt đầu:
-                        </span>
-                        <span>
-                          {formatDate(selectedTournamentForDetail.startDate)}
-                        </span>
-                      </div>
-                      <div className="up-tournament-detail__row">
-                        <span className="up-tournament-detail__label">
-                          Ngày kết thúc:
-                        </span>
-                        <span>
-                          {formatDate(selectedTournamentForDetail.endDate)}
-                        </span>
-                      </div>
-                      {(selectedTournamentForDetail.description ||
-                        selectedTournamentForDetail.location) && (
-                        <>
-                          {selectedTournamentForDetail.description && (
-                            <div className="up-tournament-detail__row">
-                              <span className="up-tournament-detail__label">
-                                Mô tả:
-                              </span>
-                              <span>
-                                {selectedTournamentForDetail.description}
-                              </span>
-                            </div>
-                          )}
-                          {selectedTournamentForDetail.location && (
-                            <div className="up-tournament-detail__row">
-                              <span className="up-tournament-detail__label">
-                                Địa điểm:
-                              </span>
-                              <span>
-                                {selectedTournamentForDetail.location}
-                              </span>
-                            </div>
-                          )}
-                          {selectedTournamentForDetail.format && (
-                            <div className="up-tournament-detail__row">
-                              <span className="up-tournament-detail__label">
-                                Format:
-                              </span>
-                              <span>
-                                {selectedTournamentForDetail.format}
-                              </span>
-                            </div>
-                          )}
-                          {(selectedTournamentForDetail.maxPlayer != null ||
-                            selectedTournamentForDetail.minPlayer != null) && (
-                            <div className="up-tournament-detail__row">
-                              <span className="up-tournament-detail__label">
-                                Số người:
-                              </span>
-                              <span>
-                                {[
-                                  selectedTournamentForDetail.minPlayer,
-                                  selectedTournamentForDetail.maxPlayer,
-                                ]
-                                  .filter((v) => v != null)
-                                  .join("–")}
-                              </span>
-                            </div>
-                          )}
-                          {(selectedTournamentForDetail.entryFee != null ||
-                            selectedTournamentForDetail.prizePool != null) && (
-                            <div className="up-tournament-detail__row">
-                              <span className="up-tournament-detail__label">
-                                Lệ phí / Giải thưởng:
-                              </span>
-                              <span>
-                                {formatNumber(
-                                  selectedTournamentForDetail.entryFee,
-                                )}{" "}
-                                /{" "}
-                                {formatNumber(
-                                  selectedTournamentForDetail.prizePool,
-                                )}
-                              </span>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </>
-                  )}
-                  {isPlayer && (
-                    <div className="up-tournament-detail__row">
-                      <span className="up-tournament-detail__label">
-                        Thứ hạng của bạn:
-                      </span>
-                      <span>
-                        {selectedTournamentForDetail.ranking != null
-                          ? `Hạng ${selectedTournamentForDetail.ranking}`
-                          : "—"}
-                      </span>
-                    </div>
-                  )}
-                  {!isLeader && (
-                    <div className="up-tournament-detail__row">
-                      <span className="up-tournament-detail__label">
-                        {isReferee ? "Ngày gắn:" : "Ngày thi đấu:"}
-                      </span>
-                      <span>
-                        {formatDate(
-                          selectedTournamentForDetail.startDate ||
-                            selectedTournamentForDetail.createdAt ||
-                            selectedTournamentForDetail.assignedAt,
-                        )}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ) : tournaments.length > 0 ? (
+              {filteredModalTournaments.length > 0 ? (
                 <ul className="up-tournament-list-modal">
-                  {tournaments.map((t) => (
+                  {filteredModalTournaments.map((t) => (
                     <li
                       key={`${t.tournamentId}-${t.joinedDate || t.createdAt || ""}`}
                     >
                       <button
                         type="button"
                         className="up-tournament-list-modal__item"
-                        onClick={() => setSelectedTournamentForDetail(t)}
+                        onClick={() => {
+                          setShowAllTournamentsModal(false);
+                          navigate(`/tournaments/public/${t.tournamentId}`);
+                        }}
                       >
                         <Trophy size={18} className="up-ref-t-icon" />
                         <span className="up-tournament-list-modal__name">
@@ -1705,11 +1543,13 @@ export default function UserProfile() {
                 </ul>
               ) : (
                 <p className="up-ref-table-empty">
-                  {isLeader
-                    ? "Bạn chưa tạo giải đấu nào."
-                    : isReferee
-                      ? "Bạn chưa được gán trọng tài giải nào."
-                      : "Bạn chưa tham gia giải đấu nào."}
+                  {modalSearch || modalFilterStatus !== "all"
+                    ? "Không có giải đấu nào khớp bộ lọc."
+                    : isLeader
+                      ? "Bạn chưa tạo giải đấu nào."
+                      : isReferee
+                        ? "Bạn chưa được gán trọng tài giải nào."
+                        : "Bạn chưa tham gia giải đấu nào."}
                 </p>
               )}
             </div>
