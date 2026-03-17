@@ -49,6 +49,8 @@ public class TournamentService {
     private final TournamentDAO tournamentDAO;
     private final ParticipantDAO participantDAO;
     private final TournamentRefereeDAO refereeDAO;
+    private final UserDAO userDAO;
+    private final PaymentDAO paymentDAO;
     private final RefereeInvitationDAO invitationDAO;
     private final ReportDAO reportDAO;
     private final MatchDAO matchDAO;
@@ -66,6 +68,8 @@ public class TournamentService {
         this.setupDAO = new TournamentSetupDAO();
         this.prizeTemplateDAO = new PrizeTemplateDAO();
         this.notificationDAO = new NotificationDAO();
+        this.userDAO = new UserDAO();
+        this.paymentDAO = new PaymentDAO();
     }
 
     public List<TournamentDTO> getAllTournamentsWithCurrentPlayers() {
@@ -482,6 +486,18 @@ public class TournamentService {
                 return SetupValidationResult.invalid("Trọng tài (ID " + refId + ") chưa được thêm vào giải. Vào tab Referees để thêm trọng tài trước.");
             }
         }
+        // Kiểm tra trọng tài trùng lịch: cùng refereeId, cùng startTime
+        Map<Integer, Set<String>> refTimeMap = new java.util.HashMap<>();
+        for (TournamentSetupMatchDTO m : matches) {
+            Integer refId = m.getRefereeId();
+            if (refId == null || refId <= 0 || m.getStartTime() == null) continue;
+            String timeKey = m.getStartTime().toString();
+            Set<String> times = refTimeMap.computeIfAbsent(refId, k -> new java.util.HashSet<>());
+            if (!times.add(timeKey)) {
+                return SetupValidationResult.invalid(
+                    "Trọng tài (ID " + refId + ") bị phân công 2 trận cùng giờ (" + timeKey + "). Vui lòng phân công lại.");
+            }
+        }
         boolean ok = setupDAO.updateMatchReferees(tournamentId, matches);
         if (!ok) {
             return SetupValidationResult.invalid("Không thể lưu gán trọng tài. Kiểm tra match_id có tồn tại trong giải không.");
@@ -834,9 +850,9 @@ if (isBlank(t.getTournamentName())) return false;
         }
 
         // Giới hạn số round: Round Robin đủ full vòng theo luật quốc tế, tối đa 10 round.
-        // KO tối đa 4 round.
+        // KO tối đa 5 round (tương ứng bracket 32 người = log2(32)).
         final int maxRoundRobinRounds = 10;
-        final int maxKnockOutRounds = 4;
+        final int maxKnockOutRounds = 5;
         java.util.Set<Integer> rrRounds = new java.util.HashSet<>();
         java.util.Set<Integer> koRounds = new java.util.HashSet<>();
         for (TournamentSetupMatchDTO m : matches) {
@@ -949,14 +965,10 @@ if (isBlank(t.getTournamentName())) return false;
             copy.setBoardNumber(m.getBoardNumber() == null || m.getBoardNumber() <= 0 ? null : m.getBoardNumber());
             copy.setPlayer1Id(m.getPlayer1Id());
             copy.setPlayer2Id(m.getPlayer2Id());
-            copy.setStartTime(normalizeTimestamp(m.getStartTime()));
+            copy.setStartTime(m.getStartTime());
             normalized.add(copy);
         }
         return normalized;
-    }
-
-    private Timestamp normalizeTimestamp(Timestamp ts) {
-        return ts;
     }
 
     /** Chuẩn hóa format: RoundRobin, KnockOut. */
@@ -1034,24 +1046,6 @@ if (isBlank(t.getTournamentName())) return false;
         int min = Math.min(a, b);
         int max = Math.max(a, b);
         return min + "::" + max;
-    }
-
-    private int firstIndexOfStage(List<TournamentSetupMatchDTO> matches, String stage) {
-        for (int i = 0; i < matches.size(); i++) {
-            if (stage.equals(normalizeStage(matches.get(i).getStage(), null))) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private int lastIndexOfStage(List<TournamentSetupMatchDTO> matches, String stage) {
-        for (int i = matches.size() - 1; i >= 0; i--) {
-            if (stage.equals(normalizeStage(matches.get(i).getStage(), null))) {
-                return i;
-            }
-        }
-        return -1;
     }
 
     // =========================

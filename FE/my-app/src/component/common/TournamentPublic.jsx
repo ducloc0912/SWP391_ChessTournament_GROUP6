@@ -219,13 +219,6 @@ export default function TournamentPublic() {
                   <Trophy size={16} /> Các giải đang theo dõi
                 </button>
               ) : null}
-              <button
-                type="button"
-                className="tp-all-btn"
-                onClick={() => navigate("/tournaments/public")}
-              >
-                Xem tất cả giải đấu
-              </button>
             </div>
           </div>
 

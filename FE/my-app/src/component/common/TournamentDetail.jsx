@@ -351,47 +351,47 @@ export default function TournamentDetail() {
                     {tournament.location || "Online"}
                   </span>
                 </div>
-                  <div className="tdp-follow-cta" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    {canRegisterByStatus && !isJoined && (
-                      <button
-                        type="button"
-                        className="tdp-register-btn"
-                        onClick={handleRegisterTournament}
-                      >
-                        Đăng ký giải
-                      </button>
-                    )}
-                    {canRegisterByStatus && isJoined && (
-                      <span className="tdp-register-text-joined">
-                        Bạn đã đăng ký giải này
-                      </span>
-                    )}
-                    {user && (
-                      <button
-                        type="button"
-                        className={`tdp-follow-btn-detail ${isFollowing ? 'following' : ''}`}
-                        disabled={followLoading}
-                        onClick={handleFollowToggle}
-                        style={{
-                          backgroundColor: isFollowing ? 'transparent' : '#ff4655',
-                          border: isFollowing ? '2px solid #ff4655' : 'none',
-                          color: 'white',
-                          padding: '10px 20px',
-                          borderRadius: '6px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          transition: 'all 0.2s',
-                          fontSize: '0.9rem'
-                        }}
-                      >
-                        <Search size={18} />
-                        {isFollowing ? "Đã theo dõi" : "Theo dõi giải"}
-                      </button>
-                    )}
-                  </div>
+                <div className="tdp-follow-cta" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  {canRegisterByStatus && !isJoined && (
+                    <button
+                      type="button"
+                      className="tdp-register-btn"
+                      onClick={handleRegisterTournament}
+                    >
+                      Đăng ký giải
+                    </button>
+                  )}
+                  {canRegisterByStatus && isJoined && (
+                    <span className="tdp-register-text-joined">
+                      Bạn đã đăng ký giải này
+                    </span>
+                  )}
+                  {user && (
+                    <button
+                      type="button"
+                      className={`tdp-follow-btn-detail ${isFollowing ? 'following' : ''}`}
+                      disabled={followLoading}
+                      onClick={handleFollowToggle}
+                      style={{
+                        backgroundColor: isFollowing ? 'transparent' : '#ff4655',
+                        border: isFollowing ? '2px solid #ff4655' : 'none',
+                        color: 'white',
+                        padding: '10px 20px',
+
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        transition: 'all 0.2s',
+                        fontSize: '0.9rem'
+                      }}
+                    >
+                      <Search size={18} />
+                      {isFollowing ? "Đã theo dõi" : "Theo dõi giải"}
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="tdp-hero-fee">
                 {Number(tournament?.entryFee ?? 0) > 0 ? (
@@ -600,8 +600,8 @@ export default function TournamentDetail() {
                       <p className="tdp-participants-intro">
                         {Number(
                           tournament.currentPlayers ??
-                            tournament.current_players ??
-                            0,
+                          tournament.current_players ??
+                          0,
                         )}
                         /
                         {Number(

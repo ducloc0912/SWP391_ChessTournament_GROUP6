@@ -140,13 +140,6 @@ export default function FollowedTournamentsPage() {
               <h1>Các giải đang theo dõi</h1>
               <p>Danh sách các giải bạn đã follow. Bạn có thể hủy theo dõi trực tiếp trên từng card.</p>
             </div>
-            <button
-              type="button"
-              className="tp-all-btn"
-              onClick={() => navigate("/tournaments/public")}
-            >
-              Xem tất cả giải đấu
-            </button>
           </div>
 
           <div className="tp-filters">
