@@ -3,6 +3,8 @@ package com.example.service.staff;
 import com.example.DAO.NotificationDAO;
 import com.example.DAO.ParticipantDAO;
 import com.example.DAO.PaymentDAO;
+import com.example.DAO.PaymentDAO;
+import com.example.DAO.TournamentDAO;
 import com.example.DAO.TournamentStaffDAO;
 import com.example.model.entity.Notification;
 import com.example.model.entity.Participant;
@@ -25,6 +27,8 @@ public class TournamentStaffService {
     private final ParticipantDAO participantDAO = new ParticipantDAO();
     private final PaymentDAO paymentDAO = new PaymentDAO();
     private final TournamentNotificationService notificationService = new TournamentNotificationService();
+    private final TournamentDAO tournamentDAO = new TournamentDAO();
+    private final PaymentDAO paymentDAO = new PaymentDAO();
 
     public List<Tournament> getAllTournaments() {
         return tournamentStaffDAO.getAllTournamentsForStaff();
@@ -151,6 +155,23 @@ public class TournamentStaffService {
 
     public boolean rejectWithdrawal(int withdrawalId, int staffId, String reason) {
         return tournamentStaffDAO.rejectWithdrawal(withdrawalId, staffId, reason);
+    }
+
+    public boolean cancelTournamentWithRefund(int tournamentId, int staffId, String note) {
+        Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
+        if (t == null) return false;
+
+        BigDecimal prizePool = t.getPrizePool() != null ? t.getPrizePool() : BigDecimal.ZERO;
+        BigDecimal entryFee = t.getEntryFee() != null ? t.getEntryFee() : BigDecimal.ZERO;
+        int leaderId = t.getCreateBy() != null ? t.getCreateBy() : 0;
+
+        List<Integer> paidUserIds = paymentDAO.getPaidUserIdsByTournament(tournamentId);
+
+        boolean cancelled = tournamentDAO.cancelTournament(tournamentId, note);
+        if (!cancelled) return false;
+
+        paymentDAO.refundTournamentCancellation(tournamentId, leaderId, prizePool, entryFee, paidUserIds);
+        return true;
     }
 }
 

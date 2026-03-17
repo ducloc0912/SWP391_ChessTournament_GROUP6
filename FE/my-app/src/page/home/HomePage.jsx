@@ -383,51 +383,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="hpv-players" className="hpv-section">
-        <div className="hpv-container hpv-split-layout">
-          <div>
-            <h2>TOP PLAYERS</h2>
-            <p>
-              Theo dõi những kỳ thủ có thứ hạng cao và hoạt động mạnh nhất trên
-              hệ thống. Dữ liệu được đồng bộ realtime từ bảng xếp hạng.
-            </p>
-            <button
-              className="hpv-btn hpv-btn-primary"
-              onClick={() => navigate("/player/tournaments")}
-            >
-              Join Tournament
-            </button>
-          </div>
-          <div className="hpv-player-list">
-            {loadingHome ? (
-              <div className="hpv-empty-card">Đang tải top player...</div>
-            ) : normalizeList(topPlayers).length > 0 ? (
-              normalizeList(topPlayers)
-                .slice(0, 5)
-                .map((p, idx) => (
-                  <div key={p.userId || `p-${idx}`} className="hpv-player-item">
-                    <span className="hpv-player-rank">#{idx + 1}</span>
-                    <div className="hpv-player-avatar">
-                      <img
-                        src={resolveAssetUrl(p.avatar) || DEFAULT_AVATAR}
-                        alt={p.firstName}
-                      />
-                    </div>
-                    <div>
-                      <h4>
-                        {`${p.firstName || ""} ${p.lastName || ""}`.trim() ||
-                          "Unknown player"}
-                      </h4>
-                      <p>Rank: {p.rank ?? "—"}</p>
-                    </div>
-                  </div>
-                ))
-            ) : (
-              <div className="hpv-empty-note">Chưa có dữ liệu top players.</div>
-            )}
-          </div>
-        </div>
-      </section>
 
       <section id="hpv-feedback" className="hpv-section hpv-dark">
         <div className="hpv-container">
@@ -486,9 +441,6 @@ export default function HomePage() {
           <div className="hpv-footer-nav">
             <button onClick={() => navigate("/tournaments")}>
               <Trophy size={14} /> Tournaments
-            </button>
-            <button onClick={() => navigate("/player/tournaments")}>
-              <Users size={14} /> Join
             </button>
             <button
               onClick={() =>

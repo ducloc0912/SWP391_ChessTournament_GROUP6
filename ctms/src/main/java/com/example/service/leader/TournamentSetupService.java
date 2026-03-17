@@ -162,14 +162,18 @@ public class TournamentSetupService {
 
     private ValidationResult validateKnockOutStructureLimits(int tournamentId, List<TournamentSetupMatchDTO> matches) {
         int approvedPlayers = setupDAO.getParticipantUserIds(tournamentId).size();
-        if (approvedPlayers < 2) {
-            return ValidationResult.invalid("Cần ít nhất 2 người chơi đã duyệt để tạo bracket KnockOut.");
+        if (approvedPlayers < 8) {
+            return ValidationResult.invalid("Cần ít nhất 8 người chơi đã duyệt để tạo bracket KnockOut.");
         }
         int bracketSize = nextPowerOf2(approvedPlayers);
+        int numRounds = (int) (Math.log(bracketSize) / Math.log(2));
         int requiredMatches = bracketSize - 1;
-        long koMatchCount = matches.stream()
+
+        List<TournamentSetupMatchDTO> koMatches = matches.stream()
                 .filter(m -> "KnockOut".equalsIgnoreCase(String.valueOf(m.getStage())))
-                .count();
+                .collect(java.util.stream.Collectors.toList());
+        long koMatchCount = koMatches.size();
+
         if (koMatchCount < requiredMatches) {
             return ValidationResult.invalid("Bracket KnockOut với " + approvedPlayers + " người chơi cần đủ " + requiredMatches
                     + " trận (bracket size " + bracketSize + "), nhưng hiện chỉ có " + koMatchCount + " trận. Vui lòng dùng Auto Structure hoặc thêm đủ trận.");
@@ -178,6 +182,33 @@ public class TournamentSetupService {
             return ValidationResult.invalid("Bracket KnockOut với " + approvedPlayers + " người chơi chỉ được " + requiredMatches
                     + " trận (bracket size " + bracketSize + "), nhưng hiện có " + koMatchCount + " trận.");
         }
+
+        // Validate số trận mỗi round = bracketSize / 2^K
+        java.util.Map<Integer, Long> matchesPerRound = koMatches.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        m -> m.getRoundIndex() == null ? 1 : m.getRoundIndex(),
+                        java.util.stream.Collectors.counting()));
+        for (java.util.Map.Entry<Integer, Long> entry : matchesPerRound.entrySet()) {
+            int ri = entry.getKey();
+            long cnt = entry.getValue();
+            if (ri < 1 || ri > numRounds) {
+                return ValidationResult.invalid("Round index " + ri + " không hợp lệ cho bracket KnockOut " + bracketSize + " người (tối đa " + numRounds + " round).");
+            }
+            long expected = bracketSize / (long) Math.pow(2, ri);
+            if (cnt != expected) {
+                return ValidationResult.invalid("Round " + ri + " của Knock Out phải có đúng " + expected + " trận (hiện có " + cnt + ").");
+            }
+        }
+
+        // Validate round indices liên tục từ 1
+        java.util.List<Integer> roundIndices = new java.util.ArrayList<>(matchesPerRound.keySet());
+        java.util.Collections.sort(roundIndices);
+        for (int i = 0; i < roundIndices.size(); i++) {
+            if (roundIndices.get(i) != i + 1) {
+                return ValidationResult.invalid("Round index của Knock Out phải liên tục từ 1 (thiếu round " + (i + 1) + ").");
+            }
+        }
+
         return ValidationResult.valid();
     }
 

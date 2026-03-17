@@ -9,7 +9,6 @@ import RefereeInvitationsPage from "./page/referee/RefereeInvitationsPage";
 import RefereeMatchesPage from "./page/referee/RefereeMatchesPage";
 import RefereeMatchListPage from "./page/referee/RefereeMatchListPage";
 import Profile from "./page/user/UserProfile";
-import PlayerTournamentList from "./page/user/PlayerTournamentList";
 import PendingTournamentRegistrations from "./page/user/PendingTournamentRegistrations";
 import AdminLayout from "./page/admin/AdminLayout";
 import TournamentList from "./page/tournamentleader/TournamentList";
@@ -42,7 +41,6 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/user/reports" element={<UserReportPage />} />
-        <Route path="/player/tournaments" element={<PlayerTournamentList />} />
         <Route
           path="/player/pending-registrations"
           element={<PendingTournamentRegistrations />}
