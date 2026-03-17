@@ -161,6 +161,23 @@ public class PublicTournamentController extends HttpServlet {
             return;
         }
 
+        if ("standing".equals(action)) {
+            String idParam = request.getParameter("id");
+            if (idParam == null || idParam.isBlank()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Missing tournament id\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(idParam);
+                response.getWriter().write(gson.toJson(tournamentService.getStandingsByTournament(tournamentId)));
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"message\":\"Invalid tournament id\"}");
+            }
+            return;
+        }
+
         if ("feedback".equals(action)) {
             String idParam = request.getParameter("id");
             if (idParam == null || idParam.isBlank()) {
