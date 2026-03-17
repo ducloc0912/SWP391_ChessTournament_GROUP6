@@ -41,6 +41,30 @@ public class NotificationDAO extends DBContext {
         }
     }
 
+    public void createNotificationsForRole(String roleName, String title, String message, String type, String actionUrl) throws SQLException {
+        String findUsersSql = """
+                SELECT u.user_id FROM Users u
+                JOIN User_Role ur ON u.user_id = ur.user_id
+                JOIN Roles r ON ur.role_id = r.role_id
+                WHERE LOWER(r.role_name) = LOWER(?)
+                """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(findUsersSql)) {
+            ps.setString(1, roleName);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Notification n = new Notification();
+                    n.setTitle(title);
+                    n.setMessage(message);
+                    n.setType(type);
+                    n.setActionUrl(actionUrl);
+                    n.setUserId(rs.getInt("user_id"));
+                    createNotification(n);
+                }
+            }
+        }
+    }
+
     public List<Notification> getNotificationsForUser(Integer userId, boolean onlyUnread) throws SQLException {
         List<Notification> list = new ArrayList<>();
         String sql = """

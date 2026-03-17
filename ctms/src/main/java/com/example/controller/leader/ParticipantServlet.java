@@ -1,9 +1,11 @@
 package com.example.controller.leader;
 
+import com.example.DAO.NotificationDAO;
 import com.example.DAO.ParticipantDAO;
 import com.example.DAO.TournamentDAO;
 import com.example.model.dto.TournamentDTO;
 import com.example.model.dto.TournamentPlayerDTO;
+import com.example.model.entity.Notification;
 import com.example.model.entity.Participant;
 import com.example.model.entity.User;
 import com.example.model.enums.ParticipantStatus;
@@ -144,6 +146,22 @@ public class ParticipantServlet extends HttpServlet {
             return;
         }
 
+        // Notify tournament leader when a player registers
+        if (tournament.getCreateBy() != null) {
+            try {
+                NotificationDAO notifDao = new NotificationDAO();
+                Notification n = new Notification();
+                n.setTitle("Người chơi mới đã đăng ký giải đấu");
+                n.setMessage("Có người chơi mới vừa đăng ký tham gia giải đấu '" + tournament.getTournamentName() + "'.");
+                n.setType("Tournament");
+                n.setActionUrl("/leader/tournaments");
+                n.setUserId(tournament.getCreateBy());
+                notifDao.createNotification(n);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
         resp.getWriter().write("{\"success\": " + ok + "}");
     }
 
@@ -166,6 +184,26 @@ public class ParticipantServlet extends HttpServlet {
         p.setParticipantId(Integer.parseInt(participantIdParam));
 
         boolean ok = dao.updateParticipant(p);
+
+        if (ok && p.getStatus() == ParticipantStatus.Disqualified) {
+            try {
+                Participant existing = dao.getParticipantById(p.getParticipantId());
+                if (existing != null && existing.getUserId() != null) {
+                    TournamentDTO t = tournamentDAO.getTournamentById(existing.getTournamentId());
+                    String tName = t != null ? t.getTournamentName() : "giải đấu";
+                    NotificationDAO notifDao = new NotificationDAO();
+                    Notification n = new Notification();
+                    n.setTitle("Bạn đã bị loại khỏi giải đấu");
+                    n.setMessage("Bạn đã bị tournament leader loại khỏi giải đấu '" + tName + "'.");
+                    n.setType("Tournament");
+                    n.setActionUrl("/tournaments");
+                    n.setUserId(existing.getUserId());
+                    notifDao.createNotification(n);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
 
         resp.getWriter().write("{\"success\": " + ok + "}");
     }

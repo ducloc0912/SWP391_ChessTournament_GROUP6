@@ -157,20 +157,33 @@
 .main-header .notification-dropdown {
   position: absolute;
   right: 0;
-  top: 120%;
-  min-width: 260px;
-  max-width: 320px;
-  background: #0f172a;
+  top: calc(100% + 8px);
+  min-width: 300px;
+  max-width: 360px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.6);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
   padding: 8px 0;
-  z-index: 50;
+  z-index: 1000;
+}
+
+.main-header .notification-dropdown-title {
+  padding: 10px 14px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
 }
 
 .main-header .notification-empty {
-  padding: 10px 14px;
-  font-size: 12px;
-  color: #cbd5f5;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #64748b;
+  background: #ffffff;
 }
 
 .main-header .notification-list {
@@ -179,32 +192,46 @@
   padding: 0;
   max-height: 320px;
   overflow-y: auto;
+  background: #ffffff;
 }
 
-.main-header .notification-item {
-  padding: 8px 14px;
+.main-header .notification-list li {
+  background: #ffffff;
+}
+
+.main-header .notification-item-btn {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: #ffffff;
+  text-align: left;
   cursor: pointer;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 12px 14px;
+  display: block;
+  transition: background 0.2s ease;
 }
 
-.main-header .notification-item:last-child {
-  border-bottom: none;
-}
-
-.main-header .notification-item.unread {
-  background: rgba(59, 130, 246, 0.12);
+.main-header .notification-item-btn:hover {
+  background: #f8fafc;
 }
 
 .main-header .notification-title {
   font-size: 13px;
-  font-weight: 600;
-  color: #e5e7eb;
-  margin-bottom: 2px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
 }
 
 .main-header .notification-message {
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.main-header .notification-time {
   font-size: 11px;
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
 .main-header .user-btn {
