@@ -57,8 +57,7 @@ public class TournamentService {
     private final TournamentSetupDAO setupDAO;
     private final PrizeTemplateDAO prizeTemplateDAO;
     private final NotificationDAO notificationDAO;
-    private final UserDAO userDAO;
-    private final PaymentDAO paymentDAO;
+    
 
     public TournamentService() {
         this.tournamentDAO = new TournamentDAO();
