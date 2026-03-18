@@ -470,7 +470,7 @@ public class RefereeMatchDAO extends DBContext {
     public void aggregateMatchResult(int matchId) {
         String matchSql = """
                 SELECT m.player1_id, m.player2_id, m.result, m.status, t.format,
-                       m.round_id, m.board_number
+                       m.round_id, m.board_number, m.tournament_id
                 FROM Matches m
                 JOIN Tournaments t ON t.tournament_id = m.tournament_id
                 WHERE m.match_id = ?
@@ -498,6 +498,7 @@ public class RefereeMatchDAO extends DBContext {
             String format;
             int roundId;
             int boardNumber;
+            int tournamentId;
             try (PreparedStatement ps = conn.prepareStatement(matchSql)) {
                 ps.setInt(1, matchId);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -509,6 +510,7 @@ public class RefereeMatchDAO extends DBContext {
                     format = rs.getString("format");
                     roundId = rs.getInt("round_id");
                     boardNumber = rs.getInt("board_number");
+                    tournamentId = rs.getInt("tournament_id");
                 }
             }
 
@@ -674,6 +676,10 @@ public class RefereeMatchDAO extends DBContext {
 
             if (isKnockout && winnerId != null && "Completed".equals(newStatus)) {
                 propagateKoWinner(conn, roundId, boardNumber, winnerId);
+            }
+
+            if (isRoundRobin && "Completed".equals(newStatus)) {
+                new StandingDAO().updateStandingsForTournament(conn, tournamentId);
             }
         } catch (SQLException e) {
             e.printStackTrace();

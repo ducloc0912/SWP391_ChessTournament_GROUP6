@@ -1340,3 +1340,56 @@
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ─── Standing Tab ──────────────────────────────────────────── */
+.tdp-standing-section {
+  margin-top: 20px;
+}
+
+.tdp-standing-table {
+  min-width: 680px;
+}
+
+.tdp-standing-table thead th:first-child {
+  width: 52px;
+  text-align: center;
+}
+
+.tdp-standing-table td {
+  text-align: center;
+}
+
+.tdp-standing-table td.tdp-standing-name {
+  text-align: left;
+  font-weight: 600;
+}
+
+.tdp-standing-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 800;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.tdp-standing-rank--gold   { background: #fbbf24; color: #fff; }
+.tdp-standing-rank--silver { background: #9ca3af; color: #fff; }
+.tdp-standing-rank--bronze { background: #b45309; color: #fff; }
+
+.tdp-standing-top td {
+  background: #fafaf7;
+}
+
+.tdp-standing-pts {
+  font-weight: 700;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.tdp-standing-won  { color: #16a34a; font-weight: 600; }
+.tdp-standing-lost { color: #dc2626; font-weight: 600; }

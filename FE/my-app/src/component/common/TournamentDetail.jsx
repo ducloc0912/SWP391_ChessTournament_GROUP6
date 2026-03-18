@@ -94,6 +94,7 @@ export default function TournamentDetail() {
     runnerUpName: null,
   });
   const [participants, setParticipants] = useState([]);
+  const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isFollowing, setIsFollowing] = useState(false);
@@ -160,6 +161,16 @@ export default function TournamentDetail() {
         ? participantsRes.data
         : [];
       setParticipants(participantList);
+
+      // Fetch standings for Round Robin tournaments that are ongoing
+      if (detailData?.format === "RoundRobin" && normalizeStatus(detailData?.status) === "ongoing") {
+        const standingsRes = await axios
+          .get(`${API_BASE}/api/public/tournaments?action=standing&id=${id}`)
+          .catch(() => null);
+        setStandings(Array.isArray(standingsRes?.data) ? standingsRes.data : []);
+      } else {
+        setStandings([]);
+      }
 
       // Xác định user đã tham gia giải hay chưa dựa trên danh sách participant của giải hiện tại
       if (detailData?.tournamentId && user?.userId) {
@@ -422,6 +433,15 @@ export default function TournamentDetail() {
               >
                 PARTICIPANT
               </button>
+              {statusKey === "ongoing" && tournament?.format === "RoundRobin" && (
+                <button
+                  type="button"
+                  className={`tdp-tab ${activeTab === "standing" ? "active" : ""}`}
+                  onClick={() => setActiveTab("standing")}
+                >
+                  STANDING
+                </button>
+              )}
               {bracketPublished && (
                 <button
                   type="button"
@@ -668,6 +688,61 @@ export default function TournamentDetail() {
                         </p>
                       </div>
                     </article>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeTab === "standing" && (
+              <section className="tdp-standing-section">
+                <div className="tdp-players-tab">
+                  <div className="tdp-players-table-wrapper">
+                    <table className="tdp-players-table tdp-standing-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>NGƯỜI CHƠI</th>
+                          <th>SỐ TRẬN</th>
+                          <th>THẮNG</th>
+                          <th>HÒA</th>
+                          <th>THUA</th>
+                          <th>ĐIỂM</th>
+                          <th>TIEBREAK (SB)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {standings.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} style={{ textAlign: "center", color: "#6b7280" }}>
+                              Chưa có kết quả xếp hạng. Bảng xếp hạng sẽ cập nhật sau mỗi trận đấu hoàn thành.
+                            </td>
+                          </tr>
+                        ) : (
+                          standings.map((row, idx) => {
+                            const rank = row.currentRank ?? idx + 1;
+                            const medalClass =
+                              rank === 1 ? "tdp-standing-rank--gold"
+                              : rank === 2 ? "tdp-standing-rank--silver"
+                              : rank === 3 ? "tdp-standing-rank--bronze"
+                              : "";
+                            return (
+                              <tr key={row.userId} className={rank <= 3 ? "tdp-standing-top" : ""}>
+                                <td>
+                                  <span className={`tdp-standing-rank ${medalClass}`}>{rank}</span>
+                                </td>
+                                <td className="tdp-standing-name">{row.playerName || "—"}</td>
+                                <td>{row.matchesPlayed ?? 0}</td>
+                                <td className="tdp-standing-won">{row.won ?? 0}</td>
+                                <td>{row.drawn ?? 0}</td>
+                                <td className="tdp-standing-lost">{row.lost ?? 0}</td>
+                                <td className="tdp-standing-pts">{Number(row.point ?? 0).toFixed(1)}</td>
+                                <td>{Number(row.tieBreak ?? 0).toFixed(2)}</td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </section>

@@ -2,6 +2,7 @@ package com.example.service.leader;
 
 import com.example.DAO.NotificationDAO;
 import com.example.DAO.RefereeInvitationDAO;
+import com.example.DAO.StandingDAO;
 import com.example.DAO.TournamentDAO;
 import com.example.DAO.TournamentRefereeDAO;
 import com.example.DAO.ReportDAO;
@@ -57,6 +58,7 @@ public class TournamentService {
     private final TournamentSetupDAO setupDAO;
     private final PrizeTemplateDAO prizeTemplateDAO;
     private final NotificationDAO notificationDAO;
+    private final StandingDAO standingDAO;
     
 
     public TournamentService() {
@@ -71,6 +73,7 @@ public class TournamentService {
         this.notificationDAO = new NotificationDAO();
         this.userDAO = new UserDAO();
         this.paymentDAO = new PaymentDAO();
+        this.standingDAO = new StandingDAO();
     }
 
     public List<TournamentDTO> getAllTournamentsWithCurrentPlayers() {
@@ -338,6 +341,11 @@ public class TournamentService {
     public Map<String, Object> getTournamentPodium(int tournamentId) {
         if (tournamentId <= 0) return Map.of("championName", null, "runnerUpName", null);
         return tournamentDAO.getTournamentPodium(tournamentId);
+    }
+
+    public List<Map<String, Object>> getStandingsByTournament(int tournamentId) {
+        if (tournamentId <= 0) return List.of();
+        return standingDAO.getStandingsByTournament(tournamentId);
     }
 
     public List<TournamentSetupMatchDTO> getManualSetupMatches(int tournamentId) {
