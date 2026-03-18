@@ -1,26 +1,32 @@
 package com.example.service.staff;
 
 import com.example.DAO.NotificationDAO;
+import com.example.DAO.ParticipantDAO;
 import com.example.DAO.PaymentDAO;
+
 import com.example.DAO.TournamentDAO;
 import com.example.DAO.TournamentStaffDAO;
 import com.example.model.entity.Notification;
+import com.example.model.entity.Participant;
 import com.example.model.entity.Tournament;
 import com.example.model.entity.TournamentApprovalLog;
 import com.example.model.entity.TournamentStaff;
 import com.example.model.enums.ApprovalAction;
+import com.example.model.enums.ParticipantStatus;
 import com.example.model.enums.TournamentStatus;
-import com.example.model.dto.TournamentSetupStateDTO;
-import com.example.service.leader.TournamentSetupService;
 import com.example.service.leader.TournamentNotificationService;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class TournamentStaffService {
     private final TournamentStaffDAO tournamentStaffDAO = new TournamentStaffDAO();
     private final NotificationDAO notificationDAO = new NotificationDAO();
+    private final ParticipantDAO participantDAO = new ParticipantDAO();
+    
+    private final TournamentNotificationService notificationService = new TournamentNotificationService();
     private final TournamentDAO tournamentDAO = new TournamentDAO();
     private final PaymentDAO paymentDAO = new PaymentDAO();
 
@@ -46,6 +52,55 @@ public class TournamentStaffService {
 
     public boolean rejectTournament(int tournamentId, int staffId, String note) {
         return updateTournamentStatus(tournamentId, staffId, TournamentStatus.Rejected, ApprovalAction.Reject, note);
+    }
+
+    public boolean cancelTournamentWithRefund(int tournamentId, int staffId, String note) {
+        Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
+        if (t == null) return false;
+
+        // Hoàn tiền cho các người chơi đã thanh toán (status = Active)
+        List<Integer> paidUserIds = participantDAO.getParticipantsByTournamentId(tournamentId)
+                .stream()
+                .filter(p -> p.getStatus() == ParticipantStatus.Active)
+                .map(Participant::getUserId)
+                .collect(Collectors.toList());
+
+        BigDecimal entryFee = t.getEntryFee();
+        if (entryFee != null && entryFee.compareTo(BigDecimal.ZERO) > 0 && !paidUserIds.isEmpty()) {
+            paymentDAO.refundTournamentCancellation(tournamentId, t.getCreateBy(), t.getPrizePool(), entryFee, paidUserIds);
+        }
+
+        // Cập nhật trạng thái và ghi log
+        boolean ok = tournamentStaffDAO.updateTournamentStatusAndLog(
+                tournamentId, staffId, t.getStatus(), TournamentStatus.Cancelled, ApprovalAction.Cancel, note);
+
+        if (ok) {
+            try {
+                // Thông báo cho người theo dõi giải đấu
+                notificationService.notifyFollowers(
+                        tournamentId,
+                        "Giải đấu đã bị hủy",
+                        "Giải đấu '" + t.getTournamentName() + "' đã bị hủy bởi staff."
+                                + (note != null && !note.isBlank() ? " Lý do: " + note : ""),
+                        "Tournament",
+                        "/tournaments"
+                );
+                // Thông báo cho leader tạo giải
+                if (t.getCreateBy() != null) {
+                    Notification n = new Notification();
+                    n.setTitle("Giải đấu của bạn đã bị hủy");
+                    n.setMessage("Giải đấu '" + t.getTournamentName() + "' đã bị staff hủy."
+                            + (note != null && !note.isBlank() ? " Lý do: " + note : ""));
+                    n.setType("Tournament");
+                    n.setActionUrl("/leader/tournaments");
+                    n.setUserId(t.getCreateBy());
+                    notificationDAO.createNotification(n);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return ok;
     }
 
     public boolean updateTournamentStatus(int tournamentId, int staffId, TournamentStatus newStatus,
@@ -102,21 +157,23 @@ public class TournamentStaffService {
         return tournamentStaffDAO.rejectWithdrawal(withdrawalId, staffId, reason);
     }
 
-    public boolean cancelTournamentWithRefund(int tournamentId, int staffId, String note) {
-        Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
-        if (t == null) return false;
 
-        BigDecimal prizePool = t.getPrizePool() != null ? t.getPrizePool() : BigDecimal.ZERO;
-        BigDecimal entryFee = t.getEntryFee() != null ? t.getEntryFee() : BigDecimal.ZERO;
-        int leaderId = t.getCreateBy() != null ? t.getCreateBy() : 0;
 
-        List<Integer> paidUserIds = paymentDAO.getPaidUserIdsByTournament(tournamentId);
+//     public boolean cancelTournamentWithRefund(int tournamentId, int staffId, String note) {
+//         Tournament t = tournamentStaffDAO.getTournamentById(tournamentId);
+//         if (t == null) return false;
 
-        boolean cancelled = tournamentDAO.cancelTournament(tournamentId, note);
-        if (!cancelled) return false;
+//         BigDecimal prizePool = t.getPrizePool() != null ? t.getPrizePool() : BigDecimal.ZERO;
+//         BigDecimal entryFee = t.getEntryFee() != null ? t.getEntryFee() : BigDecimal.ZERO;
+//         int leaderId = t.getCreateBy() != null ? t.getCreateBy() : 0;
 
-        paymentDAO.refundTournamentCancellation(tournamentId, leaderId, prizePool, entryFee, paidUserIds);
-        return true;
-    }
+//         List<Integer> paidUserIds = paymentDAO.getPaidUserIdsByTournament(tournamentId);
+
+//         boolean cancelled = tournamentDAO.cancelTournament(tournamentId, note);
+//         if (!cancelled) return false;
+
+//         paymentDAO.refundTournamentCancellation(tournamentId, leaderId, prizePool, entryFee, paidUserIds);
+//         return true;
+//     }
+// }
 }
-
