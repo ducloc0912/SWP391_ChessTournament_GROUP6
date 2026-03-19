@@ -206,6 +206,13 @@ public class UserServlet extends HttpServlet {
                 return;
             }
 
+            String targetRole = getRoleNameByUserId(userId);
+            if ("Admin".equalsIgnoreCase(targetRole)) {
+                resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                resp.getWriter().print("{\"message\":\"Không thể khóa tài khoản Admin.\"}");
+                return;
+            }
+
             Boolean active = userDAO.toggleUserActiveAndReturnStatus(userId);
 
             if (active == null) {

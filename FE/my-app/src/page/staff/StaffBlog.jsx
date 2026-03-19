@@ -10,6 +10,15 @@ import {
     ChevronDown, ChevronUp, XCircle, Save, Plus, RotateCcw, Edit3, Upload, Trash2
 } from 'lucide-react';
 
+import preset1 from '../../assets/image/00746d7e-e00e-408a-9451-1bdd46e79094.jpg';
+import preset2 from '../../assets/image/340f7437-e641-40c8-a7c8-5091c9043cab.jpg';
+import preset3 from '../../assets/image/54a5691b-d1cc-45bf-9584-b46ca87fbbdb.jpg';
+import preset4 from '../../assets/image/9ff3bb6c-30d9-4dfa-b773-97c3fda6981e.jpg';
+import preset5 from '../../assets/image/b697318e-ba9f-4f59-8ac5-1a33ca711efd.jpg';
+import preset6 from '../../assets/image/d691d5e8-56f8-4035-95b1-2e0c55ffb2b8.jpg';
+
+const PRESET_THUMBNAILS = [preset1, preset2, preset3, preset4, preset5, preset6];
+
 const StaffBlog = ({ user, role }) => {
     const [blogs, setBlogs] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -534,6 +543,24 @@ const StaffBlog = ({ user, role }) => {
                                             <Upload size={16} /> Chọn ảnh từ máy tính
                                             <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleThumbnailFileEdit} />
                                         </label>
+                                        <div style={{ marginTop: '10px' }}>
+                                            <span style={{ fontSize: '13px', color: '#64748b' }}>Hoặc chọn ảnh có sẵn:</span>
+                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                                                {PRESET_THUMBNAILS.map((src, i) => (
+                                                    <img
+                                                        key={i}
+                                                        src={src}
+                                                        alt={`Preset ${i + 1}`}
+                                                        onClick={() => setEditData(prev => ({ ...prev, thumbnailUrl: src }))}
+                                                        style={{
+                                                            width: '72px', height: '48px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer',
+                                                            border: editData.thumbnailUrl === src ? '2px solid #ef4444' : '2px solid transparent',
+                                                            transition: 'border 0.15s'
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
                                         {editData.thumbnailUrl && (
                                             <div style={{ marginTop: '10px' }}>
                                                 <img
@@ -708,6 +735,24 @@ const StaffBlog = ({ user, role }) => {
                                         }}
                                     />
                                 </label>
+                                <div style={{ marginTop: '10px' }}>
+                                    <span style={{ fontSize: '13px', color: '#64748b' }}>Hoặc chọn ảnh có sẵn:</span>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                                        {PRESET_THUMBNAILS.map((src, i) => (
+                                            <img
+                                                key={i}
+                                                src={src}
+                                                alt={`Preset ${i + 1}`}
+                                                onClick={() => setNewBlog(prev => ({ ...prev, thumbnailUrl: src }))}
+                                                style={{
+                                                    width: '72px', height: '48px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer',
+                                                    border: newBlog.thumbnailUrl === src ? '2px solid #ef4444' : '2px solid transparent',
+                                                    transition: 'border 0.15s'
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
                                 {newBlog.thumbnailUrl && (
                                     <div className="blog-create-thumb-preview">
                                         <img

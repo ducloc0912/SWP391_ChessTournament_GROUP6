@@ -271,7 +271,7 @@ export default function MainHeader({
 
     const intervalId = window.setInterval(() => {
       loadNotifications();
-    }, 10000);
+    }, 30000);
 
     return () => {
       window.clearInterval(intervalId);
@@ -362,6 +362,10 @@ export default function MainHeader({
         { to: "/referee/invitations", label: "Invitations" },
         { to: "/referee/matches", label: "Matches" },
       );
+    }
+
+    if (normalizedRole === "PLAYER") {
+      extraItems.push({ to: "/player/matches", label: "View Matches Schedule" });
     }
 
     if (normalizedRole === "STAFF") {

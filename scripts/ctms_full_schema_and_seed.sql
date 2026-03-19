@@ -1029,6 +1029,95 @@ INSERT INTO Prize_Template (tournament_id, rank_position, percentage, label) VAL
 (6,1,60,'Vô địch'),(6,2,30,'Á quân'),(6,3,10,'Hạng ba');
 GO
 
+/* ========================= 5c. SEED: 5 giải RoundRobin Upcoming – FULL người đăng ký ========================= */
+/* Mỗi giải max_player=8, đủ 8 người (participants = max_player).                                           */
+/* Dùng WHERE NOT EXISTS để tránh duplicate khi chạy lại script.                                            */
+
+SET IDENTITY_INSERT Tournaments ON;
+INSERT INTO Tournaments (tournament_id, tournament_name, description, location, format, max_player, min_player, entry_fee, prize_pool, status, registration_deadline, start_date, end_date, create_by)
+SELECT 7, N'Giải RoundRobin Upcoming 2026 – Hải Phòng', N'Giải vòng tròn 8 người sắp diễn ra tại Hải Phòng.', N'Hải Phòng', 'RoundRobin', 8, 4, 100000, 4000000, 'Upcoming', '2026-05-01 23:59:00', '2026-05-05 08:00:00', '2026-05-10 18:00:00', 4
+WHERE NOT EXISTS (SELECT 1 FROM Tournaments WHERE tournament_id = 7);
+
+INSERT INTO Tournaments (tournament_id, tournament_name, description, location, format, max_player, min_player, entry_fee, prize_pool, status, registration_deadline, start_date, end_date, create_by)
+SELECT 8, N'Giải RoundRobin Upcoming 2026 – Cần Thơ', N'Giải vòng tròn 8 người sắp diễn ra tại Cần Thơ.', N'Cần Thơ', 'RoundRobin', 8, 4, 120000, 5000000, 'Upcoming', '2026-05-15 23:59:00', '2026-05-20 08:00:00', '2026-05-25 18:00:00', 5
+WHERE NOT EXISTS (SELECT 1 FROM Tournaments WHERE tournament_id = 8);
+
+INSERT INTO Tournaments (tournament_id, tournament_name, description, location, format, max_player, min_player, entry_fee, prize_pool, status, registration_deadline, start_date, end_date, create_by)
+SELECT 9, N'Giải RoundRobin Upcoming 2026 – Huế', N'Giải vòng tròn 8 người sắp diễn ra tại Huế.', N'Huế', 'RoundRobin', 8, 4, 80000, 3000000, 'Upcoming', '2026-06-01 23:59:00', '2026-06-05 08:00:00', '2026-06-10 18:00:00', 6
+WHERE NOT EXISTS (SELECT 1 FROM Tournaments WHERE tournament_id = 9);
+
+INSERT INTO Tournaments (tournament_id, tournament_name, description, location, format, max_player, min_player, entry_fee, prize_pool, status, registration_deadline, start_date, end_date, create_by)
+SELECT 10, N'Giải RoundRobin Upcoming 2026 – Nha Trang', N'Giải vòng tròn 8 người sắp diễn ra tại Nha Trang.', N'Nha Trang', 'RoundRobin', 8, 4, 150000, 6000000, 'Upcoming', '2026-06-15 23:59:00', '2026-06-20 08:00:00', '2026-06-25 18:00:00', 4
+WHERE NOT EXISTS (SELECT 1 FROM Tournaments WHERE tournament_id = 10);
+
+INSERT INTO Tournaments (tournament_id, tournament_name, description, location, format, max_player, min_player, entry_fee, prize_pool, status, registration_deadline, start_date, end_date, create_by)
+SELECT 11, N'Giải RoundRobin Upcoming 2026 – Vũng Tàu', N'Giải vòng tròn 8 người sắp diễn ra tại Vũng Tàu.', N'Vũng Tàu', 'RoundRobin', 8, 4, 100000, 4000000, 'Upcoming', '2026-07-01 23:59:00', '2026-07-05 08:00:00', '2026-07-10 18:00:00', 5
+WHERE NOT EXISTS (SELECT 1 FROM Tournaments WHERE tournament_id = 11);
+SET IDENTITY_INSERT Tournaments OFF;
+GO
+
+INSERT INTO Tournament_Setup_State (tournament_id, current_step, bracket_status, players_status, schedule_status, referees_status)
+SELECT 7, 'REFEREE', 'DRAFT', 'FINALIZED', 'DRAFT', 'DRAFT' WHERE NOT EXISTS (SELECT 1 FROM Tournament_Setup_State WHERE tournament_id = 7);
+INSERT INTO Tournament_Setup_State (tournament_id, current_step, bracket_status, players_status, schedule_status, referees_status)
+SELECT 8, 'REFEREE', 'DRAFT', 'FINALIZED', 'DRAFT', 'DRAFT' WHERE NOT EXISTS (SELECT 1 FROM Tournament_Setup_State WHERE tournament_id = 8);
+INSERT INTO Tournament_Setup_State (tournament_id, current_step, bracket_status, players_status, schedule_status, referees_status)
+SELECT 9, 'REFEREE', 'DRAFT', 'FINALIZED', 'DRAFT', 'DRAFT' WHERE NOT EXISTS (SELECT 1 FROM Tournament_Setup_State WHERE tournament_id = 9);
+INSERT INTO Tournament_Setup_State (tournament_id, current_step, bracket_status, players_status, schedule_status, referees_status)
+SELECT 10, 'REFEREE', 'DRAFT', 'FINALIZED', 'DRAFT', 'DRAFT' WHERE NOT EXISTS (SELECT 1 FROM Tournament_Setup_State WHERE tournament_id = 10);
+INSERT INTO Tournament_Setup_State (tournament_id, current_step, bracket_status, players_status, schedule_status, referees_status)
+SELECT 11, 'REFEREE', 'DRAFT', 'FINALIZED', 'DRAFT', 'DRAFT' WHERE NOT EXISTS (SELECT 1 FROM Tournament_Setup_State WHERE tournament_id = 11);
+GO
+
+/* Mỗi giải: 8 người (user_id 9–16), participant_id 57–96 */
+SET IDENTITY_INSERT Participants ON;
+-- T7 (8 người, ids 57–64)
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 57, 7, 9,  'CM',      1, 'Active', 1, '2026-04-25 10:00:00', '2026-04-23 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 57);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 58, 7, 10, 'WIM',     2, 'Active', 1, '2026-04-25 11:00:00', '2026-04-23 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 58);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 59, 7, 11, 'FM',      3, 'Active', 1, '2026-04-25 12:00:00', '2026-04-23 10:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 59);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 60, 7, 12, 'WCM',     4, 'Active', 1, '2026-04-26 10:00:00', '2026-04-24 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 60);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 61, 7, 13, 'NM',      5, 'Active', 1, '2026-04-26 11:00:00', '2026-04-24 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 61);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 62, 7, 14, 'WFM',     6, 'Active', 1, '2026-04-26 12:00:00', '2026-04-24 10:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 62);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 63, 7, 15, 'CM',      7, 'Active', 1, '2026-04-27 10:00:00', '2026-04-25 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 63);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 64, 7, 16, 'Unrated', 8, 'Active', 1, '2026-04-27 11:00:00', '2026-04-25 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 64);
+-- T8 (8 người, ids 65–72)
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 65, 8, 9,  'CM',      1, 'Active', 1, '2026-05-10 10:00:00', '2026-05-08 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 65);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 66, 8, 10, 'WIM',     2, 'Active', 1, '2026-05-10 11:00:00', '2026-05-08 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 66);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 67, 8, 11, 'FM',      3, 'Active', 1, '2026-05-10 12:00:00', '2026-05-08 10:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 67);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 68, 8, 12, 'WCM',     4, 'Active', 1, '2026-05-11 10:00:00', '2026-05-09 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 68);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 69, 8, 13, 'NM',      5, 'Active', 1, '2026-05-11 11:00:00', '2026-05-09 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 69);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 70, 8, 14, 'WFM',     6, 'Active', 1, '2026-05-11 12:00:00', '2026-05-09 10:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 70);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 71, 8, 15, 'CM',      7, 'Active', 1, '2026-05-12 10:00:00', '2026-05-10 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 71);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 72, 8, 16, 'Unrated', 8, 'Active', 1, '2026-05-12 11:00:00', '2026-05-10 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 72);
+-- T9 (8 người, ids 73–80)
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 73, 9, 9,  'CM',      1, 'Active', 1, '2026-05-28 10:00:00', '2026-05-26 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 73);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 74, 9, 10, 'WIM',     2, 'Active', 1, '2026-05-28 11:00:00', '2026-05-26 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 74);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 75, 9, 11, 'FM',      3, 'Active', 1, '2026-05-28 12:00:00', '2026-05-26 10:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 75);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 76, 9, 12, 'WCM',     4, 'Active', 1, '2026-05-29 10:00:00', '2026-05-27 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 76);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 77, 9, 13, 'NM',      5, 'Active', 1, '2026-05-29 11:00:00', '2026-05-27 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 77);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 78, 9, 14, 'WFM',     6, 'Active', 1, '2026-05-29 12:00:00', '2026-05-27 10:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 78);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 79, 9, 15, 'CM',      7, 'Active', 1, '2026-05-30 10:00:00', '2026-05-28 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 79);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 80, 9, 16, 'Unrated', 8, 'Active', 1, '2026-05-30 11:00:00', '2026-05-28 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 80);
+-- T10 (8 người, ids 81–88)
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 81, 10, 9,  'CM',      1, 'Active', 1, '2026-06-13 10:00:00', '2026-06-11 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 81);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 82, 10, 10, 'WIM',     2, 'Active', 1, '2026-06-13 11:00:00', '2026-06-11 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 82);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 83, 10, 11, 'FM',      3, 'Active', 1, '2026-06-13 12:00:00', '2026-06-11 10:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 83);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 84, 10, 12, 'WCM',     4, 'Active', 1, '2026-06-14 10:00:00', '2026-06-12 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 84);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 85, 10, 13, 'NM',      5, 'Active', 1, '2026-06-14 11:00:00', '2026-06-12 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 85);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 86, 10, 14, 'WFM',     6, 'Active', 1, '2026-06-14 12:00:00', '2026-06-12 10:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 86);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 87, 10, 15, 'CM',      7, 'Active', 1, '2026-06-15 10:00:00', '2026-06-13 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 87);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 88, 10, 16, 'Unrated', 8, 'Active', 1, '2026-06-15 11:00:00', '2026-06-13 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 88);
+-- T11 (8 người, ids 89–96)
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 89, 11, 9,  'CM',      1, 'Active', 1, '2026-06-28 10:00:00', '2026-06-26 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 89);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 90, 11, 10, 'WIM',     2, 'Active', 1, '2026-06-28 11:00:00', '2026-06-26 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 90);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 91, 11, 11, 'FM',      3, 'Active', 1, '2026-06-28 12:00:00', '2026-06-26 10:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 91);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 92, 11, 12, 'WCM',     4, 'Active', 1, '2026-06-29 10:00:00', '2026-06-27 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 92);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 93, 11, 13, 'NM',      5, 'Active', 1, '2026-06-29 11:00:00', '2026-06-27 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 93);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 94, 11, 14, 'WFM',     6, 'Active', 1, '2026-06-29 12:00:00', '2026-06-27 10:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 94);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 95, 11, 15, 'CM',      7, 'Active', 1, '2026-06-30 10:00:00', '2026-06-28 08:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 95);
+INSERT INTO Participants (participant_id, tournament_id, user_id, title_at_registration, seed, status, is_paid, payment_date, registration_date) SELECT 96, 11, 16, 'Unrated', 8, 'Active', 1, '2026-06-30 11:00:00', '2026-06-28 09:00:00' WHERE NOT EXISTS (SELECT 1 FROM Participants WHERE participant_id = 96);
+SET IDENTITY_INSERT Participants OFF;
+GO
+
 /* ========================= 6. BLOG POSTS ========================= */
 INSERT INTO Blog_Post (title, summary, content, thumbnail_url, author_id, categories, status, views, publish_at, create_at) VALUES
 (N'Khai mạc giải Hanoi Open Chess 2026',

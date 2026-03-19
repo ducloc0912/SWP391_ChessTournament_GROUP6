@@ -207,7 +207,6 @@ function formatDate(ts) {
 
 const ROLE_OPTIONS = [
   { value: "all", label: "Tất cả vai trò" },
-  { value: "admin", label: "Admin" },
   { value: "staff", label: "Staff" },
   { value: "tournament_leader", label: "Tournament Leader" },
   { value: "referee", label: "Referee" },
@@ -245,7 +244,10 @@ export const AccountListScreen = ({
       }`;
 
       const data = await apiFetch(path, { method: "GET" });
-      setUsers(Array.isArray(data) ? data : []);
+      const filtered = Array.isArray(data)
+        ? data.filter((u) => (u.roleName || "").toLowerCase() !== "admin")
+        : [];
+      setUsers(filtered);
     } catch (e) {
       setErr(e?.message || String(e));
       setUsers([]);
