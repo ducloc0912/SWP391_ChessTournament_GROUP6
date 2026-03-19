@@ -108,12 +108,12 @@ const RefereeMatchListPage = () => {
 
     let gameNumber = null;
 
-    if (m.game1Status === "Scheduled") {
-      gameNumber = m.game1Number;
-    } else if (m.game1Status === "Completed" && m.game2Status === "Scheduled") {
-      gameNumber = m.game2Number;
+    if (m.game1Status === "Scheduled" || (!m.game1Status && m.status !== "Completed")) {
+      gameNumber = m.game1Number ?? 1;
+    } else if (m.game1Status === "Completed" && (m.game2Status === "Scheduled" || !m.game2Status)) {
+      gameNumber = m.game2Number ?? 2;
     } else if (m.tiebreakStatus === "Scheduled") {
-      gameNumber = m.tiebreakNumber;
+      gameNumber = m.tiebreakNumber ?? 3;
     }
 
     if (!gameNumber) {
@@ -470,46 +470,58 @@ const RefereeMatchListPage = () => {
                         </p>
                       )}
                     <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                    {m.status !== "Completed" && (
-                      <>
-                        {/* Game 1 attendance */}
-                        {!m.whiteAttendanceStatus && !m.blackAttendanceStatus && (
-                          <button
-                            className="hpv-btn hpv-btn-primary"
-                            disabled={saving}
-                            onClick={() => openAttendanceModal(m, 1)}
-                          >
-                            Điểm danh ván 1
-                          </button>
-                        )}
+                    {(() => {
+                      // Trận kết thúc hoàn toàn → ẩn tất cả nút
+                      const matchDone =
+                        m.status === "Completed" ||
+                        (m.game1Status === "Completed" &&
+                          m.game2Status === "Completed" &&
+                          m.result && m.result !== "pending");
+                      if (matchDone) return null;
 
-                        {/* Start game 1 */}
-                        {m.game1Status === "Scheduled" &&
-                          m.whiteAttendanceStatus &&
-                          m.blackAttendanceStatus && (
-                            <div style={{ display: "flex", gap: 8 }}>
-                              <button
-                                className="hpv-btn hpv-btn-primary"
-                                onClick={() => openEditAttendance(m,1)}
-                              >
-                                Sửa điểm danh ván 1
-                              </button>
+                      // Ván 1 chưa bắt đầu (Scheduled hoặc chưa có mini_match)
+                      const game1Pending = !m.game1Status || m.game1Status === "Scheduled";
+                      // Ván 2 chưa bắt đầu
+                      const game2Pending = m.game1Status === "Completed" &&
+                        (!m.game2Status || m.game2Status === "Scheduled");
 
-                              <button
-                                className="hpv-btn hpv-btn-primary"
-                                disabled={saving}
-                                onClick={() => handleStartMatch(m)}
-                              >
-                                Bắt đầu ván 1
-                              </button>
-                            </div>
+                      return (
+                        <>
+                          {/* Điểm danh ván 1 */}
+                          {game1Pending && !m.whiteAttendanceStatus && !m.blackAttendanceStatus && (
+                            <button
+                              className="hpv-btn hpv-btn-primary"
+                              disabled={saving}
+                              onClick={() => openAttendanceModal(m, 1)}
+                            >
+                              Điểm danh ván 1
+                            </button>
                           )}
 
-                        {/* Attendance game 2 only after game1 completed */}
-                        {m.game1Status === "Completed" &&
-                          m.game2Status === "Scheduled" &&
-                          !m.whiteAttendanceStatus2 &&
-                          !m.blackAttendanceStatus2 && (
+                          {/* Đã điểm danh ít nhất 1 bên ván 1 → Sửa + Bắt đầu */}
+                          {game1Pending &&
+                            (m.whiteAttendanceStatus || m.blackAttendanceStatus) && (
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <button
+                                  className="hpv-btn hpv-btn-primary"
+                                  onClick={() => openEditAttendance(m, 1)}
+                                >
+                                  Sửa điểm danh ván 1
+                                </button>
+                                {m.whiteAttendanceStatus && m.blackAttendanceStatus && (
+                                  <button
+                                    className="hpv-btn hpv-btn-primary"
+                                    disabled={saving}
+                                    onClick={() => handleStartMatch(m)}
+                                  >
+                                    Bắt đầu ván 1
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                          {/* Điểm danh ván 2 */}
+                          {game2Pending && !m.whiteAttendanceStatus2 && !m.blackAttendanceStatus2 && (
                             <button
                               className="hpv-btn hpv-btn-primary"
                               disabled={saving}
@@ -519,29 +531,30 @@ const RefereeMatchListPage = () => {
                             </button>
                           )}
 
-                        {/* Start game 2 */}
-                        {m.game1Status === "Completed" &&
-                          m.game2Status === "Scheduled" &&
-                          m.whiteAttendanceStatus2 &&
-                          m.blackAttendanceStatus2 && (
-                            <div style={{ display: "flex", gap: 8 }}>
-                              <button
-                                className="hpv-btn hpv-btn-primary"
-                                onClick={() => openEditAttendance(m,2)}
-                              >
-                                Sửa điểm danh ván 2
-                              </button>
-                            <button
-                              className="hpv-btn hpv-btn-primary"
-                              disabled={saving}
-                              onClick={() => handleStartMatch(m)}
-                            >
-                              Bắt đầu ván 2
-                            </button>
-                            </div>
-                          )}
-                      </>
-                    )}
+                          {/* Đã điểm danh ít nhất 1 bên ván 2 → Sửa + Bắt đầu */}
+                          {game2Pending &&
+                            (m.whiteAttendanceStatus2 || m.blackAttendanceStatus2) && (
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <button
+                                  className="hpv-btn hpv-btn-primary"
+                                  onClick={() => openEditAttendance(m, 2)}
+                                >
+                                  Sửa điểm danh ván 2
+                                </button>
+                                {m.whiteAttendanceStatus2 && m.blackAttendanceStatus2 && (
+                                  <button
+                                    className="hpv-btn hpv-btn-primary"
+                                    disabled={saving}
+                                    onClick={() => handleStartMatch(m)}
+                                  >
+                                    Bắt đầu ván 2
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                        </>
+                      );
+                    })()}
                       {(m.game1Status === "Ongoing" ||
                         m.game2Status === "Ongoing" ||
                         m.tiebreakStatus === "Ongoing") && (

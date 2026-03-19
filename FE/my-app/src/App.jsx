@@ -27,6 +27,7 @@ import BlogManagePage from "./page/blog/BlogManagePage";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PaymentPage from "./page/payment/PaymentPage";
 import WalletPage from "./page/payment/WalletPage";
+import Matches from "./page/user/Matches";
 
 export default function App() {
   return (
@@ -45,6 +46,7 @@ export default function App() {
           path="/player/pending-registrations"
           element={<PendingTournamentRegistrations />}
         />
+        <Route path="/player/matches" element={<Matches />} />
         <Route path="/admin/dashboard" element={<AdminLayout />} />
         <Route path="/tournaments" element={<TournamentPublic />} />
         <Route path="/tournaments/public" element={<TournamentPublic />} />

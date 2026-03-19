@@ -188,20 +188,14 @@ const TournamentDetail = () => {
       const formData = new FormData();
       formData.append("file", file);
       const res = await axios.post(
-        `${API_BASE}/api/tournaments?action=uploadImageFile`,
+        `${API_BASE}/api/tournaments?action=uploadImage&id=${tournament.tournamentId}&type=cover`,
         formData,
         { withCredentials: true },
       );
-      if (res?.data?.success && res?.data?.imageUrl) {
-        const existingDetails = Array.isArray(tournament.tournamentImages)
-          ? tournament.tournamentImages
-          : [];
-        await axios.put(
-          `${API_BASE}/api/tournaments?action=updateImages&id=${tournament.tournamentId}`,
-          { coverImage: res.data.imageUrl, detailImages: existingDetails },
-          { withCredentials: true },
-        );
+      if (res?.data?.success) {
         await fetchTournament();
+      } else {
+        alert(res?.data?.message || "Thay banner thất bại.");
       }
     } catch (err) {
       alert(err?.response?.data?.message || "Thay banner thất bại.");
@@ -419,10 +413,58 @@ const fmt = (raw) => {
   return raw.split(" ")[0].replaceAll("-", "/");
 };
 
+const InlineEditBlock = ({ label, fieldKey, value, editingField, editDraft, setEditDraft, onStartEdit, onSave, onCancel, saving }) => (
+  <div className="td-overview-inline-block">
+    <div className="td-overview-inline-head">
+      <label>{label}</label>
+      {editingField !== fieldKey ? (
+        <button
+          type="button"
+          className="td-overview-inline-edit-btn"
+          onClick={() => onStartEdit(fieldKey)}
+        >
+          <Edit2 size={14} /> Sửa
+        </button>
+      ) : null}
+    </div>
+    {editingField === fieldKey ? (
+      <div className="td-overview-inline-edit">
+        <textarea
+          autoFocus
+          value={editDraft}
+          onChange={(e) => setEditDraft(e.target.value)}
+          rows={fieldKey === "description" ? 4 : 5}
+          placeholder={fieldKey === "description" ? "Mô tả giải đấu..." : "Luật thi đấu..."}
+        />
+        <div className="td-overview-inline-actions">
+          <button
+            type="button"
+            className="td-overview-btn td-overview-btn-primary"
+            disabled={saving}
+            onClick={() => onSave(fieldKey, editDraft)}
+          >
+            {saving ? "Đang lưu..." : "Lưu"}
+          </button>
+          <button
+            type="button"
+            className="td-overview-btn td-overview-btn-outline"
+            onClick={onCancel}
+          >
+            Hủy
+          </button>
+        </div>
+      </div>
+    ) : (
+      <div className="td-overview-inline-view">
+        {value || "Chưa có nội dung."}
+      </div>
+    )}
+  </div>
+);
+
 const OverviewTab = ({ tournament, onTournamentUpdated }) => {
   const [description, setDescription] = useState(tournament.description || "");
   const [rules, setRules] = useState(tournament.rules || "");
-  const [notes, setNotes] = useState(tournament.notes || "");
   const [savingOverview, setSavingOverview] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const [editDraft, setEditDraft] = useState("");
@@ -430,7 +472,6 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
   useEffect(() => {
     setDescription(tournament.description || "");
     setRules(tournament.rules || "");
-    setNotes(tournament.notes || "");
   }, [tournament]);
 
   const handleSaveOverview = async (field, value) => {
@@ -441,7 +482,7 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
         tournamentName: tournament.tournamentName,
         description: field === "description" ? value : description,
         rules: field === "rules" ? value : rules,
-        notes: field === "notes" ? value : notes,
+        notes: tournament.notes || null,
         tournamentImage: tournament.tournamentImage,
         location: tournament.location,
         format: tournament.format,
@@ -460,7 +501,6 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
       );
       if (field === "description") setDescription(value);
       if (field === "rules") setRules(value);
-      if (field === "notes") setNotes(value);
       setEditingField(null);
       await onTournamentUpdated?.();
     } catch (err) {
@@ -471,9 +511,7 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
   };
 
   const startEdit = (field) => {
-    if (field === "description") setEditDraft(description);
-    if (field === "rules") setEditDraft(rules);
-    if (field === "notes") setEditDraft(notes);
+    setEditDraft(field === "description" ? description : rules);
     setEditingField(field);
   };
 
@@ -545,59 +583,6 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
       .filter(Boolean)
       .join(" — ") || "—";
 
-  const InlineEditBlock = ({ label, fieldKey, value }) => (
-    <div className="td-overview-inline-block">
-      <div className="td-overview-inline-head">
-        <label>{label}</label>
-        {editingField !== fieldKey ? (
-          <button
-            type="button"
-            className="td-overview-inline-edit-btn"
-            onClick={() => startEdit(fieldKey)}
-          >
-            <Edit2 size={14} /> Sửa
-          </button>
-        ) : null}
-      </div>
-      {editingField === fieldKey ? (
-        <div className="td-overview-inline-edit">
-          <textarea
-            value={editDraft}
-            onChange={(e) => setEditDraft(e.target.value)}
-            rows={fieldKey === "description" ? 4 : fieldKey === "rules" ? 5 : 3}
-            placeholder={
-              fieldKey === "description"
-                ? "Mô tả giải đấu..."
-                : fieldKey === "rules"
-                  ? "Luật thi đấu..."
-                  : "Ghi chú..."
-            }
-          />
-          <div className="td-overview-inline-actions">
-            <button
-              type="button"
-              className="td-overview-btn td-overview-btn-primary"
-              disabled={savingOverview}
-              onClick={() => handleSaveOverview(fieldKey, editDraft)}
-            >
-              {savingOverview ? "Đang lưu..." : "Lưu"}
-            </button>
-            <button
-              type="button"
-              className="td-overview-btn td-overview-btn-outline"
-              onClick={cancelEdit}
-            >
-              Hủy
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="td-overview-inline-view">
-          {value || "Chưa có nội dung."}
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <section className="tdp-overview">
@@ -610,6 +595,13 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
                 label="Mô tả"
                 fieldKey="description"
                 value={description}
+                editingField={editingField}
+                editDraft={editDraft}
+                setEditDraft={setEditDraft}
+                onStartEdit={startEdit}
+                onSave={handleSaveOverview}
+                onCancel={cancelEdit}
+                saving={savingOverview}
               />
             </div>
             <div className="tdp-placement-rewards">
@@ -667,6 +659,13 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
               label="Luật & Quy định"
               fieldKey="rules"
               value={rules}
+              editingField={editingField}
+              editDraft={editDraft}
+              setEditDraft={setEditDraft}
+              onStartEdit={startEdit}
+              onSave={handleSaveOverview}
+              onCancel={cancelEdit}
+              saving={savingOverview}
             />
             <div className="tdp-phase-block">
               <h4>Giai đoạn thi đấu</h4>
@@ -677,9 +676,6 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
                     ? "Thi đấu loại trực tiếp. Thua một trận sẽ bị loại khỏi giải."
                     : "Thi đấu kết hợp: vòng tròn để chọn top, sau đó loại trực tiếp cho vòng chung kết."}
               </p>
-            </div>
-            <div className="tdp-phase-block">
-              <InlineEditBlock label="Ghi chú" fieldKey="notes" value={notes} />
             </div>
           </article>
         </div>
@@ -2653,7 +2649,7 @@ const BracketTab = ({
         setRowErrors({});
         axios.get(`${API_BASE}/api/tournaments?action=setupState&id=${tournamentId}`, { withCredentials: true })
           .then((r) => { if (r?.data?.stepStatuses) setStepStatuses(r.data.stepStatuses); })
-          .catch(() => {});
+          .catch(() => { });
       } catch (err) {
         const errMsg =
           err?.response?.data?.message ||
@@ -2707,7 +2703,7 @@ const BracketTab = ({
         setRowErrors({});
         axios.get(`${API_BASE}/api/tournaments?action=setupState&id=${tournamentId}`, { withCredentials: true })
           .then((r) => { if (r?.data?.stepStatuses) setStepStatuses(r.data.stepStatuses); })
-          .catch(() => {});
+          .catch(() => { });
       } catch (err) {
         const errMsg = err?.response?.data?.message || "Không thể hoàn tất bước Add Players.";
         setServerBanner({ type: "error", text: errMsg });
@@ -3007,8 +3003,8 @@ const BracketTab = ({
                           {match.result === "player1"
                             ? `${match.player1Name || "P1"} thắng`
                             : match.result === "player2"
-                            ? `${match.player2Name || "P2"} thắng`
-                            : "Hòa"}
+                              ? `${match.player2Name || "P2"} thắng`
+                              : "Hòa"}
                         </div>
                       )}
                       {laneStep !== "structure" && (
@@ -3334,7 +3330,7 @@ const BracketTab = ({
                   }
                   // Validate all matches have startTime within tournament date range
                   const tStart = tournamentStartDate ? new Date(tournamentStartDate) : null;
-                  const tEnd   = tournamentEndDate   ? new Date(tournamentEndDate)   : null;
+                  const tEnd = tournamentEndDate ? new Date(tournamentEndDate) : null;
                   for (let i = 0; i < rows.length; i++) {
                     const r = rows[i];
                     if (!r.startTime) {
@@ -3443,13 +3439,13 @@ const BracketTab = ({
               </button>
             )}
             {laneStep === "referee" && (
-            <button
-              className="tsu-btn tsu-btn-primary ui-btn ui-btn-primary"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? "Đang lưu..." : stepStatuses?.REFEREES === "FINALIZED" ? "✓ Re-validate Referees" : "Finalize Referees"}
-            </button>
+              <button
+                className="tsu-btn tsu-btn-primary ui-btn ui-btn-primary"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? "Đang lưu..." : stepStatuses?.REFEREES === "FINALIZED" ? "✓ Re-validate Referees" : "Finalize Referees"}
+              </button>
             )}
             {laneStep === "referee" && (
               <button

@@ -593,12 +593,6 @@ export default function TournamentDetail() {
                               : "Thi đấu kết hợp: vòng tròn để chọn top, sau đó loại trực tiếp cho vòng chung kết."}
                         </p>
                       </div>
-                      {tournament.notes && (
-                        <div className="tdp-phase-block">
-                          <h4>Ghi chú</h4>
-                          <p>{tournament.notes}</p>
-                        </div>
-                      )}
                     </article>
 
                     <article className="tdp-card tdp-feedback-wrapper">

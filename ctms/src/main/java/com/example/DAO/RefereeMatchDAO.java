@@ -76,8 +76,8 @@ public class RefereeMatchDAO extends DBContext {
                     m.group_id,
                     g.name AS group_name,
                     m.board_number,
-                    mm1.white_player_id,
-                    mm1.black_player_id,
+                    COALESCE(mm1.white_player_id, m.player1_id) AS white_player_id,
+                    COALESCE(mm1.black_player_id, m.player2_id) AS black_player_id,
                     mm1.game_number AS game1_number,
                     mm2.game_number AS game2_number,
                     mm1.mini_match_id AS mini_match_id_1,
@@ -142,8 +142,8 @@ public class RefereeMatchDAO extends DBContext {
 
                 LEFT JOIN Round r ON r.round_id = m.round_id
                 LEFT JOIN Tournament_Group g ON g.group_id = m.group_id
-                LEFT JOIN Users uw ON uw.user_id = mm1.white_player_id
-                LEFT JOIN Users ub ON ub.user_id = mm1.black_player_id
+                LEFT JOIN Users uw ON uw.user_id = COALESCE(mm1.white_player_id, m.player1_id)
+                LEFT JOIN Users ub ON ub.user_id = COALESCE(mm1.black_player_id, m.player2_id)
                 WHERE m.tournament_id = ?
                 ORDER BY ISNULL(r.round_index, 9999), ISNULL(m.board_number, 9999), m.match_id
                 """;
@@ -229,6 +229,7 @@ public class RefereeMatchDAO extends DBContext {
             FROM Mini_matches
             WHERE match_id = ?
             AND game_number = ?
+            AND is_tiebreak = 0
         """;
 
         String updateGame = """
@@ -246,6 +247,9 @@ public class RefereeMatchDAO extends DBContext {
         """;
 
         try (Connection conn = getConnection()) {
+
+            // Tự động tạo mini_matches nếu chưa có
+            ensureMiniMatchesExist(conn, matchId);
 
             PreparedStatement ps = conn.prepareStatement(findGame);
             ps.setInt(1, matchId);
@@ -784,21 +788,21 @@ public class RefereeMatchDAO extends DBContext {
         if (whiteStatus == null || !java.util.Arrays.asList(valid).contains(whiteStatus)) whiteStatus = "Pending";
         if (blackStatus == null || !java.util.Arrays.asList(valid).contains(blackStatus)) blackStatus = "Pending";
 
-        Map<String, Object> miniInfo = getMiniMatchByMatchAndGame(matchId, gameNumber);
-        if (miniInfo == null) return false;
-        Integer miniMatchId = (Integer) miniInfo.get("miniMatchId");
-        Integer whitePlayerId = (Integer) miniInfo.get("whitePlayerId");
-        Integer blackPlayerId = (Integer) miniInfo.get("blackPlayerId");
-        if (miniMatchId == null || whitePlayerId == null || blackPlayerId == null) return false;
-
         try (Connection conn = getConnection()) {
             if (conn == null) return false;
-            if (whitePlayerId != null) {
-                upsertOneAttendance(conn, miniMatchId, whitePlayerId, whiteStatus, refereeId);
-            }
-            if (blackPlayerId != null) {
-                upsertOneAttendance(conn, miniMatchId, blackPlayerId, blackStatus, refereeId);
-            }
+
+            // Tự động tạo mini_matches nếu chưa có
+            ensureMiniMatchesExist(conn, matchId);
+
+            Map<String, Object> miniInfo = getMiniMatchByMatchAndGame(matchId, gameNumber);
+            if (miniInfo == null) return false;
+            Integer miniMatchId = (Integer) miniInfo.get("miniMatchId");
+            Integer whitePlayerId = (Integer) miniInfo.get("whitePlayerId");
+            Integer blackPlayerId = (Integer) miniInfo.get("blackPlayerId");
+            if (miniMatchId == null || whitePlayerId == null || blackPlayerId == null) return false;
+
+            upsertOneAttendance(conn, miniMatchId, whitePlayerId, whiteStatus, refereeId);
+            upsertOneAttendance(conn, miniMatchId, blackPlayerId, blackStatus, refereeId);
             return true;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -807,7 +811,7 @@ public class RefereeMatchDAO extends DBContext {
     }
 
     private Map<String, Object> getMiniMatchByMatchAndGame(int matchId, int gameNumber) {
-        String sql = "SELECT mini_match_id, white_player_id, black_player_id FROM Mini_matches WHERE match_id = ? AND game_number = ?";
+        String sql = "SELECT mini_match_id, white_player_id, black_player_id FROM Mini_matches WHERE match_id = ? AND game_number = ? AND is_tiebreak = 0";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, matchId);
@@ -815,9 +819,9 @@ public class RefereeMatchDAO extends DBContext {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     Map<String, Object> map = new HashMap<>();
-                    map.put("miniMatchId", rs.getInt("mini_match_id"));
-                    map.put("whitePlayerId", rs.getInt("white_player_id"));
-                    map.put("blackPlayerId", rs.getInt("black_player_id"));
+                    map.put("miniMatchId", rs.getObject("mini_match_id", Integer.class));
+                    map.put("whitePlayerId", rs.getObject("white_player_id", Integer.class));
+                    map.put("blackPlayerId", rs.getObject("black_player_id", Integer.class));
                     return map;
                 }
             }
@@ -825,6 +829,50 @@ public class RefereeMatchDAO extends DBContext {
             e.printStackTrace();
         }
         return null;
+    }
+
+    /**
+     * Tự động tạo Mini_matches (game 1 và game 2) cho trận nếu chưa có.
+     * Game 1: white = player1_id, black = player2_id
+     * Game 2: white = player2_id, black = player1_id (đổi màu)
+     * Trả về false nếu không thể tạo (player IDs chưa được điền).
+     */
+    private boolean ensureMiniMatchesExist(Connection conn, int matchId) throws SQLException {
+        String getPlayersSql = "SELECT player1_id, player2_id FROM Matches WHERE match_id = ?";
+        Integer p1 = null, p2 = null;
+        try (PreparedStatement ps = conn.prepareStatement(getPlayersSql)) {
+            ps.setInt(1, matchId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    p1 = rs.getObject("player1_id", Integer.class);
+                    p2 = rs.getObject("player2_id", Integer.class);
+                }
+            }
+        }
+        if (p1 == null || p2 == null) return false;
+
+        String checkSql = "SELECT COUNT(*) FROM Mini_matches WHERE match_id = ? AND game_number = ? AND is_tiebreak = 0";
+        String insertSql = "INSERT INTO Mini_matches (match_id, game_number, is_tiebreak, white_player_id, black_player_id, result, status) VALUES (?, ?, 0, ?, ?, '*', 'Scheduled')";
+
+        for (int gameNum = 1; gameNum <= 2; gameNum++) {
+            try (PreparedStatement ps = conn.prepareStatement(checkSql)) {
+                ps.setInt(1, matchId);
+                ps.setInt(2, gameNum);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next() && rs.getInt(1) > 0) continue; // đã tồn tại
+                }
+            }
+            int white = (gameNum == 1) ? p1 : p2;
+            int black = (gameNum == 1) ? p2 : p1;
+            try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
+                ps.setInt(1, matchId);
+                ps.setInt(2, gameNum);
+                ps.setInt(3, white);
+                ps.setInt(4, black);
+                ps.executeUpdate();
+            }
+        }
+        return true;
     }
 
     private void upsertOneAttendance(Connection conn, int miniMatchId, int userId, String status, int recordedBy) throws SQLException {

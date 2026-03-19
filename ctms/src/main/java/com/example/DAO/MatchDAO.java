@@ -105,6 +105,53 @@ public class MatchDAO extends DBContext {
         return list;
     }
 
+    public List<Map<String, Object>> getMatchesByPlayer(int playerId) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        String sql = """
+            SELECT
+                m.match_id, m.tournament_id, m.round_id, m.board_number,
+                m.player1_id, m.player2_id, m.result, m.status,
+                m.start_time, m.end_time,
+                r.round_index, r.name AS round_name,
+                t.tournament_name, t.location,
+                CASE WHEN m.player1_id = ? THEN 1 ELSE 2 END AS player_side,
+                CASE
+                    WHEN m.player1_id = ?
+                    THEN COALESCE(NULLIF(LTRIM(RTRIM(COALESCE(u2.first_name,'') + ' ' + COALESCE(u2.last_name,''))), ''), u2.username)
+                    ELSE COALESCE(NULLIF(LTRIM(RTRIM(COALESCE(u1.first_name,'') + ' ' + COALESCE(u1.last_name,''))), ''), u1.username)
+                END AS opponent_name,
+                CASE WHEN m.player1_id = ? THEN u2.rank ELSE u1.rank END AS opponent_rating
+            FROM Matches m
+            LEFT JOIN Round r ON r.round_id = m.round_id
+            LEFT JOIN Bracket b ON b.bracket_id = r.bracket_id
+            LEFT JOIN Tournaments t ON t.tournament_id = m.tournament_id
+            LEFT JOIN Users u1 ON u1.user_id = m.player1_id
+            LEFT JOIN Users u2 ON u2.user_id = m.player2_id
+            WHERE (m.player1_id = ? OR m.player2_id = ?)
+              AND b.status = 'Published'
+            ORDER BY m.start_time DESC
+            """;
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, playerId);
+            ps.setInt(2, playerId);
+            ps.setInt(3, playerId);
+            ps.setInt(4, playerId);
+            ps.setInt(5, playerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = mapMatchRow(rs);
+                    try { row.put("tournamentName", rs.getString("tournament_name")); } catch (Exception ignored) {}
+                    try { row.put("location", rs.getString("location")); } catch (Exception ignored) {}
+                    try { row.put("playerSide", rs.getInt("player_side")); } catch (Exception ignored) {}
+                    try { row.put("opponentName", rs.getString("opponent_name")); } catch (Exception ignored) {}
+                    try { row.put("opponentRating", rs.getObject("opponent_rating")); } catch (Exception ignored) {}
+                    list.add(row);
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
     private Map<String, Object> mapMatchRow(ResultSet rs) throws SQLException {
         Map<String, Object> row = new HashMap<>();
         row.put("matchId", rs.getInt("match_id"));

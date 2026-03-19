@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import MainHeader from "../../component/common/MainHeader";
 
-import { API_BASE } from "../../config/api";
+import { API_BASE, resolveAssetUrl } from "../../config/api";
 const API_PROFILE_ME = `${API_BASE}/api/profile/me`;
 const API_PROFILE_AVATAR = `${API_BASE}/api/profile/me/avatar`;
 const API_CHANGE_PASSWORD = `${API_BASE}/api/change-password`;
@@ -153,7 +153,6 @@ function createImage(url) {
     const image = new Image();
     image.addEventListener("load", () => resolve(image));
     image.addEventListener("error", (error) => reject(error));
-    image.setAttribute("crossOrigin", "anonymous");
     image.src = url;
   });
 }
@@ -723,11 +722,8 @@ export default function UserProfile() {
     user?.username ||
     "Unknown";
   const name = user?.username || "Unknown";
-  const apiOrigin = (API_BASE.match(/^https?:\/\/[^/]+/) || [API_BASE])[0];
   const avatar =
-    (user?.avatar && user.avatar.startsWith("/")
-      ? apiOrigin + user.avatar
-      : user?.avatar) ||
+    resolveAssetUrl(user?.avatar) ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=EEF2FF&color=111827`;
   const userDisplayId = user?.userId
     ? `US-${String(user.userId).padStart(5, "0")}-X`
@@ -879,6 +875,7 @@ export default function UserProfile() {
     if (!file) return;
     if (!file.type?.startsWith("image/")) {
       setAvatarErr("Chỉ hỗ trợ file ảnh.");
+      e.target.value = "";
       return;
     }
 
@@ -886,11 +883,14 @@ export default function UserProfile() {
     reader.onload = () => {
       setCropSrc(String(reader.result));
       setCropOpen(true);
+      // reset after read completes to allow re-selecting the same file
+      e.target.value = "";
+    };
+    reader.onerror = () => {
+      setAvatarErr("Không thể đọc file ảnh. Vui lòng thử lại.");
+      e.target.value = "";
     };
     reader.readAsDataURL(file);
-
-    // reset input to allow choosing the same file again
-    e.target.value = "";
   };
 
   const saveCroppedAvatar = async (croppedAreaPixels) => {
@@ -973,11 +973,7 @@ export default function UserProfile() {
     ? {
         firstName: user.firstName ?? user.first_name ?? "",
         lastName: user.lastName ?? user.last_name ?? "",
-        avatar:
-          (user?.avatar && user.avatar.startsWith("/")
-            ? (API_BASE.match(/^https?:\/\/[^/]+/) || [API_BASE])[0] +
-              user.avatar
-            : user?.avatar) || null,
+        avatar: resolveAssetUrl(user?.avatar) || null,
       }
     : null;
 

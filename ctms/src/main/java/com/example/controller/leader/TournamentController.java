@@ -24,6 +24,7 @@ import com.google.gson.stream.JsonWriter;
 import jakarta.servlet.ServletException;
 
 import java.sql.Timestamp;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 
@@ -48,6 +49,7 @@ import java.util.UUID;
  * Setup: setupState, schedule, autoSetup, autoFillPlayers, manualSetup, finalizeStep, unlockStep, saveRefereeAssignments.
  */
 @WebServlet("/api/tournaments")
+@MultipartConfig(maxFileSize = 10 * 1024 * 1024, maxRequestSize = 20 * 1024 * 1024)
 public class TournamentController extends HttpServlet {
 
     private static final List<String> ALLOWED_IMAGE_EXT = List.of("jpg", "jpeg", "png", "gif", "webp");
@@ -113,10 +115,40 @@ public class TournamentController extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        String action = request.getParameter("action");
+
+        // Serve uploaded image file — must run before setContentType("application/json")
+        if ("uploadedImage".equals(action)) {
+            String fileName = request.getParameter("file");
+            if (fileName == null || fileName.isBlank() || fileName.contains("/") || fileName.contains("\\")) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+                return;
+            }
+            Path file = findExistingUploadFile(fileName);
+            if (file == null || !Files.exists(file)) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+            String ext = fileName.contains(".") ? fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase() : "";
+            String mime = switch (ext) {
+                case "png"  -> "image/png";
+                case "gif"  -> "image/gif";
+                case "webp" -> "image/webp";
+                case "jpg", "jpeg" -> "image/jpeg";
+                default -> "application/octet-stream";
+            };
+            response.setContentType(mime);
+            response.setHeader("Cache-Control", "public, max-age=31536000");
+            response.setHeader("Access-Control-Allow-Origin", "*");
+            try (InputStream in = Files.newInputStream(file)) {
+                in.transferTo(response.getOutputStream());
+            }
+            return;
+        }
+
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        String action = request.getParameter("action");
         if ("filters".equals(action)) {
             Map<String, Object> data = new HashMap<>();
             data.put("statuses", Arrays.stream(TournamentStatus.values()).map(Enum::name).toList());
