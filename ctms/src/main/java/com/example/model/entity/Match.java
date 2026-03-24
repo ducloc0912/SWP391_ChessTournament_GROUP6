@@ -7,8 +7,8 @@ public class Match {
     private Integer tournamentId;
     private Integer roundId;
     private Integer boardNumber;
-    private Integer whitePlayerId;
-    private Integer blackPlayerId;
+    private Integer player1Id;
+    private Integer player2Id;
     private String result;
     private String termination;
     private String status;
@@ -47,20 +47,20 @@ public class Match {
         this.boardNumber = boardNumber;
     }
 
-    public Integer getWhitePlayerId() {
-        return whitePlayerId;
+    public Integer getPlayer1Id() {
+        return player1Id;
     }
 
-    public void setWhitePlayerId(Integer whitePlayerId) {
-        this.whitePlayerId = whitePlayerId;
+    public void setPlayer1Id(Integer player1Id) {
+        this.player1Id = player1Id;
     }
 
-    public Integer getBlackPlayerId() {
-        return blackPlayerId;
+    public Integer getPlayer2Id() {
+        return player2Id;
     }
 
-    public void setBlackPlayerId(Integer blackPlayerId) {
-        this.blackPlayerId = blackPlayerId;
+    public void setPlayer2Id(Integer player2Id) {
+        this.player2Id = player2Id;
     }
 
     public String getResult() {
@@ -106,14 +106,14 @@ public class Match {
     public Match() {}
 
     public Match(Integer matchId, Integer tournamentId, Integer roundId, Integer boardNumber,
-                 Integer whitePlayerId, Integer blackPlayerId, String result, String termination,
+                 Integer player1Id, Integer player2Id, String result, String termination,
                  String status, Timestamp startTime, Timestamp endTime) {
         this.matchId = matchId;
         this.tournamentId = tournamentId;
         this.roundId = roundId;
         this.boardNumber = boardNumber;
-        this.whitePlayerId = whitePlayerId;
-        this.blackPlayerId = blackPlayerId;
+        this.player1Id = player1Id;
+        this.player2Id = player2Id;
         this.result = result;
         this.termination = termination;
         this.status = status;

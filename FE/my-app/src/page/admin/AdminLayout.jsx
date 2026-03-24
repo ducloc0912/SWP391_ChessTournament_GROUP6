@@ -9,11 +9,10 @@ import UserProfile from "../../component/admin/UserProfile";
 import EditProfile from "../../component/admin/EditProfile";
 import EditRole from "../../component/admin/EditRole";
 import AdminSystemReports from "../../component/admin/AdminSystemReports";
+import CreateAccount from "../../component/admin/CreateAccount";
 
 export const AdminLayout = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
-
-  // ✅ lưu userId khi bấm View/Edit
   const [selectedUserId, setSelectedUserId] = useState(null);
 
   const activeLabel = useMemo(() => {
@@ -21,6 +20,7 @@ export const AdminLayout = () => {
     if (activeTab === "edit_user") return "Sửa hồ sơ người dùng";
     if (activeTab === "edit_role") return "Phân quyền người dùng";
     if (activeTab === "reports") return "System report (Admin)";
+    if (activeTab === "create_account") return "Tạo người dùng";
 
     const item = NAVIGATION_ITEMS.find((x) => x.id === activeTab);
     return item?.label || "Bảng điều khiển";
@@ -48,6 +48,9 @@ export const AdminLayout = () => {
             }}
           />
         );
+
+      case "create_account":
+        return <CreateAccount onBack={() => setActiveTab("dashboard")} />;
 
       case "user_profile":
         return (
@@ -86,7 +89,10 @@ export const AdminLayout = () => {
       <Slidebar activeTab={activeTab} onNavigate={setActiveTab} />
 
       <div className="mainCol">
-        <Header title={activeLabel} />
+        <Header
+          title={activeLabel}
+          onOpenReports={() => setActiveTab("reports")}
+        />
         <main className="mainContent">{renderContent()}</main>
       </div>
     </div>

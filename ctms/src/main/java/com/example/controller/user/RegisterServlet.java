@@ -1,8 +1,10 @@
 package com.example.controller.user;
 
+import com.example.DAO.NotificationDAO;
 import com.example.DAO.ParticipantDAO;
 import com.example.DAO.TournamentDAO;
 import com.example.model.dto.TournamentDTO;
+import com.example.model.entity.Notification;
 import com.example.model.entity.Participant;
 import com.example.model.entity.User;
 import com.example.model.enums.ParticipantStatus;
@@ -168,6 +170,7 @@ public class RegisterServlet extends HttpServlet {
                 Map<String, Object> data = new HashMap<>();
                 data.put("needPayment", false);
                 data.put("participantId", participantId);
+                notifyLeaderOfNewRegistration(tournament, resolvedFullName);
                 write(resp, HttpServletResponse.SC_OK, true, "Đăng ký thành công. Bạn đã là thành viên giải.", data);
                 return;
             }
@@ -232,6 +235,7 @@ public class RegisterServlet extends HttpServlet {
             Map<String, Object> data = new HashMap<>();
             data.put("needPayment", false);
             data.put("participantId", participantId);
+            notifyLeaderOfNewRegistration(tournament, resolvedFullName);
             write(resp, HttpServletResponse.SC_OK, true, "Đăng ký giải thành công bằng số dư ví.", data);
 
         } catch (RuntimeException ex) {
@@ -291,5 +295,21 @@ public class RegisterServlet extends HttpServlet {
         if (!PHONE_PATTERN.matcher(phone).matches()) return "SĐT không hợp lệ.";
         if (rankAtRegistration < 0) return "Bậc rank phải là số nguyên >= 0.";
         return null;
+    }
+
+    private void notifyLeaderOfNewRegistration(TournamentDTO tournament, String playerName) {
+        if (tournament == null || tournament.getCreateBy() == null) return;
+        try {
+            NotificationDAO notifDao = new NotificationDAO();
+            Notification n = new Notification();
+            n.setTitle("Có người chơi mới đăng ký giải đấu");
+            n.setMessage("Người chơi '" + playerName + "' đã đăng ký tham gia giải '" + tournament.getTournamentName() + "'.");
+            n.setType("Tournament");
+            n.setActionUrl("/leader/tournaments/" + tournament.getTournamentId());
+            n.setUserId(tournament.getCreateBy());
+            notifDao.createNotification(n);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

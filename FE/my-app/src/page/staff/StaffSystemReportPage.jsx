@@ -20,19 +20,29 @@ export default function StaffSystemReportPage() {
 
   const loadReports = async (overrideStatus) => {
     const status = overrideStatus ?? statusFilter;
+
     try {
       setLoading(true);
       setError("");
+
       const params = new URLSearchParams();
-      if (status) params.set("status", status);
-      const res = await axios
-        .get(`${API_BASE}/api/staff/reports?${params.toString()}`, {
+      if (status) {
+        params.set("status", status);
+      }
+
+      const res = await axios.get(
+        `${API_BASE}/api/staff/reports?${params.toString()}`,
+        {
           withCredentials: true,
-        })
-        .catch(() => null);
+        },
+      );
+
       setItems(Array.isArray(res?.data) ? res.data : []);
-    } catch {
-      setError("Không thể tải danh sách system report.");
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        "Không thể tải danh sách system report.";
+      setError(msg);
       setItems([]);
     } finally {
       setLoading(false);
@@ -50,12 +60,18 @@ export default function StaffSystemReportPage() {
         : "Nhập lý do từ chối report:",
       "",
     );
+
+    if (note === null) {
+      return;
+    }
+
     try {
       await axios.put(
         `${API_BASE}/api/staff/reports`,
         { reportId, valid, note },
         { withCredentials: true },
       );
+
       await loadReports();
     } catch (err) {
       const msg =
@@ -67,6 +83,7 @@ export default function StaffSystemReportPage() {
 
   const formatTime = (value) => {
     if (!value) return "—";
+
     try {
       return new Date(value).toLocaleString("vi-VN");
     } catch {
@@ -124,6 +141,7 @@ export default function StaffSystemReportPage() {
                 Danh sách report về lỗi hệ thống mà staff cần xử lý.
               </p>
             </div>
+
             <div>
               <select
                 value={statusFilter}
@@ -170,6 +188,7 @@ export default function StaffSystemReportPage() {
                     <th style={{ textAlign: "right", padding: 8 }}>Action</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {items.map((r) => (
                     <tr key={r.reportId}>
@@ -200,7 +219,13 @@ export default function StaffSystemReportPage() {
                       <td style={{ padding: 8, textAlign: "right" }}>
                         {r.status === "Pending" ||
                         r.status === "Investigating" ? (
-                          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 8,
+                              justifyContent: "flex-end",
+                            }}
+                          >
                             <button
                               type="button"
                               onClick={() => handleDecision(r.reportId, true)}
@@ -215,6 +240,7 @@ export default function StaffSystemReportPage() {
                             >
                               Hợp lệ
                             </button>
+
                             <button
                               type="button"
                               onClick={() => handleDecision(r.reportId, false)}
@@ -245,4 +271,3 @@ export default function StaffSystemReportPage() {
     </div>
   );
 }
-

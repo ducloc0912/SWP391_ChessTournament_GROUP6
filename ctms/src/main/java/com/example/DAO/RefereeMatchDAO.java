@@ -76,8 +76,8 @@ public class RefereeMatchDAO extends DBContext {
                     m.group_id,
                     g.name AS group_name,
                     m.board_number,
-                    mm1.white_player_id,
-                    mm1.black_player_id,
+                    COALESCE(mm1.white_player_id, m.player1_id) AS white_player_id,
+                    COALESCE(mm1.black_player_id, m.player2_id) AS black_player_id,
                     mm1.game_number AS game1_number,
                     mm2.game_number AS game2_number,
                     mm1.mini_match_id AS mini_match_id_1,
@@ -243,6 +243,7 @@ public class RefereeMatchDAO extends DBContext {
             FROM Mini_matches
             WHERE match_id = ?
             AND game_number = ?
+            AND is_tiebreak = 0
         """;
 
         String updateGame = """
@@ -260,6 +261,9 @@ public class RefereeMatchDAO extends DBContext {
         """;
 
         try (Connection conn = getConnection()) {
+
+            // Tự động tạo mini_matches nếu chưa có
+            ensureMiniMatchesExist(conn, matchId);
 
             PreparedStatement ps = conn.prepareStatement(findGame);
             ps.setInt(1, matchId);
@@ -450,7 +454,8 @@ public class RefereeMatchDAO extends DBContext {
      */
     public void aggregateMatchResult(int matchId) {
         String matchSql = """
-                SELECT m.player1_id, m.player2_id, m.result, m.status, t.format
+                SELECT m.player1_id, m.player2_id, m.result, m.status, t.format,
+                       m.round_id, m.board_number, m.tournament_id
                 FROM Matches m
                 JOIN Tournaments t ON t.tournament_id = m.tournament_id
                 WHERE m.match_id = ?
@@ -476,6 +481,9 @@ public class RefereeMatchDAO extends DBContext {
             String curResult;
             String curStatus;
             String format;
+            int roundId;
+            int boardNumber;
+            int tournamentId;
             try (PreparedStatement ps = conn.prepareStatement(matchSql)) {
                 ps.setInt(1, matchId);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -485,6 +493,9 @@ public class RefereeMatchDAO extends DBContext {
                     curResult = rs.getString("result");
                     curStatus = rs.getString("status");
                     format = rs.getString("format");
+                    roundId = rs.getInt("round_id");
+                    boardNumber = rs.getInt("board_number");
+                    tournamentId = rs.getInt("tournament_id");
                 }
             }
 
@@ -652,8 +663,68 @@ public class RefereeMatchDAO extends DBContext {
                 ps.setInt(6, matchId);
                 ps.executeUpdate();
             }
+
+            if (isKnockout && winnerId != null && "Completed".equals(newStatus)) {
+                propagateKoWinner(conn, roundId, boardNumber, winnerId);
+            }
+
+            if (isRoundRobin && "Completed".equals(newStatus)) {
+                new StandingDAO().updateStandingsForTournament(conn, tournamentId);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * After a KO match completes, place the winner into the correct slot of the next round's match.
+     * Board B in round R → board ceil(B/2) in round R+1.
+     * Odd B → player1_id slot; even B → player2_id slot.
+     */
+    private void propagateKoWinner(Connection conn, int roundId, int boardNumber, int winnerId) throws SQLException {
+        // Get current round's round_index and tournament_id
+        String roundSql = """
+                SELECT r.round_index, r.tournament_id
+                FROM Round r
+                WHERE r.round_id = ?
+                """;
+        int currentRoundIndex;
+        int tournamentId;
+        try (PreparedStatement ps = conn.prepareStatement(roundSql)) {
+            ps.setInt(1, roundId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return;
+                currentRoundIndex = rs.getInt("round_index");
+                tournamentId = rs.getInt("tournament_id");
+            }
+        }
+
+        // Find the next round (round_index + 1) in the same tournament
+        String nextRoundSql = """
+                SELECT r.round_id
+                FROM Round r
+                WHERE r.tournament_id = ? AND r.round_index = ?
+                """;
+        int nextRoundId;
+        try (PreparedStatement ps = conn.prepareStatement(nextRoundSql)) {
+            ps.setInt(1, tournamentId);
+            ps.setInt(2, currentRoundIndex + 1);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return; // no next round (this was the final)
+                nextRoundId = rs.getInt("round_id");
+            }
+        }
+
+        int nextBoard = (int) Math.ceil(boardNumber / 2.0);
+        boolean isOddBoard = (boardNumber % 2 != 0);
+        String slotColumn = isOddBoard ? "player1_id" : "player2_id";
+
+        String updateSlotSql = "UPDATE Matches SET " + slotColumn + " = ? WHERE round_id = ? AND board_number = ?";
+        try (PreparedStatement ps = conn.prepareStatement(updateSlotSql)) {
+            ps.setInt(1, winnerId);
+            ps.setInt(2, nextRoundId);
+            ps.setInt(3, nextBoard);
+            ps.executeUpdate();
         }
     }
 
@@ -703,21 +774,21 @@ public class RefereeMatchDAO extends DBContext {
         if (whiteStatus == null || !java.util.Arrays.asList(valid).contains(whiteStatus)) whiteStatus = "Pending";
         if (blackStatus == null || !java.util.Arrays.asList(valid).contains(blackStatus)) blackStatus = "Pending";
 
-        Map<String, Object> miniInfo = getMiniMatchByMatchAndGame(matchId, gameNumber);
-        if (miniInfo == null) return false;
-        Integer miniMatchId = (Integer) miniInfo.get("miniMatchId");
-        Integer whitePlayerId = (Integer) miniInfo.get("whitePlayerId");
-        Integer blackPlayerId = (Integer) miniInfo.get("blackPlayerId");
-        if (miniMatchId == null || whitePlayerId == null || blackPlayerId == null) return false;
-
         try (Connection conn = getConnection()) {
             if (conn == null) return false;
-            if (whitePlayerId != null) {
-                upsertOneAttendance(conn, miniMatchId, whitePlayerId, whiteStatus, refereeId);
-            }
-            if (blackPlayerId != null) {
-                upsertOneAttendance(conn, miniMatchId, blackPlayerId, blackStatus, refereeId);
-            }
+
+            // Tự động tạo mini_matches nếu chưa có
+            ensureMiniMatchesExist(conn, matchId);
+
+            Map<String, Object> miniInfo = getMiniMatchByMatchAndGame(matchId, gameNumber);
+            if (miniInfo == null) return false;
+            Integer miniMatchId = (Integer) miniInfo.get("miniMatchId");
+            Integer whitePlayerId = (Integer) miniInfo.get("whitePlayerId");
+            Integer blackPlayerId = (Integer) miniInfo.get("blackPlayerId");
+            if (miniMatchId == null || whitePlayerId == null || blackPlayerId == null) return false;
+
+            upsertOneAttendance(conn, miniMatchId, whitePlayerId, whiteStatus, refereeId);
+            upsertOneAttendance(conn, miniMatchId, blackPlayerId, blackStatus, refereeId);
             return true;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -726,7 +797,7 @@ public class RefereeMatchDAO extends DBContext {
     }
 
     private Map<String, Object> getMiniMatchByMatchAndGame(int matchId, int gameNumber) {
-        String sql = "SELECT mini_match_id, white_player_id, black_player_id FROM Mini_matches WHERE match_id = ? AND game_number = ?";
+        String sql = "SELECT mini_match_id, white_player_id, black_player_id FROM Mini_matches WHERE match_id = ? AND game_number = ? AND is_tiebreak = 0";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, matchId);
@@ -734,9 +805,9 @@ public class RefereeMatchDAO extends DBContext {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     Map<String, Object> map = new HashMap<>();
-                    map.put("miniMatchId", rs.getInt("mini_match_id"));
-                    map.put("whitePlayerId", rs.getInt("white_player_id"));
-                    map.put("blackPlayerId", rs.getInt("black_player_id"));
+                    map.put("miniMatchId", rs.getObject("mini_match_id", Integer.class));
+                    map.put("whitePlayerId", rs.getObject("white_player_id", Integer.class));
+                    map.put("blackPlayerId", rs.getObject("black_player_id", Integer.class));
                     return map;
                 }
             }
@@ -744,6 +815,50 @@ public class RefereeMatchDAO extends DBContext {
             e.printStackTrace();
         }
         return null;
+    }
+
+    /**
+     * Tự động tạo Mini_matches (game 1 và game 2) cho trận nếu chưa có.
+     * Game 1: white = player1_id, black = player2_id
+     * Game 2: white = player2_id, black = player1_id (đổi màu)
+     * Trả về false nếu không thể tạo (player IDs chưa được điền).
+     */
+    private boolean ensureMiniMatchesExist(Connection conn, int matchId) throws SQLException {
+        String getPlayersSql = "SELECT player1_id, player2_id FROM Matches WHERE match_id = ?";
+        Integer p1 = null, p2 = null;
+        try (PreparedStatement ps = conn.prepareStatement(getPlayersSql)) {
+            ps.setInt(1, matchId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    p1 = rs.getObject("player1_id", Integer.class);
+                    p2 = rs.getObject("player2_id", Integer.class);
+                }
+            }
+        }
+        if (p1 == null || p2 == null) return false;
+
+        String checkSql = "SELECT COUNT(*) FROM Mini_matches WHERE match_id = ? AND game_number = ? AND is_tiebreak = 0";
+        String insertSql = "INSERT INTO Mini_matches (match_id, game_number, is_tiebreak, white_player_id, black_player_id, result, status) VALUES (?, ?, 0, ?, ?, '*', 'Scheduled')";
+
+        for (int gameNum = 1; gameNum <= 2; gameNum++) {
+            try (PreparedStatement ps = conn.prepareStatement(checkSql)) {
+                ps.setInt(1, matchId);
+                ps.setInt(2, gameNum);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next() && rs.getInt(1) > 0) continue; // đã tồn tại
+                }
+            }
+            int white = (gameNum == 1) ? p1 : p2;
+            int black = (gameNum == 1) ? p2 : p1;
+            try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
+                ps.setInt(1, matchId);
+                ps.setInt(2, gameNum);
+                ps.setInt(3, white);
+                ps.setInt(4, black);
+                ps.executeUpdate();
+            }
+        }
+        return true;
     }
 
     private void upsertOneAttendance(Connection conn, int miniMatchId, int userId, String status, int recordedBy) throws SQLException {

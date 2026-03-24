@@ -10,13 +10,13 @@ import RefereeMatchesPage from "./page/referee/RefereeMatchesPage";
 import RefereeMatchListPage from "./page/referee/RefereeMatchListPage";
 import RefereeMatchDetailPage from "./page/referee/RefereeMatchDetailPage";
 import Profile from "./page/user/UserProfile";
-import PlayerTournamentList from "./page/user/PlayerTournamentList";
 import PendingTournamentRegistrations from "./page/user/PendingTournamentRegistrations";
 import AdminLayout from "./page/admin/AdminLayout";
 import TournamentList from "./page/tournamentleader/TournamentList";
 import TournamentDetailLeader from "./page/tournamentleader/TournamentDetail";
 import TournamentPublic from "./component/common/TournamentPublic";
 import TournamentDetailPublic from "./component/common/TournamentDetail";
+import FollowedTournamentsPage from "./page/user/FollowedTournamentsPage";
 import CreateTournament from "./page/tournamentleader/CreateTournament";
 import UpdateTournament from "./page/tournamentleader/UpdateTournament";
 import StaffDashboard from "./page/staff/StaffDashboard";
@@ -28,6 +28,7 @@ import BlogManagePage from "./page/blog/BlogManagePage";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PaymentPage from "./page/payment/PaymentPage";
 import WalletPage from "./page/payment/WalletPage";
+import Matches from "./page/user/Matches";
 
 export default function App() {
   return (
@@ -42,14 +43,15 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/user/reports" element={<UserReportPage />} />
-        <Route path="/player/tournaments" element={<PlayerTournamentList />} />
         <Route
           path="/player/pending-registrations"
           element={<PendingTournamentRegistrations />}
         />
+        <Route path="/player/matches" element={<Matches />} />
         <Route path="/admin/dashboard" element={<AdminLayout />} />
         <Route path="/tournaments" element={<TournamentPublic />} />
         <Route path="/tournaments/public" element={<TournamentPublic />} />
+        <Route path="/tournaments/following" element={<FollowedTournamentsPage />} />
         <Route path="/tournaments/public/:id" element={<TournamentDetailPublic />} />
         <Route path="/leader/tournaments" element={<TournamentList />} />
         <Route path="/leader/tournaments/:id" element={<TournamentDetailLeader />} />
