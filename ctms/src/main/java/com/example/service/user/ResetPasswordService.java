@@ -17,7 +17,7 @@ public class ResetPasswordService {
             return result;
         }
 
-        if (password == null || password.length() < 6) {
+        if (password == null || password.length() < 6 || password.trim().isEmpty()) {
             result.put("success", false);
             result.put("message", "Password must be at least 6 characters");
             return result;
