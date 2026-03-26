@@ -131,6 +131,27 @@ const TournamentDetail = () => {
   const [approvedPlayers, setApprovedPlayers] = useState([]);
   const [waitingPlayers, setWaitingPlayers] = useState([]);
   const [loadingApproved, setLoadingApproved] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancelTournament = async () => {
+    if (!cancelReason.trim()) return;
+    setCancelling(true);
+    try {
+      await axios.delete(
+        `${API_BASE}/api/tournaments?id=${tournament.tournamentId}&reason=${encodeURIComponent(cancelReason)}`,
+        { withCredentials: true }
+      );
+      setShowCancelModal(false);
+      setCancelReason("");
+      await fetchTournament();
+    } catch (err) {
+      console.error("Error cancelling tournament:", err);
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const fetchTournament = async () => {
     try {
@@ -306,9 +327,12 @@ const TournamentDetail = () => {
             <button
               type="button"
               className="td-leader-btn-danger"
-              title="Xóa giải"
+              title={approvedPlayers.length > 0 ? "Không thể hủy giải khi đã có người tham gia" : "Hủy giải"}
+              onClick={() => approvedPlayers.length === 0 && setShowCancelModal(true)}
+              disabled={approvedPlayers.length > 0}
             >
-              <Trash2 size={18} />
+              
+              Hủy giải
             </button>
 
           </div>
@@ -404,6 +428,40 @@ const TournamentDetail = () => {
           )}
         </div>
       </div>
+
+      {showCancelModal && (
+        <div className="td-modal-overlay" onClick={() => setShowCancelModal(false)}>
+          <div className="td-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Hủy giải đấu</h3>
+            <p>Vui lòng nhập lý do hủy giải <strong>{tournament.tournamentName}</strong>:</p>
+            <textarea
+              className="td-modal-textarea"
+              rows={4}
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Nhập lý do hủy giải..."
+            />
+            <div className="td-modal-actions">
+              <button
+                type="button"
+                className="tdp-register-btn"
+                onClick={() => { setShowCancelModal(false); setCancelReason(""); }}
+                disabled={cancelling}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                className="td-leader-btn-danger"
+                onClick={handleCancelTournament}
+                disabled={cancelling || !cancelReason.trim()}
+              >
+                {cancelling ? "Đang xử lý..." : "Xác nhận"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

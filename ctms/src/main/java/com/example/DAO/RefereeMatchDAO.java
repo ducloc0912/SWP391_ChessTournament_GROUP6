@@ -89,10 +89,14 @@ public class RefereeMatchDAO extends DBContext {
                     mm_tb.status AS tiebreak_status,
                     mm_tb.game_number AS tiebreak_number,
                     mm_tb.result AS tiebreak_result,
-                    uw.first_name AS white_first_name,
-                    uw.last_name AS white_last_name,
-                    ub.first_name AS black_first_name,
-                    ub.last_name AS black_last_name,
+                    uw1.first_name AS white_first_name_1,
+                    uw1.last_name AS white_last_name_1,
+                    ub1.first_name AS black_first_name_1,
+                    ub1.last_name AS black_last_name_1,
+                    uw2.first_name AS white_first_name_2,
+                    uw2.last_name AS white_last_name_2,
+                    ub2.first_name AS black_first_name_2,
+                    ub2.last_name AS black_last_name_2,
                     m.result,
                     m.status,
                     m.start_time,
@@ -141,9 +145,11 @@ public class RefereeMatchDAO extends DBContext {
                 ) mm_tb ON mm_tb.match_id = m.match_id
 
                 LEFT JOIN Round r ON r.round_id = m.round_id
-                LEFT JOIN Tournament_Group g ON g.group_id = m.group_id
-                LEFT JOIN Users uw ON uw.user_id = COALESCE(mm1.white_player_id, m.player1_id)
-                LEFT JOIN Users ub ON ub.user_id = COALESCE(mm1.black_player_id, m.player2_id)
+                LEFT JOIN Tournament_Group g ON g.group_id = m.group_id 
+                LEFT JOIN Users uw1 ON uw1.user_id = mm1.white_player_id
+                LEFT JOIN Users ub1 ON ub1.user_id = mm1.black_player_id
+                LEFT JOIN Users uw2 ON uw2.user_id = mm2.white_player_id
+                LEFT JOIN Users ub2 ON ub2.user_id = mm2.black_player_id
                 WHERE m.tournament_id = ?
                 ORDER BY ISNULL(r.round_index, 9999), ISNULL(m.board_number, 9999), m.match_id
                 """;
@@ -175,10 +181,16 @@ public class RefereeMatchDAO extends DBContext {
                     row.put("boardNumber", rs.getObject("board_number"));
                     row.put("whitePlayerId", rs.getObject("white_player_id"));
                     row.put("blackPlayerId", rs.getObject("black_player_id"));
-                    row.put("whiteFirstName", rs.getString("white_first_name"));
-                    row.put("whiteLastName", rs.getString("white_last_name"));
-                    row.put("blackFirstName", rs.getString("black_first_name"));
-                    row.put("blackLastName", rs.getString("black_last_name"));
+                    // Game 1
+                    row.put("whiteFirstName1", rs.getString("white_first_name_1"));
+                    row.put("whiteLastName1", rs.getString("white_last_name_1"));
+                    row.put("blackFirstName1", rs.getString("black_first_name_1"));
+                    row.put("blackLastName1", rs.getString("black_last_name_1"));
+                    // Game 2
+                    row.put("whiteFirstName2", rs.getString("white_first_name_2"));
+                    row.put("whiteLastName2", rs.getString("white_last_name_2"));
+                    row.put("blackFirstName2", rs.getString("black_first_name_2"));
+                    row.put("blackLastName2", rs.getString("black_last_name_2"));
                     row.put("result", rs.getString("result"));
                     // Matches theo schema mới không còn termination; nếu cần có thể suy ra từ Mini_matches sau này.
                     row.put("termination", null);
@@ -223,6 +235,8 @@ public class RefereeMatchDAO extends DBContext {
      */
 
     public boolean startGame(int matchId, int gameNumber, int refereeId) {
+
+        if (getMatchForReferee(matchId, refereeId) == null) return false;
 
         String findGame = """
             SELECT mini_match_id, status
@@ -324,47 +338,14 @@ public class RefereeMatchDAO extends DBContext {
 
         return false;
     }
-
-    public boolean advanceToNextGame(int matchId, int currentGameNumber) {
-
-        String checkSql = """
-            SELECT status
-            FROM Mini_matches
-            WHERE match_id = ?
-            AND game_number = ?
-        """;
-
-        try (Connection conn = getConnection()) {
-
-            PreparedStatement ps = conn.prepareStatement(checkSql);
-            ps.setInt(1, matchId);
-            ps.setInt(2, currentGameNumber);
-
-            ResultSet rs = ps.executeQuery();
-
-            if (!rs.next()) return false;
-
-            String status = rs.getString("status");
-
-            if (!"Completed".equals(status)) {
-                return false;
-            }
-
-            return true;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return false;
-    }
     
-
     /**
      * Kết thúc MỘT ván (Mini_match): cập nhật result, status, end_time, rồi tổng hợp lại kết quả trận (Matches).
      * gameResult: '1-0' | '0-1' | '1/2-1/2'.
      */
     public boolean finishGame(int matchId, int gameNumber, int refereeId, String result) {
+
+        if (getMatchForReferee(matchId, refereeId) == null) return false;
 
         String findGame = """
             SELECT mini_match_id, status, is_tiebreak
@@ -480,7 +461,7 @@ public class RefereeMatchDAO extends DBContext {
                 WHERE m.match_id = ?
                 """;
         String miniSql = """
-                SELECT is_tiebreak, result, status
+                SELECT is_tiebreak, result, status, white_player_id
                 FROM Mini_matches
                 WHERE match_id = ?
                 """;
@@ -532,6 +513,11 @@ public class RefereeMatchDAO extends DBContext {
                         boolean isTiebreak = rs.getBoolean("is_tiebreak");
                         String res = rs.getString("result");
                         String st = rs.getString("status");
+                        int whitePlayerId = rs.getInt("white_player_id");
+
+                        // Xác định chiều điểm: nếu trắng của ván này là player1 thì "1-0" → p1++
+                        // Nếu trắng là player2 (ván đổi màu) thì "1-0" → p2++
+                        boolean whiteIsPlayer1 = (player1Id != null && whitePlayerId == player1Id);
 
                         if ("Completed".equals(st)) {
 
@@ -548,11 +534,11 @@ public class RefereeMatchDAO extends DBContext {
                             }
 
                             if ("1-0".equals(res)) {
-                                p1 += 1.0;
-                            } 
+                                if (whiteIsPlayer1) p1 += 1.0; else p2 += 1.0;
+                            }
                             else if ("0-1".equals(res)) {
-                                p2 += 1.0;
-                            } 
+                                if (whiteIsPlayer1) p2 += 1.0; else p1 += 1.0;
+                            }
                             else if ("1/2-1/2".equals(res)) {
                                 p1 += 0.5;
                                 p2 += 0.5;
