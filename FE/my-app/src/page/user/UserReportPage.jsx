@@ -132,6 +132,10 @@ export default function UserReportPage() {
         setSubmitError("Vui lòng chọn người chơi để tố cáo.");
         return;
       }
+      if (Number(selectedAccusedId) === user?.userId) {
+        setSubmitError("Bạn không thể tố cáo chính mình.");
+        return;
+      }
     }
     try {
       setSubmitting(true);
@@ -165,7 +169,7 @@ export default function UserReportPage() {
         withCredentials: true,
       });
       if (res?.data?.success) {
-        setSubmitSuccess("Gửi report thành công.");
+        setSubmitSuccess(res?.data?.message || "Gửi report thành công.");
         setDescription("");
         setEvidenceUrl("");
         setSelectedTournamentId("");
@@ -235,8 +239,8 @@ export default function UserReportPage() {
           <h2 style={{ marginTop: 0 }}>Gửi Report</h2>
           <p style={{ color: "#6b7280", fontSize: 13 }}>
             Chọn loại report và cung cấp thông tin tương ứng. Với violation, hãy
-            chọn giải, trận và người chơi liên quan. Với system, chỉ cần mô tả lỗi
-            và đính kèm link nếu có.
+            chọn giải, trận và người chơi liên quan. Với system, chỉ cần mô tả
+            lỗi và đính kèm link nếu có.
           </p>
 
           <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
@@ -257,7 +261,9 @@ export default function UserReportPage() {
                   onChange={(e) => setKind(e.target.value)}
                   style={{ padding: 8, width: "100%" }}
                 >
-                  <option value="VIOLATION">Violation (tố cáo người chơi)</option>
+                  <option value="VIOLATION">
+                    Violation (tố cáo người chơi)
+                  </option>
                   <option value="SYSTEM">System (lỗi hệ thống)</option>
                 </select>
               ) : (
@@ -331,7 +337,13 @@ export default function UserReportPage() {
                   </select>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 12,
+                  }}
+                >
                   <div>
                     <label
                       style={{
@@ -383,12 +395,16 @@ export default function UserReportPage() {
                         <>
                           {selectedMatch.player1Id && (
                             <option value={selectedMatch.player1Id}>
-                              White player (ID: {selectedMatch.player1Id})
+                              White –{" "}
+                              {selectedMatch.player1Username ||
+                                `Player #${selectedMatch.player1Id}`}
                             </option>
                           )}
                           {selectedMatch.player2Id && (
                             <option value={selectedMatch.player2Id}>
-                              Black player (ID: {selectedMatch.player2Id})
+                              Black –{" "}
+                              {selectedMatch.player2Username ||
+                                `Player #${selectedMatch.player2Id}`}
                             </option>
                           )}
                         </>
@@ -427,23 +443,28 @@ export default function UserReportPage() {
                   fontWeight: 600,
                   marginBottom: 4,
                 }}
-                >
-                  Đường dẫn minh chứng {kind === "VIOLATION" ? "(không bắt buộc)" : "(nếu có)"}
-                </label>
-                <input
-                  type="text"
-                  value={evidenceUrl}
-                  onChange={(e) => setEvidenceUrl(e.target.value)}
-                  style={{ width: "100%", padding: 8 }}
-                  placeholder="Ví dụ: link ảnh/video trên drive, imgur..."
-                />
+              >
+                Đường dẫn minh chứng{" "}
+                {kind === "VIOLATION" ? "(không bắt buộc)" : "(nếu có)"}
+              </label>
+              <input
+                type="text"
+                value={evidenceUrl}
+                onChange={(e) => setEvidenceUrl(e.target.value)}
+                style={{ width: "100%", padding: 8 }}
+                placeholder="Ví dụ: link ảnh/video trên drive, imgur..."
+              />
             </div>
 
             {submitError && (
-              <div style={{ color: "#b91c1c", fontSize: 13 }}>{submitError}</div>
+              <div style={{ color: "#b91c1c", fontSize: 13 }}>
+                {submitError}
+              </div>
             )}
             {submitSuccess && (
-              <div style={{ color: "#15803d", fontSize: 13 }}>{submitSuccess}</div>
+              <div style={{ color: "#15803d", fontSize: 13 }}>
+                {submitSuccess}
+              </div>
             )}
 
             <div>
@@ -490,13 +511,15 @@ export default function UserReportPage() {
                   <tr>
                     <th style={{ textAlign: "left", padding: 8 }}>ID</th>
                     <th style={{ textAlign: "left", padding: 8 }}>Loại</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Accused</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Match</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Mô tả</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Status</th>
                     <th style={{ textAlign: "left", padding: 8 }}>
-                      Phản hồi
+                      Người bị tố cáo
                     </th>
+                    <th style={{ textAlign: "left", padding: 8 }}>Trận</th>
+                    <th style={{ textAlign: "left", padding: 8 }}>Mô tả</th>
+                    <th style={{ textAlign: "left", padding: 8 }}>
+                      Trạng thái
+                    </th>
+                    <th style={{ textAlign: "left", padding: 8 }}>Phản hồi</th>
                     <th style={{ textAlign: "left", padding: 8 }}>Tạo lúc</th>
                   </tr>
                 </thead>
@@ -505,7 +528,9 @@ export default function UserReportPage() {
                     <tr key={r.reportId}>
                       <td style={{ padding: 8 }}>{r.reportId}</td>
                       <td style={{ padding: 8 }}>{typeLabel(r.type)}</td>
-                      <td style={{ padding: 8 }}>{r.accusedId ?? "—"}</td>
+                      <td style={{ padding: 8 }}>
+                        {r.accusedUsername ?? r.accusedId ?? "—"}
+                      </td>
                       <td style={{ padding: 8 }}>{r.matchId ?? "—"}</td>
                       <td style={{ padding: 8 }}>
                         {r.description?.length > 60
@@ -526,4 +551,3 @@ export default function UserReportPage() {
     </div>
   );
 }
-

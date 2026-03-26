@@ -92,7 +92,6 @@ export default function AdminSystemReports() {
         >
           <option value="">Tất cả</option>
           <option value="Pending">Đang chờ</option>
-          <option value="Investigating">Đang điều tra</option>
           <option value="Resolved">Đã xác thực hợp lệ </option>
           <option value="Dismissed">Staff từ chối</option>
         </select>
@@ -120,7 +119,7 @@ export default function AdminSystemReports() {
               <tr style={{ background: "#f8fafc" }}>
                 <th style={{ textAlign: "left", padding: 12 }}>ID</th>
                 <th style={{ textAlign: "left", padding: 12 }}>Loại</th>
-                <th style={{ textAlign: "left", padding: 12 }}>Reporter</th>
+                <th style={{ textAlign: "left", padding: 12 }}>Người tố cáo</th>
                 <th style={{ textAlign: "left", padding: 12 }}>Mô tả</th>
                 <th style={{ textAlign: "left", padding: 12 }}>Bằng chứng</th>
                 <th style={{ textAlign: "left", padding: 12 }}>Trạng thái</th>
@@ -135,7 +134,7 @@ export default function AdminSystemReports() {
                 <tr key={r.reportId} style={{ borderTop: "1px solid #f1f5f9" }}>
                   <td style={{ padding: 12 }}>{r.reportId}</td>
                   <td style={{ padding: 12 }}>{typeLabel(r.type)}</td>
-                  <td style={{ padding: 12 }}>{r.reporterId ?? "—"}</td>
+                  <td style={{ padding: 12 }}>{r.reporterUsername ?? "—"}</td>
                   <td style={{ padding: 12, maxWidth: 280 }}>
                     {r.description?.length > 120
                       ? `${r.description.slice(0, 120)}…`

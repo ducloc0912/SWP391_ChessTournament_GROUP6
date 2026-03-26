@@ -49,11 +49,16 @@ public class ReportDAO extends DBContext {
     public List<ReportDTO> getReportsByReporter(int reporterId) throws SQLException {
         List<ReportDTO> list = new ArrayList<>();
         String sql = """
-            SELECT report_id, reporter_id, accused_id, match_id, description, evidence_url,
-                   type, status, note, resolved_by, create_at, resolved_at
-            FROM Report
-            WHERE reporter_id = ?
-            ORDER BY create_at DESC
+            SELECT r.report_id, r.reporter_id, r.accused_id, r.match_id,
+                   r.description, r.evidence_url,
+                   r.type, r.status, r.note, r.resolved_by, r.create_at, r.resolved_at,
+                   rep.username AS reporter_username,
+                   acc.username AS accused_username
+            FROM Report r
+            LEFT JOIN Users rep ON rep.user_id = r.reporter_id
+            LEFT JOIN Users acc ON acc.user_id = r.accused_id
+            WHERE r.reporter_id = ?
+            ORDER BY r.create_at DESC
             """;
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -84,15 +89,38 @@ public class ReportDAO extends DBContext {
         }
     }
 
+    public boolean existsByReporterMatchAndAccused(int reporterId, Integer matchId, Integer accusedId) throws SQLException {
+        if (matchId == null || accusedId == null) return false;
+        String sql = """
+            SELECT 1 FROM Report
+            WHERE reporter_id = ? AND match_id = ? AND accused_id = ?
+              AND type IN ('Cheating','Misconduct')
+            """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, reporterId);
+            ps.setInt(2, matchId);
+            ps.setInt(3, accusedId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     public List<ReportDTO> getSystemReportsForStaff(String status) throws SQLException {
         List<ReportDTO> list = new ArrayList<>();
         String sql = """
-            SELECT report_id, reporter_id, accused_id, match_id, description, evidence_url,
-                   type, status, note, resolved_by, create_at, resolved_at
-            FROM Report
-            WHERE type IN ('TechnicalIssue','Other')
-              AND (? IS NULL OR status = ?)
-            ORDER BY create_at DESC
+            SELECT r.report_id, r.reporter_id, r.accused_id, r.match_id,
+                   r.description, r.evidence_url,
+                   r.type, r.status, r.note, r.resolved_by, r.create_at, r.resolved_at,
+                   rep.username AS reporter_username,
+                   acc.username AS accused_username
+            FROM Report r
+            LEFT JOIN Users rep ON rep.user_id = r.reporter_id
+            LEFT JOIN Users acc ON acc.user_id = r.accused_id
+            WHERE r.type IN ('TechnicalIssue','Other')
+              AND (? IS NULL OR r.status = ?)
+            ORDER BY r.create_at DESC
             """;
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -117,9 +145,13 @@ public class ReportDAO extends DBContext {
         String sql = """
             SELECT r.report_id, r.reporter_id, r.accused_id, r.match_id,
                    r.description, r.evidence_url,
-                   r.type, r.status, r.note, r.resolved_by, r.create_at, r.resolved_at
+                   r.type, r.status, r.note, r.resolved_by, r.create_at, r.resolved_at,
+                   rep.username AS reporter_username,
+                   acc.username AS accused_username
             FROM Report r
             JOIN Matches m ON r.match_id = m.match_id
+            LEFT JOIN Users rep ON rep.user_id = r.reporter_id
+            LEFT JOIN Users acc ON acc.user_id = r.accused_id
             WHERE m.tournament_id = ?
               AND r.type IN ('Cheating','Misconduct')
               AND (? IS NULL OR r.status = ?)
@@ -240,6 +272,8 @@ public class ReportDAO extends DBContext {
         dto.setResolvedBy((Integer) rs.getObject("resolved_by"));
         dto.setCreateAt(rs.getTimestamp("create_at"));
         dto.setResolvedAt(rs.getTimestamp("resolved_at"));
+        try { dto.setReporterUsername(rs.getString("reporter_username")); } catch (Exception ignored) {}
+        try { dto.setAccusedUsername(rs.getString("accused_username")); } catch (Exception ignored) {}
         return dto;
     }
 }
