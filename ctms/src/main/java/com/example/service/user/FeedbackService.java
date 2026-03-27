@@ -53,7 +53,7 @@ public class FeedbackService {
             throw new IllegalArgumentException("Star rating must be between 1 and 5");
         }
         if (feedback.getComment() == null || feedback.getComment().trim().isEmpty()) {
-            throw new IllegalArgumentException("Comment cannot be empty");
+            throw new IllegalArgumentException("Không được để rỗng comment");
         }
 
         try {
@@ -138,8 +138,13 @@ public class FeedbackService {
 
     // 9. Cập nhật reply của tournament leader
     public boolean updateFeedbackReply(int feedbackId, String reply) {
+        if (reply == null || reply.trim().isEmpty()) {
+            throw new IllegalArgumentException("Nội dung phản hồi không được để trống.");
+        }
         try {
-            return feedbackDAO.updateFeedbackReply(feedbackId, reply != null ? reply.trim() : "");
+            return feedbackDAO.updateFeedbackReply(feedbackId, reply.trim());
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
