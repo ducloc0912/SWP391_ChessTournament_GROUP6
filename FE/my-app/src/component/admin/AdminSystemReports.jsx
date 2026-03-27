@@ -62,104 +62,182 @@ export default function AdminSystemReports() {
   };
 
   return (
-    <div style={{ padding: "0 8px" }}>
-      <p style={{ margin: "0 0 16px", color: "#64748b", fontSize: 14 }}>
-        Các report loại <strong>System</strong> (lỗi hệ thống). Staff xác nhận
-        hợp lệ sẽ có trạng thái <strong>Resolved</strong> — Admin xem và xử lý
-        tiếp theo nghiệp vụ.
-      </p>
+    <div>
       <div
         style={{
-          marginBottom: 16,
-          display: "flex",
-          gap: 12,
-          alignItems: "center",
+          background: "#ffffff",
+          border: "1px solid rgba(15,23,42,0.12)",
+          borderRadius: "8px",
+          padding: "24px",
         }}
       >
-        <label style={{ fontSize: 13, fontWeight: 600 }}>Lọc trạng thái:</label>
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            const next = e.target.value;
-            setStatusFilter(next);
-            loadReports(next);
-          }}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 8,
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <option value="">Tất cả</option>
-          <option value="Pending">Đang chờ</option>
-          <option value="Resolved">Đã xác thực hợp lệ </option>
-          <option value="Dismissed">Staff từ chối</option>
-        </select>
-      </div>
-
-      {loading ? (
-        <div>Đang tải...</div>
-      ) : error ? (
-        <div style={{ color: "#b91c1c" }}>{error}</div>
-      ) : items.length === 0 ? (
-        <div>Chưa có system report nào.</div>
-      ) : (
         <div
           style={{
-            overflowX: "auto",
-            background: "#fff",
-            borderRadius: 12,
-            border: "1px solid #e2e8f0",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 16,
           }}
         >
-          <table
-            style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}
-          >
-            <thead>
-              <tr style={{ background: "#f8fafc" }}>
-                <th style={{ textAlign: "left", padding: 12 }}>ID</th>
-                <th style={{ textAlign: "left", padding: 12 }}>Loại</th>
-                <th style={{ textAlign: "left", padding: 12 }}>Người tố cáo</th>
-                <th style={{ textAlign: "left", padding: 12 }}>Mô tả</th>
-                <th style={{ textAlign: "left", padding: 12 }}>Bằng chứng</th>
-                <th style={{ textAlign: "left", padding: 12 }}>Trạng thái</th>
-                <th style={{ textAlign: "left", padding: 12 }}>
-                  Ghi chú Staff
-                </th>
-                <th style={{ textAlign: "left", padding: 12 }}>Tạo lúc</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((r) => (
-                <tr key={r.reportId} style={{ borderTop: "1px solid #f1f5f9" }}>
-                  <td style={{ padding: 12 }}>{r.reportId}</td>
-                  <td style={{ padding: 12 }}>{typeLabel(r.type)}</td>
-                  <td style={{ padding: 12 }}>{r.reporterUsername ?? "—"}</td>
-                  <td style={{ padding: 12, maxWidth: 280 }}>
-                    {r.description?.length > 120
-                      ? `${r.description.slice(0, 120)}…`
-                      : r.description}
-                  </td>
-                  <td style={{ padding: 12 }}>
-                    {r.evidenceUrl ? (
-                      <a href={r.evidenceUrl} target="_blank" rel="noreferrer">
-                        Xem
-                      </a>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td style={{ padding: 12 }}>{r.status}</td>
-                  <td style={{ padding: 12, maxWidth: 200 }}>
-                    {r.note || "—"}
-                  </td>
-                  <td style={{ padding: 12 }}>{formatTime(r.createAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div>
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                const next = e.target.value;
+                setStatusFilter(next);
+                loadReports(next);
+              }}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                fontSize: 13,
+              }}
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="Pending">Đang chờ</option>
+              <option value="Resolved">Đã xác thực hợp lệ</option>
+              <option value="Dismissed">Staff từ chối</option>
+            </select>
+          </div>
         </div>
-      )}
+
+        {loading ? (
+          <div style={{ padding: 20, textAlign: "center", color: "#64748b" }}>
+            Đang tải...
+          </div>
+        ) : error ? (
+          <div style={{ padding: 20, textAlign: "center", color: "#b91c1c" }}>
+            {error}
+          </div>
+        ) : items.length === 0 ? (
+          <div style={{ padding: 20, textAlign: "center", color: "#64748b" }}>
+            Chưa có system report nào.
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: 13,
+              }}
+            >
+              <thead>
+                <tr
+                  style={{
+                    background: "#f8fafc",
+                    borderBottom: "1px solid #e2e8f0",
+                  }}
+                >
+                  <th
+                    style={{ textAlign: "left", padding: 12, fontWeight: 600 }}
+                  >
+                    ID
+                  </th>
+                  <th
+                    style={{ textAlign: "left", padding: 12, fontWeight: 600 }}
+                  >
+                    Loại
+                  </th>
+                  <th
+                    style={{ textAlign: "left", padding: 12, fontWeight: 600 }}
+                  >
+                    Người tố cáo
+                  </th>
+                  <th
+                    style={{ textAlign: "left", padding: 12, fontWeight: 600 }}
+                  >
+                    Mô tả
+                  </th>
+                  <th
+                    style={{ textAlign: "left", padding: 12, fontWeight: 600 }}
+                  >
+                    Bằng chứng
+                  </th>
+                  <th
+                    style={{ textAlign: "left", padding: 12, fontWeight: 600 }}
+                  >
+                    Trạng thái
+                  </th>
+                  <th
+                    style={{ textAlign: "left", padding: 12, fontWeight: 600 }}
+                  >
+                    Ghi chú Staff
+                  </th>
+                  <th
+                    style={{ textAlign: "left", padding: 12, fontWeight: 600 }}
+                  >
+                    Tạo lúc
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((r) => (
+                  <tr
+                    key={r.reportId}
+                    style={{ borderBottom: "1px solid #f1f5f9" }}
+                  >
+                    <td style={{ padding: 12 }}>{r.reportId}</td>
+                    <td style={{ padding: 12 }}>{typeLabel(r.type)}</td>
+                    <td style={{ padding: 12 }}>{r.reporterUsername ?? "—"}</td>
+                    <td style={{ padding: 12, maxWidth: 280 }}>
+                      {r.description?.length > 120
+                        ? `${r.description.slice(0, 120)}…`
+                        : r.description}
+                    </td>
+                    <td style={{ padding: 12 }}>
+                      {r.evidenceUrl ? (
+                        <a
+                          href={r.evidenceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            color: "#2563eb",
+                            textDecoration: "underline",
+                          }}
+                        >
+                          Xem
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td style={{ padding: 12 }}>
+                      <span
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: 4,
+                          fontSize: 12,
+                          fontWeight: 500,
+                          background:
+                            r.status === "Resolved"
+                              ? "#dcfce7"
+                              : r.status === "Dismissed"
+                                ? "#fee2e2"
+                                : "#fef3c7",
+                          color:
+                            r.status === "Resolved"
+                              ? "#166534"
+                              : r.status === "Dismissed"
+                                ? "#991b1b"
+                                : "#854d0e",
+                        }}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: 12, maxWidth: 200 }}>
+                      {r.note || "—"}
+                    </td>
+                    <td style={{ padding: 12 }}>{formatTime(r.createAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

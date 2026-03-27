@@ -370,7 +370,8 @@ export default function MainHeader({
 
     if (normalizedRole === "STAFF") {
       extraItems.push({ to: "/staff/reports", label: "Report" });
-    } else {
+    } else if (normalizedRole !== "ADMIN") {
+      // Không thêm Report cho Admin vì đã có trong menu riêng
       extraItems.push({ to: "/user/reports", label: "Report" });
     }
   } catch {

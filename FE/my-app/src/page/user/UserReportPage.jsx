@@ -41,6 +41,8 @@ export default function UserReportPage() {
     .toUpperCase()
     .replace(/[\s_]/g, "");
   const isPlayer = !normalizedRole || normalizedRole === "PLAYER";
+  const isReferee = normalizedRole === "REFEREE";
+  const canReportViolation = isPlayer || isReferee;
 
   const loadReports = async () => {
     try {
@@ -255,7 +257,7 @@ export default function UserReportPage() {
               >
                 Loại report
               </label>
-              {isPlayer ? (
+              {canReportViolation ? (
                 <select
                   value={kind}
                   onChange={(e) => setKind(e.target.value)}
@@ -395,14 +397,14 @@ export default function UserReportPage() {
                         <>
                           {selectedMatch.player1Id && (
                             <option value={selectedMatch.player1Id}>
-                              White –{" "}
+                              {" "}
                               {selectedMatch.player1Username ||
                                 `Player #${selectedMatch.player1Id}`}
                             </option>
                           )}
                           {selectedMatch.player2Id && (
                             <option value={selectedMatch.player2Id}>
-                              Black –{" "}
+                              {" "}
                               {selectedMatch.player2Username ||
                                 `Player #${selectedMatch.player2Id}`}
                             </option>

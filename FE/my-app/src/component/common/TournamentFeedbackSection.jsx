@@ -164,7 +164,7 @@ export default function TournamentFeedbackSection({
   const handleSaveReply = async (feedbackId) => {
     setSavingReply(true);
     try {
-      await axios.post(
+      const res = await axios.post(
         `${API_BASE}/api/leader/feedback`,
         { feedbackId, reply: replyText.trim() },
         { withCredentials: true },
@@ -173,11 +173,13 @@ export default function TournamentFeedbackSection({
       setReplyText("");
       setFeedbackToast({
         type: "success",
-        text: "Cập nhật phản hồi thành công.",
+        text: res?.data?.message || "Cập nhật phản hồi thành công.",
       });
       await loadFeedback(); // reload without page refresh
-    } catch {
-      setFeedbackToast({ type: "error", text: "Cập nhật phản hồi thất bại." });
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message || "Cập nhật phản hồi thất bại.";
+      setFeedbackToast({ type: "error", text: msg });
     } finally {
       setSavingReply(false);
     }
