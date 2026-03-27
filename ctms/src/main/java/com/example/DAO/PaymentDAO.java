@@ -487,6 +487,23 @@ public class PaymentDAO extends DBContext {
     }
 
     /**
+     * Kiểm tra giải thưởng của giải đã được chia hay chưa.
+     */
+    public boolean isPrizesAlreadyDistributed(int tournamentId) {
+        String sql = "SELECT COUNT(*) FROM Prize_Distribution WHERE tournament_id = ? AND is_distributed = 1";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
      * Tự động chia giải thưởng cho người chơi khi giải kết thúc.
      * Dựa vào Prize_Template (% theo hạng) + Standing (bảng xếp hạng) + prize_pool.
      * Ghi vào Prize_Distribution, Payment_Transaction, và cộng balance cho từng người chơi.

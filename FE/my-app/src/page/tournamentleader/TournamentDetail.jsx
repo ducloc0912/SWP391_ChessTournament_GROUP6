@@ -38,6 +38,7 @@ import {
   ArrowLeft,
   ImagePlus,
   MessageSquare,
+  Flag,
 } from "lucide-react";
 
 import TournamentFeedbackSection from "../../component/common/TournamentFeedbackSection";
@@ -144,6 +145,9 @@ const TournamentDetail = () => {
   const [cancelling, setCancelling] = useState(false);
   const [resubmitting, setResubmitting] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [completeError, setCompleteError] = useState(null);
 
   const handleCancelTournament = async () => {
     if (!cancelReason.trim()) return;
@@ -180,6 +184,28 @@ const TournamentDetail = () => {
       alert(err?.response?.data?.message || "Khôi phục giải thất bại.");
     } finally {
       setRestoring(false);
+    }
+  };
+
+  const handleCompleteTournament = async () => {
+    setCompleting(true);
+    setCompleteError(null);
+    try {
+      const res = await axios.post(
+        `${API_BASE}/api/tournaments?action=complete&id=${tournament.tournamentId}`,
+        {},
+        { withCredentials: true }
+      );
+      if (res?.data?.success) {
+        setShowCompleteConfirm(false);
+        await fetchTournament();
+      } else {
+        setCompleteError(res?.data?.message || "Kết thúc giải thất bại.");
+      }
+    } catch (err) {
+      setCompleteError(err?.response?.data?.message || "Kết thúc giải thất bại.");
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -386,6 +412,19 @@ const TournamentDetail = () => {
               <Edit2 size={18} />
               Chỉnh sửa giải đấu
             </button>
+            {tournament.status === "Ongoing" && (
+              <button
+                type="button"
+                className="tdp-register-btn"
+                style={{ background: "#16a34a", borderColor: "#16a34a" }}
+                onClick={() => { setCompleteError(null); setShowCompleteConfirm(true); }}
+                disabled={completing}
+                title="Kết thúc giải và phân phối giải thưởng"
+              >
+                <Flag size={16} />
+                {completing ? "Đang xử lý..." : "Kết thúc giải"}
+              </button>
+            )}
             <button
               type="button"
               className="td-leader-btn-danger"
@@ -559,6 +598,60 @@ const TournamentDetail = () => {
                 disabled={cancelling || !cancelReason.trim()}
               >
                 {cancelling ? "Đang xử lý..." : "Xác nhận"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal xác nhận kết thúc giải */}
+      {showCompleteConfirm && (
+        <div
+          className="td-modal-overlay"
+          onClick={() => !completing && setShowCompleteConfirm(false)}
+        >
+          <div className="td-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ color: "#16a34a" }}>
+              <Flag size={18} style={{ marginRight: 8, verticalAlign: "middle" }} />
+              Kết thúc giải đấu
+            </h3>
+            <p>
+              Bạn có chắc muốn kết thúc giải <strong>{tournament.tournamentName}</strong>?
+            </p>
+            <p style={{ color: "#555", fontSize: "0.9rem", marginTop: 4 }}>
+              Hệ thống sẽ tự động <strong>phân phối giải thưởng</strong> vào ví của các kỳ thủ theo bảng xếp hạng.
+              Hành động này <strong>không thể hoàn tác</strong>.
+            </p>
+            {completeError && (
+              <p style={{
+                color: "#dc2626",
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                borderRadius: 6,
+                padding: "8px 12px",
+                marginTop: 12,
+                fontSize: "0.9rem"
+              }}>
+                {completeError}
+              </p>
+            )}
+            <div className="td-modal-actions">
+              <button
+                type="button"
+                className="tdp-register-btn"
+                onClick={() => { setShowCompleteConfirm(false); setCompleteError(null); }}
+                disabled={completing}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                className="tdp-register-btn"
+                style={{ background: "#16a34a", borderColor: "#16a34a" }}
+                onClick={handleCompleteTournament}
+                disabled={completing}
+              >
+                {completing ? "Đang xử lý..." : "Xác nhận kết thúc"}
               </button>
             </div>
           </div>

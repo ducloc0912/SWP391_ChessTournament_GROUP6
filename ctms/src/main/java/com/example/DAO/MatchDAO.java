@@ -53,6 +53,37 @@ public class MatchDAO extends DBContext {
         return queryMatchesByTournament(tournamentId, "Completed");
     }
 
+    /**
+     * Kiểm tra tất cả trận của giải đã hoàn thành chưa.
+     * Trả về true nếu không còn trận nào ở trạng thái Scheduled hoặc Ongoing.
+     */
+    public boolean areAllMatchesCompleted(int tournamentId) {
+        String sql = "SELECT COUNT(*) FROM Matches WHERE tournament_id = ? AND status NOT IN ('Completed', 'Cancelled')";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) == 0;
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
+    /**
+     * Kiểm tra giải có ít nhất 1 trận không (để tránh kết thúc giải rỗng).
+     */
+    public boolean hasMathces(int tournamentId) {
+        String sql = "SELECT COUNT(*) FROM Matches WHERE tournament_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
     public List<Map<String, Object>> getAllPublicMatches() {
         List<Map<String, Object>> list = new ArrayList<>();
         String sql = """

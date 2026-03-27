@@ -154,7 +154,7 @@ CREATE TABLE Tournament_Referee (
 CREATE TABLE Tournament_Approval_Log (
     approval_id INT IDENTITY(1,1) PRIMARY KEY,
     tournament_id INT NOT NULL,
-    staff_id INT NOT NULL,
+    staff_id INT NULL,  -- NULL khi được cập nhật tự động bởi hệ thống
     action NVARCHAR(30) CHECK (action IN ('Approve','Reject','Delay','Start','Complete','Cancel')),
     from_status NVARCHAR(20),
     to_status NVARCHAR(20) CHECK (to_status IN ('Pending','Rejected','Delayed','Ongoing','Completed','Cancelled','Upcoming')),

@@ -796,6 +796,76 @@ if (isBlank(t.getTournamentName())) return false;
      * - Hoàn prizePool cho leader (nếu prizePool > 0)
      * - Hoàn entryFee cho tất cả người chơi đã thanh toán (nếu entryFee > 0)
      */
+    // =========================
+    // COMPLETE TOURNAMENT + DISTRIBUTE PRIZES
+    // =========================
+    /**
+     * Leader kết thúc giải thủ công.
+     * Điều kiện: giải đang Ongoing, tất cả trận đã Completed/Cancelled.
+     * Sau khi kết thúc: cập nhật standings, chuyển status → Completed, chia giải thưởng.
+     * @return null nếu thành công, chuỗi lỗi nếu thất bại
+     */
+    public String completeTournament(int tournamentId, int leaderId) {
+        if (tournamentId <= 0) return "ID giải không hợp lệ";
+
+        TournamentDTO t = tournamentDAO.getTournamentById(tournamentId);
+        if (t == null) return "Không tìm thấy giải đấu";
+        if (!Integer.valueOf(leaderId).equals(t.getCreateBy())) return "Bạn không có quyền kết thúc giải này";
+
+        String currentStatus = t.getStatus();
+        boolean alreadyCompleted = "Completed".equalsIgnoreCase(currentStatus);
+
+        if (!alreadyCompleted && !"Ongoing".equalsIgnoreCase(currentStatus)) {
+            return "Chỉ có thể kết thúc giải đang ở trạng thái Ongoing";
+        }
+
+        if (!matchDAO.areAllMatchesCompleted(tournamentId)) {
+            return "Vẫn còn trận đấu chưa kết thúc. Hãy hoàn thành tất cả các trận trước khi kết thúc giải.";
+        }
+
+        // Nếu giải đã Completed (do scheduler) mà chưa được chia thưởng → chia luôn
+        if (alreadyCompleted && paymentDAO.isPrizesAlreadyDistributed(tournamentId)) {
+            return "Giải đấu đã kết thúc và giải thưởng đã được phân phối trước đó.";
+        }
+
+        // Cập nhật standings
+        try (java.sql.Connection conn = com.example.util.DBContext.getConnection()) {
+            standingDAO.updateStandingsForTournament(conn, tournamentId);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Chuyển status nếu chưa Completed
+        if (!alreadyCompleted) {
+            boolean updated = tournamentDAO.completeTournament(tournamentId);
+            if (!updated) return "Không thể cập nhật trạng thái giải.";
+        }
+
+        // Chia giải thưởng
+        BigDecimal prizePool = t.getPrizePool();
+        if (prizePool != null && prizePool.compareTo(BigDecimal.ZERO) > 0) {
+            boolean distributed = paymentDAO.distributePrizes(tournamentId, prizePool);
+            if (!distributed) {
+                return "Kết thúc giải thành công nhưng chia giải thưởng thất bại. Vui lòng liên hệ quản trị viên.";
+            }
+        }
+
+        // Thông báo cho Staff
+        try {
+            notificationDAO.createNotificationsForRole(
+                "Staff",
+                "Giải đấu đã kết thúc",
+                "Tournament Leader đã kết thúc giải đấu '" + t.getTournamentName() + "'. Giải thưởng đã được phân phối.",
+                "Tournament",
+                "/staff/tournaments"
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null; // thành công
+    }
+
     public boolean cancelTournament(int tournamentId, String reason) {
         if (tournamentId <= 0) return false;
         if (reason == null || reason.trim().isEmpty()) return false;
