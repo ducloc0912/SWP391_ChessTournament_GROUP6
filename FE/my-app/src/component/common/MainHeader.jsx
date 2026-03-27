@@ -1,12 +1,91 @@
 import React from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Bell, Crown, LogOut, Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import {
+  Bell,
+  Crown,
+  LogOut,
+  Menu,
+  X,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
 import axios from "axios";
 import "./MainHeader.css";
 import { API_BASE } from "../../config/api";
 
-function ImageWithFallback({ src, alt = "", className = "", fallback = "https://ui-avatars.com/api/?name=User&background=random" }) {
+function toMillis(value) {
+  const time = new Date(value || 0).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function shortenText(text, max = 80) {
+  const raw = String(text || "").trim();
+  if (!raw) {
+    return "Bạn có một thông báo mới.";
+  }
+  return raw.length > max ? `${raw.slice(0, max)}…` : raw;
+}
+
+function typeLabel(type) {
+  switch (type) {
+    case "TechnicalIssue":
+      return "Lỗi kỹ thuật";
+    case "Other":
+      return "Khác";
+    case "Report":
+      return "Thông báo report";
+    case "TournamentRequest":
+      return "Yêu cầu tạo giải";
+    case "TournamentCancel":
+      return "Hủy giải đấu";
+    case "TournamentApproval":
+      return "Duyệt giải đấu";
+    case "PlayerRegistered":
+      return "Người chơi đăng ký";
+    case "PlayerBanned":
+      return "Bị loại khỏi giải";
+    default:
+      return type || "Thông báo";
+  }
+}
+
+function getNotificationSeenKey(user, role) {
+  const userId = user?.userId || user?.id || "guest";
+  const normalizedRole = String(role || "").trim().toUpperCase() || "USER";
+  return `notifications_last_seen_${normalizedRole}_${userId}`;
+}
+
+function getLastSeenTime(user, role) {
+  try {
+    const key = getNotificationSeenKey(user, role);
+    const raw = localStorage.getItem(key);
+    return raw ? Number(raw) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function setLastSeenTime(user, role, value) {
+  try {
+    const key = getNotificationSeenKey(user, role);
+    localStorage.setItem(key, String(value || 0));
+  } catch {
+    // ignore
+  }
+}
+
+function ImageWithFallback({
+  src,
+  alt = "",
+  className = "",
+  fallback = "https://ui-avatars.com/api/?name=User&background=random",
+}) {
   const [imgSrc, setImgSrc] = React.useState(src);
+
+  React.useEffect(() => {
+    setImgSrc(src);
+  }, [src]);
+
   return (
     <img
       src={imgSrc || fallback}
@@ -17,11 +96,6 @@ function ImageWithFallback({ src, alt = "", className = "", fallback = "https://
   );
 }
 
-/**
- * Header dùng chung cho tất cả các trang (Home, Tournaments, Blog, Profile...).
- * - Logo bên trái, nav giữa, user actions bên phải.
- * - Icon profile: hình tròn, nhỏ (32px).
- */
 export default function MainHeader({
   user,
   onLogout,
@@ -31,61 +105,238 @@ export default function MainHeader({
   sidebarOpen = true,
 }) {
   const navigate = useNavigate();
+
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState([]);
   const [notifOpen, setNotifOpen] = React.useState(false);
+  const [loadingNotif, setLoadingNotif] = React.useState(false);
+
+  const role = React.useMemo(() => {
+    try {
+      return localStorage.getItem("role") || "";
+    } catch {
+      return "";
+    }
+  }, []);
+
+  const [lastSeenAt, setLastSeenAt] = React.useState(() =>
+    getLastSeenTime(user, role),
+  );
+
+  React.useEffect(() => {
+    setLastSeenAt(getLastSeenTime(user, role));
+  }, [user, role]);
+
+  const notifRef = React.useRef(null);
 
   const defaultMenuItems = [
     { to: "/home", label: "Home" },
     { to: "/tournaments", label: "Tournaments" },
     { to: "/blog", label: "Blog" },
   ];
-  const navItems = menuItems && menuItems.length > 0 ? menuItems : defaultMenuItems;
+
+  const navItems =
+    menuItems && menuItems.length > 0 ? menuItems : defaultMenuItems;
 
   const isActive = (path) => {
-    if (path === "/home") return currentPath === "/" || currentPath === "/home";
+    if (path === "/home") {
+      return currentPath === "/" || currentPath === "/home";
+    }
     return currentPath.startsWith(path);
   };
 
   const initials = user
-    ? [user.firstName, user.lastName].filter(Boolean).map((s) => (s || "").charAt(0)).join("").toUpperCase() || "US"
+    ? [user.firstName, user.lastName]
+        .filter(Boolean)
+        .map((s) => (s || "").charAt(0))
+        .join("")
+        .toUpperCase() || "US"
     : "US";
 
   const avatarUrl = user?.avatar;
-  const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=6366f1&color=fff&size=64`;
+  const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    initials,
+  )}&background=6366f1&color=fff&size=64`;
 
-  const unreadCount = React.useMemo(
-    () => notifications.filter((n) => n && n.isRead === false).length,
-    [notifications],
+  const normalizedRole = React.useMemo(() => {
+    return String(role || "")
+      .toUpperCase()
+      .replace(/[\s_]/g, "");
+  }, [role]);
+
+  const latestNotificationTime = React.useMemo(() => {
+    return notifications.reduce((max, item) => {
+      const t = toMillis(item?.createdAt);
+      return t > max ? t : max;
+    }, 0);
+  }, [notifications]);
+
+  const hasUnreadNotifications =
+    notifications.length > 0 && latestNotificationTime > lastSeenAt;
+
+  const markNotificationsAsSeen = React.useCallback(
+    (timeValue) => {
+      const seenTime = timeValue || latestNotificationTime;
+      if (seenTime > 0) {
+        setLastSeenTime(user, role, seenTime);
+        setLastSeenAt(seenTime);
+      }
+    },
+    [latestNotificationTime, role, user],
   );
 
-  React.useEffect(() => {
-    let cancelled = false;
-    const loadNotifications = async () => {
-      if (!user) {
-        setNotifications([]);
-        return;
-      }
-      try {
-        const res = await axios
-          .get(`${API_BASE}/api/notifications?onlyUnread=false`, {
+  const loadNotifications = React.useCallback(async () => {
+    if (!user) {
+      setNotifications([]);
+      return [];
+    }
+
+    try {
+      setLoadingNotif(true);
+
+      let normalized = [];
+
+      if (normalizedRole === "STAFF") {
+        const [reportsResult, notifResult] = await Promise.allSettled([
+          axios.get(`${API_BASE}/api/staff/reports?status=Pending`, {
             withCredentials: true,
-          })
-          .catch(() => null);
-        if (!cancelled) {
-          setNotifications(Array.isArray(res?.data) ? res.data : []);
-        }
-      } catch {
-        if (!cancelled) {
-          setNotifications([]);
-        }
+          }),
+          axios.get(`${API_BASE}/api/notifications?onlyUnread=false`, {
+            withCredentials: true,
+          }),
+        ]);
+
+        const reports = Array.isArray(reportsResult.value?.data)
+          ? reportsResult.value.data
+          : [];
+        const notifs = Array.isArray(notifResult.value?.data)
+          ? notifResult.value.data
+          : [];
+
+        const normalizedReports = reports.map((item) => ({
+          id: `report-${item.reportId}`,
+          title: `Report #${item.reportId} • ${typeLabel(item.type)}`,
+          message: item.description || "Có report mới cần xử lý.",
+          createdAt: item.createAt,
+          actionUrl: "/staff/reports",
+        }));
+
+        const normalizedNotifs = notifs.map((item) => ({
+          id: item.notificationId || item.id,
+          title: item.title || "Thông báo mới",
+          message:
+            item.message || item.description || "Bạn có một thông báo mới.",
+          createdAt: item.createAt || item.createdAt || item.created_date,
+          actionUrl: item.actionUrl || "/staff/dashboard",
+        }));
+
+        normalized = [...normalizedReports, ...normalizedNotifs];
+      } else {
+        const res = await axios.get(
+          `${API_BASE}/api/notifications?onlyUnread=false`,
+          { withCredentials: true },
+        );
+        const data = Array.isArray(res?.data) ? res.data : [];
+        normalized = data.map((item) => ({
+          id: item.notificationId || item.id,
+          title: item.title || "Thông báo mới",
+          message:
+            item.message || item.description || "Bạn có một thông báo mới.",
+          createdAt: item.createAt || item.createdAt || item.created_date,
+          actionUrl: item.actionUrl || null,
+        }));
+      }
+
+      const sorted = [...normalized].sort((a, b) => {
+        return toMillis(b?.createdAt) - toMillis(a?.createdAt);
+      });
+
+      const topItems = sorted.slice(0, 6);
+      setNotifications(topItems);
+      return topItems;
+    } catch {
+      setNotifications([]);
+      return [];
+    } finally {
+      setLoadingNotif(false);
+    }
+  }, [normalizedRole, user]);
+
+  React.useEffect(() => {
+    loadNotifications();
+
+    if (!user) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      loadNotifications();
+    }, 30000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [loadNotifications, user]);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setNotifOpen(false);
       }
     };
-    loadNotifications();
+
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      cancelled = true;
+      document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [user]);
+  }, []);
+
+  const handleToggleNotifications = async () => {
+    if (notifOpen) {
+      setNotifOpen(false);
+      return;
+    }
+
+    const loaded = await loadNotifications();
+
+    const newestTime = loaded.reduce((max, item) => {
+      const t = toMillis(item?.createdAt);
+      return t > max ? t : max;
+    }, 0);
+
+    setNotifOpen(true);
+    markNotificationsAsSeen(newestTime);
+  };
+
+  const handleClickNotificationItem = (item) => {
+    const itemTime = toMillis(item?.createdAt);
+    markNotificationsAsSeen(itemTime);
+    setNotifOpen(false);
+
+    if (item?.actionUrl) {
+      navigate(item.actionUrl);
+    }
+  };
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await axios.post(`${API_BASE}/api/notifications?action=markRead`, {
+        notificationId: id
+      }, { withCredentials: true });
+      setNotifications(prev => prev.map(n => n.notificationId === id ? { ...n, isRead: true } : n));
+    } catch (err) {
+      console.error("Mark as read failed:", err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await axios.post(`${API_BASE}/api/notifications?action=markAllRead`, {}, { withCredentials: true });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error("Mark all as read failed:", err);
+    }
+  };
 
   const handleMenuAction = (item) => {
     if (item.to) {
@@ -93,19 +344,19 @@ export default function MainHeader({
       setMobileOpen(false);
       return;
     }
+
     if (item.sectionId) {
       const el = document.getElementById(item.sectionId);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
       setMobileOpen(false);
     }
   };
 
   let extraItems = [];
-  try {
-    const rawRole = localStorage.getItem("role");
-    const normalizedRole = (rawRole || "").toString().toUpperCase().replace(/[\s_]/g, "");
 
-    // Link riêng cho referee
+  try {
     if (normalizedRole === "REFEREE") {
       extraItems.push(
         { to: "/referee/invitations", label: "Invitations" },
@@ -113,9 +364,10 @@ export default function MainHeader({
       );
     }
 
-    // Nút Report trên header:
-    // - STAFF: dẫn tới trang xử lý system report
-    // - Các role còn lại: dẫn tới trang user gửi/lịch sử report
+    if (normalizedRole === "PLAYER") {
+      extraItems.push({ to: "/player/matches", label: "View Matches Schedule" });
+    }
+
     if (normalizedRole === "STAFF") {
       extraItems.push({ to: "/staff/reports", label: "Report" });
     } else {
@@ -127,6 +379,7 @@ export default function MainHeader({
 
   const fullNavItems = React.useMemo(() => {
     const seen = new Set();
+
     const add = (list, acc) => {
       list.forEach((item) => {
         const key = item.to || item.sectionId || item.label;
@@ -135,11 +388,12 @@ export default function MainHeader({
         acc.push(item);
       });
     };
+
     const merged = [];
     add(navItems, merged);
     add(extraItems, merged);
     return merged;
-  }, [navItems, extraItems]);
+  }, [extraItems, navItems]);
 
   return (
     <header className="header main-header">
@@ -152,11 +406,22 @@ export default function MainHeader({
               onClick={onSidebarToggle}
               aria-label={sidebarOpen ? "Ẩn menu" : "Hiện menu"}
             >
-              {sidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
+              {sidebarOpen ? (
+                <PanelLeftClose size={20} />
+              ) : (
+                <PanelLeftOpen size={20} />
+              )}
             </button>
           )}
-          <div className="logo-wrapper" onClick={() => navigate("/home")} style={{ cursor: "pointer" }}>
-            <div className="logo-icon"><Crown size={16} strokeWidth={2.5} /></div>
+
+          <div
+            className="logo-wrapper"
+            onClick={() => navigate("/home")}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="logo-icon">
+              <Crown size={16} strokeWidth={2.5} />
+            </div>
             <div className="logo-text">
               <span className="logo-title">CHESS ARENA</span>
               <span className="logo-subtitle">TOURNAMENT PLATFORM</span>
@@ -166,17 +431,21 @@ export default function MainHeader({
           <nav className="nav">
             {fullNavItems.map((item, idx) => {
               const key = item.to || item.sectionId || `${item.label}-${idx}`;
+
               if (item.to) {
                 return (
                   <Link
                     key={key}
                     to={item.to}
-                    className={`nav-link ${isActive(item.to) ? "nav-link-active" : ""}`}
+                    className={`nav-link ${
+                      isActive(item.to) ? "nav-link-active" : ""
+                    }`}
                   >
                     {item.label}
                   </Link>
                 );
               }
+
               return (
                 <button
                   key={key}
@@ -194,18 +463,17 @@ export default function MainHeader({
             {user ? (
               <>
                 {(() => {
-                  // Đọc role lưu trong localStorage để hiện nút Dashboard cho các role có trang dashboard
-                  let rawRole = null;
-                  try {
-                    rawRole = localStorage.getItem("role");
-                  } catch {
-                    rawRole = null;
-                  }
-                  const normalizedRole = (rawRole || "").toString().toUpperCase().replace(/[\s_]/g, "");
                   let dashboardPath = null;
-                  if (normalizedRole === "ADMIN") dashboardPath = "/admin/dashboard";
-                  if (normalizedRole === "STAFF") dashboardPath = "/staff/dashboard";
-                  if (normalizedRole === "TOURNAMENTLEADER") dashboardPath = "/leader/tournaments";
+
+                  if (normalizedRole === "ADMIN") {
+                    dashboardPath = "/admin/dashboard";
+                  }
+                  if (normalizedRole === "STAFF") {
+                    dashboardPath = "/staff/dashboard";
+                  }
+                  if (normalizedRole === "TOURNAMENTLEADER") {
+                    dashboardPath = "/leader/tournaments";
+                  }
 
                   return dashboardPath ? (
                     <button
@@ -218,57 +486,115 @@ export default function MainHeader({
                     </button>
                   ) : null;
                 })()}
-                <div className="notification-wrapper">
+
+                <div className="notification-wrapper" ref={notifRef}>
                   <button
                     type="button"
                     className="icon-btn"
                     aria-label="Thông báo"
-                    onClick={() => setNotifOpen((prev) => !prev)}
+                    onClick={handleToggleNotifications}
                   >
                     <Bell size={18} />
-                    {unreadCount > 0 && <span className="notification-dot" />}
+                    {hasUnreadNotifications && (
+                      <span className="notification-dot" />
+                    )}
                   </button>
+
                   {notifOpen && (
                     <div className="notification-dropdown">
-                      {notifications.length === 0 ? (
-                        <div className="notification-empty">Không có thông báo.</div>
+                      <div className="notification-dropdown-title">
+                        {normalizedRole === "STAFF"
+                          ? "Thông báo"
+                          : normalizedRole === "TOURNAMENTLEADER"
+                            ? "Thông báo giải đấu"
+                            : "Thông báo"}
+                      </div>
+
+                      {loadingNotif ? (
+                        <div className="notification-empty">
+                          Đang tải thông báo...
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="notification-empty">
+                          Không có thông báo.
+                        </div>
                       ) : (
                         <ul className="notification-list">
-                          {notifications.slice(0, 6).map((n) => (
-                            <li
-                              key={n.notificationId}
-                              className={`notification-item ${n.isRead ? "read" : "unread"}`}
-                              onClick={() => {
-                                if (n.actionUrl) {
-                                  navigate(n.actionUrl);
-                                  setNotifOpen(false);
-                                }
-                              }}
-                            >
-                              <div className="notification-title">{n.title}</div>
-                              {n.message && (
-                                <div className="notification-message">
-                                  {n.message.length > 80 ? `${n.message.slice(0, 80)}…` : n.message}
+                          {notifications.map((item) => (
+                            <li key={item.id}>
+                              <button
+                                type="button"
+                                className="notification-item-btn"
+                                onClick={() => handleClickNotificationItem(item)}
+                              >
+                                <div className="notification-title">
+                                  {item.title}
                                 </div>
-                              )}
+
+                                <div className="notification-message">
+                                  {shortenText(item.message, 120)}
+                                </div>
+
+                                <div className="notification-time">
+                                  {item.createdAt
+                                    ? new Date(item.createdAt).toLocaleString(
+                                        "vi-VN",
+                                      )
+                                    : ""}
+                                </div>
+                              </button>
                             </li>
                           ))}
                         </ul>
                       )}
+                      <div className="notification-footer" style={{ textAlign: 'center', padding: '10px', borderTop: '1px solid #334155' }}>
+                         <button type="button" style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '13px', cursor: 'pointer' }} onClick={() => navigate('/notifications')}>
+                           Xem tất cả
+                         </button>
+                      </div>
                     </div>
                   )}
                 </div>
-                <div className="user-dropdown" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <div 
+
+                <div
+                  className="user-dropdown"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}
+                >
+                  <div
                     title="Ví của tôi"
-                    style={{ background: 'rgba(255,255,255,0.2)', padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'white', fontWeight: 'bold', fontSize: '14px', border: '1px solid rgba(255,255,255,0.3)' }}
-                    onClick={() => navigate('/wallet')}
+                    style={{
+                      background: "rgba(255,255,255,0.2)",
+                      padding: "6px 12px",
+                      borderRadius: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      cursor: "pointer",
+                      color: "white",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                      border: "1px solid rgba(255,255,255,0.3)",
+                    }}
+                    onClick={() => navigate("/wallet")}
                   >
                     💳 {user.balance ? user.balance.toLocaleString() : "0"}đ
                   </div>
-                  <span style={{ color: "white", fontWeight: "600", fontSize: "14px", marginLeft: "4px" }}>
+
+                  <span
+                    style={{
+                      color: "white",
+                      fontWeight: "600",
+                      fontSize: "14px",
+                      marginLeft: "4px",
+                    }}
+                  >
                     Hi, {user.firstName}
                   </span>
+
                   <button
                     type="button"
                     className="user-btn user-btn--circle"
@@ -282,7 +608,13 @@ export default function MainHeader({
                       fallback={fallbackAvatar}
                     />
                   </button>
-                  <button type="button" className="icon-btn" onClick={onLogout} title="Logout">
+
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    onClick={onLogout}
+                    title="Logout"
+                  >
                     <LogOut size={18} />
                   </button>
                 </div>
@@ -296,6 +628,7 @@ export default function MainHeader({
                 >
                   Sign In
                 </button>
+
                 <button
                   type="button"
                   className="btn btn-sm btn-primary"
@@ -321,18 +654,22 @@ export default function MainHeader({
           <div className="mobile-nav">
             {fullNavItems.map((item, idx) => {
               const key = item.to || item.sectionId || `${item.label}-${idx}`;
+
               if (item.to) {
                 return (
                   <Link
                     key={key}
                     to={item.to}
-                    className={`mobile-nav-link ${isActive(item.to) ? "active" : ""}`}
+                    className={`mobile-nav-link ${
+                      isActive(item.to) ? "active" : ""
+                    }`}
                     onClick={() => setMobileOpen(false)}
                   >
                     {item.label}
                   </Link>
                 );
               }
+
               return (
                 <button
                   key={key}
@@ -350,4 +687,3 @@ export default function MainHeader({
     </header>
   );
 }
-

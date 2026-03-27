@@ -61,7 +61,21 @@ public class ReportService {
             }
 
             dto.setStatus("Pending");
-            return reportDAO.createReport(dto);
+            int newId = reportDAO.createReport(dto);
+            if (newId > 0) {
+                try {
+                    notificationDAO.createNotificationsForRole(
+                            "Staff",
+                            "Có report mới từ người dùng",
+                            "Người dùng vừa gửi một report mới (" + type + "). Vui lòng xem xét và xử lý.",
+                            "Report",
+                            "/staff/reports"
+                    );
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            return newId;
         } catch (IllegalArgumentException e) {
             // Đẩy tiếp cho servlet xử lý và trả message cụ thể cho client
             throw e;

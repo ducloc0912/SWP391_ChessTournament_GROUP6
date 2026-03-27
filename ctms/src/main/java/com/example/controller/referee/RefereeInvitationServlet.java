@@ -1,10 +1,12 @@
 package com.example.controller.referee;
 
+import com.example.DAO.NotificationDAO;
 import com.example.DAO.ParticipantDAO;
 import com.example.DAO.RefereeInvitationDAO;
 import com.example.DAO.TournamentDAO;
 import com.example.DAO.TournamentRefereeDAO;
 import com.example.model.dto.TournamentDTO;
+import com.example.model.entity.Notification;
 import com.example.model.entity.User;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -28,6 +30,7 @@ public class RefereeInvitationServlet extends HttpServlet {
     private TournamentRefereeDAO tournamentRefereeDAO;
     private ParticipantDAO participantDAO;
     private TournamentDAO tournamentDAO;
+    private NotificationDAO notificationDAO;
     private Gson gson;
 
     @Override
@@ -36,6 +39,7 @@ public class RefereeInvitationServlet extends HttpServlet {
         tournamentRefereeDAO = new TournamentRefereeDAO();
         participantDAO = new ParticipantDAO();
         tournamentDAO = new TournamentDAO();
+        notificationDAO = new NotificationDAO();
         gson = new GsonBuilder().setDateFormat("yyyy-MM-dd HH:mm:ss").create();
     }
 
@@ -182,6 +186,21 @@ public class RefereeInvitationServlet extends HttpServlet {
                 "Accepted from invitation"
         );
 
+        if (assigned) {
+            try {
+                TournamentDTO t = tournamentDAO.getTournamentById(tournamentId);
+                String tName = t != null ? t.getTournamentName() : "giải đấu #" + tournamentId;
+                Notification n = new Notification();
+                n.setUserId(userId);
+                n.setType("Tournament");
+                n.setTitle("Bạn được giao làm trọng tài giải đấu");
+                n.setMessage("Bạn đã chấp nhận lời mời và được gán làm trọng tài cho giải đấu '" + tName + "'.");
+                n.setActionUrl("/referee/matches");
+                notificationDAO.createNotification(n);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         result.put("success", assigned);
         result.put("message", assigned
                 ? "Bạn đã chấp nhận lời mời và được gán làm trọng tài của giải."

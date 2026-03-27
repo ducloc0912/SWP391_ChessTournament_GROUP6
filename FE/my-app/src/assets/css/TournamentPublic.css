@@ -27,6 +27,12 @@
   flex-wrap: wrap;
 }
 
+.tp-header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .tp-header-text h1 {
   margin: 0;
   font-size: clamp(28px, 2.4vw, 36px);
@@ -317,6 +323,22 @@
 
 .tp-detail-btn:hover {
   background: #f73748;
+}
+
+.tp-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.tp-card-actions .tp-detail-btn {
+  flex: 1;
+  margin-top: 0;
+}
+
+.tp-detail-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 /* Pagination */

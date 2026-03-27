@@ -119,7 +119,7 @@ export default function MatchesPublic() {
                 {filtered.map((m) => (
                   <tr key={m.matchId}>
                     <td>
-                      {m.whitePlayerName || "TBD"} vs {m.blackPlayerName || "TBD"}
+                      {m.player1Name || "TBD"} vs {m.player2Name || "TBD"}
                     </td>
                     <td>{m.result || "*"}</td>
                     <td>{m.tournamentName || "Tournament"}</td>

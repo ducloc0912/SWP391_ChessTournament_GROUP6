@@ -52,30 +52,12 @@ public class TournamentSetupService {
         Map<String, String> statuses = state.getStepStatuses();
         if (statuses == null) statuses = Map.of();
 
-        if (step != SetupStep.BRACKET) {
-            SetupStep prev = previous(step);
-            if (prev != null && !"FINALIZED".equalsIgnoreCase(statuses.get(prev.name()))) {
-                return ValidationResult.invalid("Bạn cần hoàn tất bước trước (" + prev.name() + ") trước khi finalize bước này.");
-            }
-        }
 
-        int currentOrder = step.order();
-        for (SetupStep s : SetupStep.values()) {
-            if (s == SetupStep.COMPLETED) continue;
-            if (s.order() > currentOrder) {
-                String st = statuses.get(s.name());
-                if ("FINALIZED".equalsIgnoreCase(st)) {
-                    return ValidationResult.invalid(
-                        "Không thể finalize lại bước " + step.name() +
-                        " khi bước " + s.name() + " đã ở trạng thái FINALIZED. Vui lòng dùng chức năng Unlock trước."
-                    );
-                }
-            }
-        }
+
 
         switch (step) {
             case BRACKET:
-                return validateBracketStep(request);
+                return validateBracketStep(tournamentId, request);
             case PLAYERS:
                 return validatePlayersStep(tournamentId, request);
             case SCHEDULE:
@@ -92,10 +74,18 @@ public class TournamentSetupService {
      */
     public ValidationResult finalizeStep(int tournamentId, SetupStep step, TournamentManualSetupRequestDTO request, Integer userId) {
         ValidationResult validation = validateBeforeFinalize(tournamentId, step, request);
-        if (!validation.isValid()) return validation;
-
-        TournamentSetupStateDTO before = getSetupState(tournamentId);
-        String beforeJson = gson.toJson(before);
+        
+        if (!validation.isValid()) {
+            // Revert this step to DRAFT if it was finalized before but now is invalid
+            TournamentSetupStateDTO state = getSetupState(tournamentId);
+            if (state != null && state.getStepStatuses() != null) {
+                String currentStatus = state.getStepStatuses().get(step.name());
+                if ("FINALIZED".equalsIgnoreCase(currentStatus)) {
+                    setupDAO.unlockStep(tournamentId, step, userId);
+                }
+            }
+            return validation;
+        }
 
         if (step == SetupStep.BRACKET || step == SetupStep.PLAYERS || step == SetupStep.SCHEDULE) {
             if (request != null) {
@@ -112,10 +102,8 @@ public class TournamentSetupService {
             setupDAO.ensureSetupStateRow(tournamentId);
             ok = setupDAO.finalizeStep(tournamentId, step, userId);
         }
-        if (!ok) return ValidationResult.invalid("Không thể cập nhật trạng thái bước. Kiểm tra bảng Tournament_Setup_State đã có dòng cho giải này chưa (chạy scripts/ensure_tournament_setup_state_rows.sql).");
+        if (!ok) return ValidationResult.invalid("Không thể cập nhật trạng thái bước.");
 
-        TournamentSetupStateDTO after = getSetupState(tournamentId);
-        setupDAO.insertAuditLog(tournamentId, step.name(), "FINALIZE", beforeJson, gson.toJson(after), userId);
         return ValidationResult.valid();
     }
 
@@ -141,28 +129,6 @@ public class TournamentSetupService {
         return TournamentService.SetupValidationResult.invalid("Step không hợp lệ.");
     }
 
-    // ==================== UNLOCK ====================
-
-    /**
-     * Unlock bước K: set bước K và các bước sau về DRAFT, current_step = bước K. Ghi audit log.
-     */
-    public ValidationResult unlockStep(int tournamentId, SetupStep step, Integer userId) {
-        if (tournamentId <= 0 || step == null) {
-            return ValidationResult.invalid("Invalid tournament or step.");
-        }
-        if (step == SetupStep.COMPLETED) {
-            step = SetupStep.REFEREES;
-        }
-        setupDAO.ensureSetupStateRow(tournamentId);
-        TournamentSetupStateDTO before = getSetupState(tournamentId);
-        String beforeJson = gson.toJson(before);
-        boolean ok = setupDAO.unlockStep(tournamentId, step, userId);
-        if (!ok) return ValidationResult.invalid("Không thể mở khóa bước.");
-        TournamentSetupStateDTO after = getSetupState(tournamentId);
-        setupDAO.insertAuditLog(tournamentId, step.name(), "UNLOCK", beforeJson, gson.toJson(after), userId);
-        return ValidationResult.valid();
-    }
-
     // ==================== VALIDATION HELPERS ====================
 
     private SetupStep previous(SetupStep step) {
@@ -174,7 +140,7 @@ public class TournamentSetupService {
         }
     }
 
-    private ValidationResult validateBracketStep(TournamentManualSetupRequestDTO request) {
+    private ValidationResult validateBracketStep(int tournamentId, TournamentManualSetupRequestDTO request) {
         if (request == null) return ValidationResult.invalid("Thiếu dữ liệu.");
         String format = tournamentService.getNormalizedFormat(request.getFormat());
         if (format == null) return ValidationResult.invalid("Thể thức không hợp lệ. Chỉ hỗ trợ RoundRobin, KnockOut.");
@@ -182,8 +148,75 @@ public class TournamentSetupService {
         if (matches == null || matches.isEmpty()) {
             return ValidationResult.invalid("Bạn chưa dựng structure bracket.");
         }
+        ValidationResult roundRobinValidation = validateRoundRobinStructureLimits(tournamentId, format, matches);
+        if (!roundRobinValidation.isValid()) {
+            return roundRobinValidation;
+        }
+        if ("KnockOut".equals(format)) {
+            ValidationResult koValidation = validateKnockOutStructureLimits(tournamentId, matches);
+            if (!koValidation.isValid()) return koValidation;
+        }
         TournamentService.SetupValidationResult r = tournamentService.validateStructureStepInternal(format, matches);
         return r.isValid() ? ValidationResult.valid() : ValidationResult.invalid(r.getMessage());
+    }
+
+    private ValidationResult validateKnockOutStructureLimits(int tournamentId, List<TournamentSetupMatchDTO> matches) {
+        int approvedPlayers = setupDAO.getParticipantUserIds(tournamentId).size();
+        if (approvedPlayers < 8) {
+            return ValidationResult.invalid("Cần ít nhất 8 người chơi đã duyệt để tạo bracket KnockOut.");
+        }
+        int bracketSize = nextPowerOf2(approvedPlayers);
+        int numRounds = (int) (Math.log(bracketSize) / Math.log(2));
+        int requiredMatches = bracketSize - 1;
+
+        List<TournamentSetupMatchDTO> koMatches = matches.stream()
+                .filter(m -> "KnockOut".equalsIgnoreCase(String.valueOf(m.getStage())))
+                .collect(java.util.stream.Collectors.toList());
+        long koMatchCount = koMatches.size();
+
+        if (koMatchCount < requiredMatches) {
+            return ValidationResult.invalid("Bracket KnockOut với " + approvedPlayers + " người chơi cần đủ " + requiredMatches
+                    + " trận (bracket size " + bracketSize + "), nhưng hiện chỉ có " + koMatchCount + " trận. Vui lòng dùng Auto Structure hoặc thêm đủ trận.");
+        }
+        if (koMatchCount > requiredMatches) {
+            return ValidationResult.invalid("Bracket KnockOut với " + approvedPlayers + " người chơi chỉ được " + requiredMatches
+                    + " trận (bracket size " + bracketSize + "), nhưng hiện có " + koMatchCount + " trận.");
+        }
+
+        // Validate số trận mỗi round = bracketSize / 2^K
+        java.util.Map<Integer, Long> matchesPerRound = koMatches.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        m -> m.getRoundIndex() == null ? 1 : m.getRoundIndex(),
+                        java.util.stream.Collectors.counting()));
+        for (java.util.Map.Entry<Integer, Long> entry : matchesPerRound.entrySet()) {
+            int ri = entry.getKey();
+            long cnt = entry.getValue();
+            if (ri < 1 || ri > numRounds) {
+                return ValidationResult.invalid("Round index " + ri + " không hợp lệ cho bracket KnockOut " + bracketSize + " người (tối đa " + numRounds + " round).");
+            }
+            long expected = bracketSize / (long) Math.pow(2, ri);
+            if (cnt != expected) {
+                return ValidationResult.invalid("Round " + ri + " của Knock Out phải có đúng " + expected + " trận (hiện có " + cnt + ").");
+            }
+        }
+
+        // Validate round indices liên tục từ 1
+        java.util.List<Integer> roundIndices = new java.util.ArrayList<>(matchesPerRound.keySet());
+        java.util.Collections.sort(roundIndices);
+        for (int i = 0; i < roundIndices.size(); i++) {
+            if (roundIndices.get(i) != i + 1) {
+                return ValidationResult.invalid("Round index của Knock Out phải liên tục từ 1 (thiếu round " + (i + 1) + ").");
+            }
+        }
+
+        return ValidationResult.valid();
+    }
+
+    private static int nextPowerOf2(int n) {
+        if (n <= 1) return 1;
+        int p = 1;
+        while (p < n) p *= 2;
+        return p;
     }
 
     private ValidationResult validatePlayersStep(int tournamentId, TournamentManualSetupRequestDTO request) {
@@ -208,6 +241,61 @@ public class TournamentSetupService {
     }
 
     private ValidationResult validateRefereesStep(int tournamentId) {
+        TournamentSetupStateDTO state = getSetupState(tournamentId);
+        if (state == null || state.getStepStatuses() == null
+                || !"FINALIZED".equalsIgnoreCase(state.getStepStatuses().get("SCHEDULE"))) {
+            return ValidationResult.invalid("Bạn cần hoàn tất bước Schedule (Finalize Schedule) trước khi Finalize bước Referee.");
+        }
+        int assignedCount = setupDAO.getAssignedRefereeCount(tournamentId);
+        if (assignedCount == 0) {
+            return ValidationResult.invalid("Vui lòng phân công ít nhất một trọng tài cho các trận đấu trước khi Finalize.");
+        }
+        return ValidationResult.valid();
+    }
+
+    private ValidationResult validateRoundRobinStructureLimits(int tournamentId, String format, List<TournamentSetupMatchDTO> matches) {
+        if (!"RoundRobin".equals(format)) {
+            return ValidationResult.valid();
+        }
+
+        int approvedPlayers = setupDAO.getParticipantUserIds(tournamentId).size();
+        if (approvedPlayers <= 0) {
+            return ValidationResult.invalid("Không thể tính giới hạn Round Robin vì chưa có người chơi đã duyệt.");
+        }
+
+        int maxRounds = approvedPlayers % 2 == 0 ? approvedPlayers - 1 : approvedPlayers;
+        int maxMatchesPerRound = approvedPlayers % 2 == 0 ? approvedPlayers / 2 : (approvedPlayers - 1) / 2;
+        int maxTotalMatches = approvedPlayers * (approvedPlayers - 1) / 2;
+
+        java.util.Set<Integer> rounds = new java.util.HashSet<>();
+        java.util.Map<Integer, Integer> matchesByRound = new java.util.HashMap<>();
+        int totalMatches = 0;
+
+        for (TournamentSetupMatchDTO match : matches) {
+            String stage = String.valueOf(match.getStage() == null ? format : match.getStage()).trim();
+            if (!"RoundRobin".equalsIgnoreCase(stage) && !"Round Robin".equalsIgnoreCase(stage)) {
+                continue;
+            }
+            int roundIndex = match.getRoundIndex() == null ? 1 : match.getRoundIndex();
+            rounds.add(roundIndex);
+            matchesByRound.merge(roundIndex, 1, Integer::sum);
+            totalMatches++;
+        }
+
+        if (rounds.size() > maxRounds) {
+            return ValidationResult.invalid("Round Robin chỉ được tối đa " + maxRounds + " round với " + approvedPlayers + " người chơi đã duyệt, nhưng hiện có " + rounds.size() + " round.");
+        }
+        for (Map.Entry<Integer, Integer> entry : matchesByRound.entrySet()) {
+            if (entry.getValue() > maxMatchesPerRound) {
+                return ValidationResult.invalid("Round " + entry.getKey() + " chỉ được tối đa " + maxMatchesPerRound + " trận với " + approvedPlayers + " người chơi đã duyệt, nhưng hiện có " + entry.getValue() + " trận.");
+            }
+        }
+        if (totalMatches < maxTotalMatches) {
+            return ValidationResult.invalid("Round Robin yêu cầu đủ " + maxTotalMatches + " trận với " + approvedPlayers + " người chơi đã duyệt (hiện mới có " + totalMatches + " trận). Vui lòng thêm đủ trận trước khi Finalize.");
+        }
+        if (totalMatches > maxTotalMatches) {
+            return ValidationResult.invalid("Round Robin chỉ được tối đa " + maxTotalMatches + " trận với " + approvedPlayers + " người chơi đã duyệt, nhưng hiện có " + totalMatches + " trận.");
+        }
         return ValidationResult.valid();
     }
 

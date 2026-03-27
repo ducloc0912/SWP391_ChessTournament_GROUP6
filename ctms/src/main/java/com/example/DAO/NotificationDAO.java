@@ -41,6 +41,30 @@ public class NotificationDAO extends DBContext {
         }
     }
 
+    public void createNotificationsForRole(String roleName, String title, String message, String type, String actionUrl) throws SQLException {
+        String findUsersSql = """
+                SELECT u.user_id FROM Users u
+                JOIN User_Role ur ON u.user_id = ur.user_id
+                JOIN Roles r ON ur.role_id = r.role_id
+                WHERE LOWER(r.role_name) = LOWER(?)
+                """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(findUsersSql)) {
+            ps.setString(1, roleName);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Notification n = new Notification();
+                    n.setTitle(title);
+                    n.setMessage(message);
+                    n.setType(type);
+                    n.setActionUrl(actionUrl);
+                    n.setUserId(rs.getInt("user_id"));
+                    createNotification(n);
+                }
+            }
+        }
+    }
+
     public List<Notification> getNotificationsForUser(Integer userId, boolean onlyUnread) throws SQLException {
         List<Notification> list = new ArrayList<>();
         String sql = """
@@ -74,6 +98,61 @@ public class NotificationDAO extends DBContext {
             }
         }
         return list;
+    }
+
+    public boolean markAsRead(int notificationId) {
+        String sql = "UPDATE Notification SET is_read=1 WHERE notification_id=?";
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, notificationId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean markAllAsRead(int userId) {
+        String sql = "UPDATE Notification SET is_read=1 WHERE user_id=? AND is_read=0";
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public void bulkCreateNotifications(List<Integer> userIds, Notification template) throws SQLException {
+        if (userIds == null || userIds.isEmpty()) return;
+        String sql = """
+                INSERT INTO Notification (title, message, type, action_url, is_read, create_at, user_id)
+                VALUES (?, ?, ?, ?, 0, GETDATE(), ?)
+                """;
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                for (Integer userId : userIds) {
+                    ps.setString(1, template.getTitle());
+                    ps.setString(2, template.getMessage());
+                    ps.setString(3, template.getType());
+                    ps.setString(4, template.getActionUrl());
+                    if (userId != null) {
+                        ps.setInt(5, userId);
+                    } else {
+                        ps.setNull(5, java.sql.Types.INTEGER);
+                    }
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
     }
 }
 

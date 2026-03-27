@@ -685,3 +685,144 @@ textarea.form-control {
     flex-direction: column;
   }
 }
+
+/* ===== APPROVAL MODAL — REDESIGN ===== */
+
+.approval-section-title {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--primary);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* Info cards grid */
+.approval-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.approval-info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-left: 3px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.approval-info-card.highlight {
+  border-left-color: var(--primary);
+  background: #fff5f5;
+}
+
+.approval-info-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+}
+
+.approval-info-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+/* Timeline */
+.approval-timeline {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 24px;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+}
+
+.timeline-connector {
+  width: 2px;
+  height: 8px;
+  background: var(--border);
+  margin-left: 18px;
+}
+
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-reg   { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.2); }
+.dot-start { background: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.2); }
+.dot-end   { background: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
+
+.timeline-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 130px;
+}
+
+.timeline-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+/* Action area */
+.approval-action-area {
+  margin-top: 20px;
+  padding: 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-top: 3px solid var(--primary);
+}
+
+/* Management modal action buttons — horizontal wrap layout */
+.mgmt-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.mgmt-action-buttons .btn-primary,
+.mgmt-action-buttons .btn-secondary {
+  flex: 1 1 160px;
+  min-width: 140px;
+}
+
+@media (max-width: 640px) {
+  .approval-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-label {
+    min-width: 100px;
+  }
+
+  .mgmt-action-buttons {
+    flex-direction: column;
+  }
+
+  .mgmt-action-buttons .btn-primary,
+  .mgmt-action-buttons .btn-secondary {
+    flex: unset;
+    width: 100%;
+  }
+}
