@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import MainHeader from "../../component/common/MainHeader";
 import "../../assets/css/HomePage.css";
+import "../../assets/css/tournament-leader/TournamentDetail.css";
 import "../../assets/css/TournamentDetailPublic.css";
 import "../../assets/css/tournament-leader.css";
 import "../../assets/css/tournament-leader/TournamentSetupTab.css";
@@ -475,10 +476,7 @@ const TournamentDetail = () => {
         {/* Tab Content */}
         <div className="td-tab-content tdp-tab-content-wrap">
           {activeTab === 0 && (
-            <OverviewTab
-              tournament={tournament}
-              onTournamentUpdated={fetchTournament}
-            />
+            <OverviewTab tournament={tournament} />
           )}
           {activeTab === 1 && (
             <WaitingListTab
@@ -575,125 +573,20 @@ const fmt = (raw) => {
   return raw.split(" ")[0].replaceAll("-", "/");
 };
 
-const InlineEditBlock = ({
-  label,
-  fieldKey,
-  value,
-  editingField,
-  editDraft,
-  setEditDraft,
-  onStartEdit,
-  onSave,
-  onCancel,
-  saving,
-}) => (
+const InlineEditBlock = ({ label, value }) => (
   <div className="td-overview-inline-block">
     <div className="td-overview-inline-head">
       <label>{label}</label>
-      {editingField !== fieldKey ? (
-        <button
-          type="button"
-          className="td-overview-inline-edit-btn"
-          onClick={() => onStartEdit(fieldKey)}
-        >
-          <Edit2 size={14} /> Sửa
-        </button>
-      ) : null}
     </div>
-    {editingField === fieldKey ? (
-      <div className="td-overview-inline-edit">
-        <textarea
-          autoFocus
-          value={editDraft}
-          onChange={(e) => setEditDraft(e.target.value)}
-          rows={fieldKey === "description" ? 4 : 5}
-          placeholder={
-            fieldKey === "description" ? "Mô tả giải đấu..." : "Luật thi đấu..."
-          }
-        />
-        <div className="td-overview-inline-actions">
-          <button
-            type="button"
-            className="td-overview-btn td-overview-btn-primary"
-            disabled={saving}
-            onClick={() => onSave(fieldKey, editDraft)}
-          >
-            {saving ? "Đang lưu..." : "Lưu"}
-          </button>
-          <button
-            type="button"
-            className="td-overview-btn td-overview-btn-outline"
-            onClick={onCancel}
-          >
-            Hủy
-          </button>
-        </div>
-      </div>
-    ) : (
-      <div className="td-overview-inline-view">
-        {value || "Chưa có nội dung."}
-      </div>
-    )}
+    <div className="td-overview-inline-view">
+      {value || "Chưa có nội dung."}
+    </div>
   </div>
 );
 
-const OverviewTab = ({ tournament, onTournamentUpdated }) => {
-  const [description, setDescription] = useState(tournament.description || "");
-  const [rules, setRules] = useState(tournament.rules || "");
-  const [savingOverview, setSavingOverview] = useState(false);
-  const [editingField, setEditingField] = useState(null);
-  const [editDraft, setEditDraft] = useState("");
-
-  useEffect(() => {
-    setDescription(tournament.description || "");
-    setRules(tournament.rules || "");
-  }, [tournament]);
-
-  const handleSaveOverview = async (field, value) => {
-    setSavingOverview(true);
-    try {
-      const payload = {
-        tournamentId: tournament.tournamentId,
-        tournamentName: tournament.tournamentName,
-        description: field === "description" ? value : description,
-        rules: field === "rules" ? value : rules,
-        notes: tournament.notes || null,
-        tournamentImage: tournament.tournamentImage,
-        location: tournament.location,
-        format: tournament.format,
-        maxPlayer: Number(tournament.maxPlayer) || 0,
-        minPlayer: Number(tournament.minPlayer) || 0,
-        entryFee: Number(tournament.entryFee) || 0,
-        prizePool: Number(tournament.prizePool) || 0,
-        registrationDeadline: tournament.registrationDeadline || null,
-        startDate: tournament.startDate || null,
-        endDate: tournament.endDate || null,
-      };
-      await axios.put(
-        `${API_BASE}/api/tournaments?id=${tournament.tournamentId}`,
-        payload,
-        { withCredentials: true },
-      );
-      if (field === "description") setDescription(value);
-      if (field === "rules") setRules(value);
-      setEditingField(null);
-      await onTournamentUpdated?.();
-    } catch (err) {
-      alert(err?.response?.data?.message || "Lưu thất bại.");
-    } finally {
-      setSavingOverview(false);
-    }
-  };
-
-  const startEdit = (field) => {
-    setEditDraft(field === "description" ? description : rules);
-    setEditingField(field);
-  };
-
-  const cancelEdit = () => {
-    setEditingField(null);
-    setEditDraft("");
-  };
+const OverviewTab = ({ tournament }) => {
+  const description = tournament.description || "";
+  const rules = tournament.rules || "";
 
   const progressPct =
     tournament.maxPlayer > 0
@@ -765,82 +658,40 @@ const OverviewTab = ({ tournament, onTournamentUpdated }) => {
           <article className="tdp-card tdp-overview-card">
             <h2>{tournament.tournamentName || "Tournament"} overview</h2>
             <div className="tdp-desc">
-              <InlineEditBlock
-                label="Mô tả"
-                fieldKey="description"
-                value={description}
-                editingField={editingField}
-                editDraft={editDraft}
-                setEditDraft={setEditDraft}
-                onStartEdit={startEdit}
-                onSave={handleSaveOverview}
-                onCancel={cancelEdit}
-                saving={savingOverview}
-              />
+              <InlineEditBlock label="Mô tả" value={description} />
             </div>
             <div className="tdp-placement-rewards">
               <h4>Giải thưởng theo thứ hạng</h4>
-              <ul>
-                <li>
-                  <span className="tdp-medal tdp-medal-gold" />
-                  <div>
-                    <strong>1st Place</strong>
-                    <span>
-                      {formatMoney(
-                        tournament.prizePool
-                          ? Math.round(tournament.prizePool * 0.5)
-                          : 0,
-                      )}{" "}
-                      VND
-                    </span>
-                  </div>
-                </li>
-                <li>
-                  <span className="tdp-medal tdp-medal-silver" />
-                  <div>
-                    <strong>2nd Place</strong>
-                    <span>
-                      {formatMoney(
-                        tournament.prizePool
-                          ? Math.round(tournament.prizePool * 0.3)
-                          : 0,
-                      )}{" "}
-                      VND
-                    </span>
-                  </div>
-                </li>
-                <li>
-                  <span className="tdp-medal tdp-medal-bronze" />
-                  <div>
-                    <strong>3rd Place</strong>
-                    <span>
-                      {formatMoney(
-                        tournament.prizePool
-                          ? Math.round(tournament.prizePool * 0.2)
-                          : 0,
-                      )}{" "}
-                      VND
-                    </span>
-                  </div>
-                </li>
-              </ul>
+              {Array.isArray(tournament.prizeTiers) && tournament.prizeTiers.length > 0 ? (
+                <ul>
+                  {tournament.prizeTiers.map((tier, idx) => {
+                    const medalClass =
+                      idx === 0 ? "tdp-medal-gold"
+                      : idx === 1 ? "tdp-medal-silver"
+                      : idx === 2 ? "tdp-medal-bronze"
+                      : "tdp-medal-bronze";
+                    return (
+                      <li key={idx}>
+                        <span className={`tdp-medal ${medalClass}`} />
+                        <div>
+                          <strong>{tier.label || `Hạng ${tier.rankPosition ?? idx + 1}`}</strong>
+                          <span>
+                            {formatMoney(tier.fixedAmount ?? 0)} VND
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p style={{ color: "#9ca3af", fontSize: 14 }}>Chưa thiết lập giải thưởng.</p>
+              )}
             </div>
           </article>
 
           <article className="tdp-card tdp-event-phases">
             <h3>Event Phases</h3>
-            <InlineEditBlock
-              label="Luật & Quy định"
-              fieldKey="rules"
-              value={rules}
-              editingField={editingField}
-              editDraft={editDraft}
-              setEditDraft={setEditDraft}
-              onStartEdit={startEdit}
-              onSave={handleSaveOverview}
-              onCancel={cancelEdit}
-              saving={savingOverview}
-            />
+            <InlineEditBlock label="Luật & Quy định" value={rules} />
             <div className="tdp-phase-block">
               <h4>Giai đoạn thi đấu</h4>
               <p>
@@ -3997,6 +3848,7 @@ const RefereeTab = ({ tournamentId }) => {
     phoneNumber: "",
     address: "",
   });
+  const [createErrors, setCreateErrors] = useState({});
 
   // Tính năng mời trọng tài qua email hiện tạm thời tắt – các handler chỉ hiển thị thông báo.
   const handleInviteByEmail = () => {
@@ -4093,17 +3945,31 @@ const RefereeTab = ({ tournamentId }) => {
     }
   };
 
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+    setCreateErrors({});
+    setCreateForm({ firstName: "", lastName: "", email: "", phoneNumber: "", address: "" });
+  };
+
   const handleCreateReferee = async () => {
     const { firstName, lastName, email, phoneNumber } = createForm;
-    if (
-      !firstName?.trim() ||
-      !lastName?.trim() ||
-      !email?.trim() ||
-      !phoneNumber?.trim()
-    ) {
-      alert("Vui lòng điền đầy đủ Họ, Tên, Email và Số điện thoại.");
+    const nameRegex = /^[a-zA-ZÀ-ỹ\s]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^0\d{9}$/;
+    const errors = {};
+    if (!firstName?.trim()) errors.firstName = "Vui lòng nhập Họ.";
+    else if (!nameRegex.test(firstName.trim())) errors.firstName = "Họ không được chứa số hoặc ký tự đặc biệt.";
+    if (!lastName?.trim()) errors.lastName = "Vui lòng nhập Tên.";
+    else if (!nameRegex.test(lastName.trim())) errors.lastName = "Tên không được chứa số hoặc ký tự đặc biệt.";
+    if (!email?.trim()) errors.email = "Vui lòng nhập Email.";
+    else if (!emailRegex.test(email.trim())) errors.email = "Email không hợp lệ.";
+    if (!phoneNumber?.trim()) errors.phoneNumber = "Vui lòng nhập Số điện thoại.";
+    else if (!phoneRegex.test(phoneNumber.trim())) errors.phoneNumber = "Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng 0.";
+    if (Object.keys(errors).length > 0) {
+      setCreateErrors(errors);
       return;
     }
+    setCreateErrors({});
     setCreating(true);
     try {
       const res = await axios.post(
@@ -4118,14 +3984,7 @@ const RefereeTab = ({ tournamentId }) => {
         { withCredentials: true },
       );
       const created = res?.data?.referee;
-      setShowCreateModal(false);
-      setCreateForm({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phoneNumber: "",
-        address: "",
-      });
+      closeCreateModal();
       await fetchReferees();
       if (created?.refereeId != null && tournamentId) {
         try {
@@ -4215,6 +4074,7 @@ const RefereeTab = ({ tournamentId }) => {
                   {[r.firstName, r.lastName].filter(Boolean).join(" ") || "—"}
                 </h4>
                 <p className="referee-email">{r.email || "—"}</p>
+                <p className="referee-phone">{r.phoneNumber || "—"}</p>
                 <span className="referee-role-badge">
                   {r.refereeRole || "Assistant"}
                 </span>
@@ -4323,7 +4183,7 @@ const RefereeTab = ({ tournamentId }) => {
       {showCreateModal && (
         <div
           className="modal-overlay"
-          onClick={() => setShowCreateModal(false)}
+          onClick={closeCreateModal}
         >
           <div
             className="modal td-modal-wide"
@@ -4341,15 +4201,14 @@ const RefereeTab = ({ tournamentId }) => {
                   </label>
                   <input
                     type="text"
-                    placeholder="Nguyễn"
                     value={createForm.firstName}
-                    onChange={(e) =>
-                      setCreateForm((p) => ({
-                        ...p,
-                        firstName: e.target.value,
-                      }))
-                    }
+                    className={createErrors.firstName ? "input-error" : ""}
+                    onChange={(e) => {
+                      setCreateForm((p) => ({ ...p, firstName: e.target.value }));
+                      setCreateErrors((p) => ({ ...p, firstName: undefined }));
+                    }}
                   />
+                  {createErrors.firstName && <span className="field-error">{createErrors.firstName}</span>}
                 </div>
                 <div className="td-referee-field">
                   <label>
@@ -4357,12 +4216,14 @@ const RefereeTab = ({ tournamentId }) => {
                   </label>
                   <input
                     type="text"
-                    placeholder="Văn A"
                     value={createForm.lastName}
-                    onChange={(e) =>
-                      setCreateForm((p) => ({ ...p, lastName: e.target.value }))
-                    }
+                    className={createErrors.lastName ? "input-error" : ""}
+                    onChange={(e) => {
+                      setCreateForm((p) => ({ ...p, lastName: e.target.value }));
+                      setCreateErrors((p) => ({ ...p, lastName: undefined }));
+                    }}
                   />
+                  {createErrors.lastName && <span className="field-error">{createErrors.lastName}</span>}
                 </div>
                 <div className="td-referee-field">
                   <label>
@@ -4370,12 +4231,14 @@ const RefereeTab = ({ tournamentId }) => {
                   </label>
                   <input
                     type="email"
-                    placeholder="referee@example.com"
                     value={createForm.email}
-                    onChange={(e) =>
-                      setCreateForm((p) => ({ ...p, email: e.target.value }))
-                    }
+                    className={createErrors.email ? "input-error" : ""}
+                    onChange={(e) => {
+                      setCreateForm((p) => ({ ...p, email: e.target.value }));
+                      setCreateErrors((p) => ({ ...p, email: undefined }));
+                    }}
                   />
+                  {createErrors.email && <span className="field-error">{createErrors.email}</span>}
                 </div>
                 <div className="td-referee-field">
                   <label>
@@ -4383,33 +4246,21 @@ const RefereeTab = ({ tournamentId }) => {
                   </label>
                   <input
                     type="tel"
-                    placeholder="0901234567"
                     value={createForm.phoneNumber}
-                    onChange={(e) =>
-                      setCreateForm((p) => ({
-                        ...p,
-                        phoneNumber: e.target.value,
-                      }))
-                    }
+                    className={createErrors.phoneNumber ? "input-error" : ""}
+                    onChange={(e) => {
+                      setCreateForm((p) => ({ ...p, phoneNumber: e.target.value }));
+                      setCreateErrors((p) => ({ ...p, phoneNumber: undefined }));
+                    }}
                   />
-                </div>
-                <div className="td-referee-field td-referee-field-full">
-                  <label>Địa chỉ</label>
-                  <input
-                    type="text"
-                    placeholder="Địa chỉ (không bắt buộc)"
-                    value={createForm.address}
-                    onChange={(e) =>
-                      setCreateForm((p) => ({ ...p, address: e.target.value }))
-                    }
-                  />
+                  {createErrors.phoneNumber && <span className="field-error">{createErrors.phoneNumber}</span>}
                 </div>
               </div>
             </div>
             <div className="modal-actions">
               <button
                 className="btn-cancel ui-btn ui-btn-secondary"
-                onClick={() => setShowCreateModal(false)}
+                onClick={closeCreateModal}
               >
                 Hủy
               </button>

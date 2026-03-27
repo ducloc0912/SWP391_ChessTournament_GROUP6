@@ -1,5 +1,6 @@
 package com.example.model.dto;
 
+import com.example.model.entity.PrizeTemplate;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
@@ -30,6 +31,7 @@ public class TournamentDTO {
     private int currentPlayers;
     private List<String> tournamentImages;
     private Boolean bracketPublished;
+    private List<PrizeTemplate> prizeTiers;
 
     public Integer getTournamentId() { return tournamentId; }
     public void setTournamentId(Integer tournamentId) { this.tournamentId = tournamentId; }
@@ -73,4 +75,6 @@ public class TournamentDTO {
     public void setTournamentImages(List<String> tournamentImages) { this.tournamentImages = tournamentImages; }
     public Boolean getBracketPublished() { return bracketPublished; }
     public void setBracketPublished(Boolean bracketPublished) { this.bracketPublished = bracketPublished; }
+    public List<PrizeTemplate> getPrizeTiers() { return prizeTiers; }
+    public void setPrizeTiers(List<PrizeTemplate> prizeTiers) { this.prizeTiers = prizeTiers; }
 }

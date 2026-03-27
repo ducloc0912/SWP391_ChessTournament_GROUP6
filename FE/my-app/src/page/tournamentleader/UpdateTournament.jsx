@@ -11,6 +11,8 @@ import {
   FileText,
   RotateCw,
   Zap,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import "../../assets/css/tournament-leader/TournamentForm.css";
 
@@ -71,23 +73,31 @@ export default function UpdateTournamentPage() {
     endDate: "",
     notes: "",
     autoApprove: true,
+    prizeTiers: [{ rankPosition: 1, amount: "" }],
   });
 
   useEffect(() => {
     const loadAll = async () => {
       try {
         const [tourRes, filterRes] = await Promise.all([
-          axios.get(
-            `${API_BASE}/api/tournaments?id=${id}`,
-            { withCredentials: true }
-          ),
-          axios.get(
-            `${API_BASE}/api/tournaments?action=filters`,
-            { withCredentials: true }
-          ),
+          axios.get(`${API_BASE}/api/tournaments?id=${id}`, {
+            withCredentials: true,
+          }),
+          axios.get(`${API_BASE}/api/tournaments?action=filters`, {
+            withCredentials: true,
+          }),
         ]);
 
         const t = tourRes.data;
+
+        const prizeTiers =
+          Array.isArray(t.prizeTiers) && t.prizeTiers.length > 0
+            ? t.prizeTiers.map((pt) => ({
+                rankPosition: pt.rankPosition ?? pt.rank_position ?? 1,
+                amount: String(pt.fixedAmount ?? pt.fixed_amount ?? pt.amount ?? ""),
+              }))
+            : [{ rankPosition: 1, amount: "" }];
+
         setFormData({
           tournamentName: t.tournamentName || "",
           format: t.format || "",
@@ -105,9 +115,12 @@ export default function UpdateTournamentPage() {
           endDate: t.endDate ? t.endDate.slice(0, 10) : "",
           notes: t.notes || "",
           autoApprove: true,
+          prizeTiers,
         });
 
-        setFormats((filterRes.data.formats || []).filter((f) => f !== "Hybrid"));
+        setFormats(
+          (filterRes.data.formats || []).filter((f) => f !== "Hybrid"),
+        );
       } catch (err) {
         console.error("Error loading tournament:", err);
       } finally {
@@ -142,12 +155,8 @@ export default function UpdateTournamentPage() {
           return setError("Ngày bắt đầu không được là ngày trong quá khứ."), false;
         if (formData.endDate < today)
           return setError("Ngày kết thúc không được là ngày trong quá khứ."), false;
-        if (
-          formData.registrationDeadline >= formData.startDate
-        )
-          return (
-            setError("Hạn đăng ký phải trước ngày bắt đầu."), false
-          );
+        if (formData.registrationDeadline >= formData.startDate)
+          return setError("Hạn đăng ký phải trước ngày bắt đầu."), false;
         if (formData.startDate >= formData.endDate)
           return setError("Ngày bắt đầu phải trước ngày kết thúc."), false;
         return true;
@@ -155,18 +164,21 @@ export default function UpdateTournamentPage() {
         const limits = getFormatPlayerLimits(formData.format);
         const min = Number(formData.minPlayer);
         const max = Number(formData.maxPlayer);
+        const isKnockOut = formData.format === "KnockOut";
         if (!min || min < limits.min || min > limits.max)
           return setError(
             `Số người chơi tối thiểu cho thể thức ${getFormatLabel(formData.format)} phải từ ${limits.min} đến ${limits.max}.`
           ), false;
+        if (isKnockOut && min % 2 !== 0)
+          return setError("Số người tối thiểu ở thể thức Loại trực tiếp phải là số chẵn."), false;
         if (!max || max < limits.min || max > limits.max)
           return setError(
             `Số người chơi tối đa cho thể thức ${getFormatLabel(formData.format)} phải từ ${limits.min} đến ${limits.max}.`
           ), false;
+        if (isKnockOut && max % 2 !== 0)
+          return setError("Số người tối đa ở thể thức Loại trực tiếp phải là số chẵn."), false;
         if (!max || max < min)
-          return (
-            setError("Số người chơi tối đa phải lớn hơn tối thiểu."), false
-          );
+          return setError("Số người chơi tối đa phải lớn hơn tối thiểu."), false;
         return true;
       }
       default:
@@ -202,7 +214,7 @@ export default function UpdateTournamentPage() {
     }
 
     const limits = getFormatPlayerLimits(formData.format);
-    const payload = {
+    const tournamentPayload = {
       tournamentName: formData.tournamentName,
       description: formData.description,
       rules: formData.rules,
@@ -224,12 +236,23 @@ export default function UpdateTournamentPage() {
       notes: formData.notes,
     };
 
+    const prizeTemplates = (formData.prizeTiers || [])
+      .filter((t) => t.amount !== "" && Number(t.amount) > 0)
+      .map((t, i) => ({
+        rankPosition: i + 1,
+        fixedAmount: Number(t.amount),
+        label: `Hạng ${i + 1}`,
+      }));
+
+    const payload = {
+      tournament: tournamentPayload,
+      prizeTemplates: prizeTemplates.length > 0 ? prizeTemplates : undefined,
+    };
+
     try {
-      await axios.put(
-        `${API_BASE}/api/tournaments?id=${id}`,
-        payload,
-        { withCredentials: true }
-      );
+      await axios.put(`${API_BASE}/api/tournaments?id=${id}`, payload, {
+        withCredentials: true,
+      });
       alert("Cập nhật giải đấu thành công!");
       navigate(`/leader/tournaments/${id}`);
     } catch (err) {
@@ -306,11 +329,7 @@ export default function UpdateTournamentPage() {
           {/* Content */}
           <div className="cw-step-content" key={currentStep}>
             {currentStep === 1 && (
-              <BasicInfoStep
-                data={formData}
-                update={update}
-                formats={formats}
-              />
+              <BasicInfoStep data={formData} update={update} formats={formats} />
             )}
             {currentStep === 2 && (
               <ScheduleRulesStep data={formData} update={update} />
@@ -366,164 +385,287 @@ export default function UpdateTournamentPage() {
 
 /* ══════════════ Step 1: Basic Info ══════════════ */
 
-const BasicInfoStep = ({ data, update, formats }) => (
-  <div>
-    <div className="cw-form-row">
-      <div className="cw-field full">
-        <label className="cw-label">
-          Tên giải đấu <span className="req">*</span>
-        </label>
-        <input
-          className="cw-input"
-          placeholder="VD: Grandmaster Clash 2026"
-          value={data.tournamentName}
-          onChange={(e) => update({ tournamentName: e.target.value })}
-        />
-      </div>
-    </div>
+const BasicInfoStep = ({ data, update, formats }) => {
+  const [prizeToast, setPrizeToast] = useState("");
 
-    <div className="cw-form-row">
-      <div className="cw-field full">
-        <label className="cw-label">
-          Thể thức <span className="req">*</span>
-        </label>
-        <div className="cw-format-group">
-          {formats.map((f) => {
-            const Icon = FORMAT_ICONS[f] || Trophy;
-            return (
-              <button
-                key={f}
-                type="button"
-                className={`cw-format-btn ${data.format === f ? "active" : ""}`}
-                onClick={() =>
-                  update({ format: f, minPlayer: "", maxPlayer: "" })
+  const showPrizeToast = (msg) => {
+    setPrizeToast(msg);
+    window.clearTimeout(BasicInfoStep._toastTimer);
+    BasicInfoStep._toastTimer = window.setTimeout(() => {
+      setPrizeToast("");
+    }, 2200);
+  };
+
+  const recomputeTotalPrize = (tiers) =>
+    String(
+      (tiers || []).reduce((sum, t) => sum + Number(t.amount || 0), 0) || "",
+    );
+
+  const tiersOrDefault =
+    data.prizeTiers && data.prizeTiers.length
+      ? data.prizeTiers
+      : [{ rankPosition: 1, amount: "" }];
+
+  return (
+    <div>
+      <div className="cw-form-row">
+        <div className="cw-field full">
+          <label className="cw-label">
+            Tên giải đấu <span className="req">*</span>
+          </label>
+          <input
+            className="cw-input"
+            placeholder="VD: Grandmaster Clash 2026"
+            value={data.tournamentName}
+            onChange={(e) => update({ tournamentName: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="cw-form-row">
+        <div className="cw-field full">
+          <label className="cw-label">
+            Thể thức <span className="req">*</span>
+          </label>
+          <div className="cw-format-group">
+            {formats.map((f) => {
+              const Icon = FORMAT_ICONS[f] || Trophy;
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  className={`cw-format-btn ${data.format === f ? "active" : ""}`}
+                  onClick={() =>
+                    update({ format: f, minPlayer: "", maxPlayer: "" })
+                  }
+                >
+                  <Icon size={16} /> {getFormatLabel(f)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="cw-form-row">
+        <div className="cw-field full">
+          <label className="cw-label">Địa điểm</label>
+          <input
+            className="cw-input"
+            placeholder="VD: Nhà thi đấu Quận 1 (hoặc Online)"
+            value={data.location}
+            onChange={(e) => update({ location: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="cw-form-row">
+        <div className="cw-field full">
+          <label className="cw-label">Mô tả</label>
+          <textarea
+            className="cw-textarea"
+            placeholder="Mô tả chi tiết giải đấu…"
+            value={data.description}
+            onChange={(e) => update({ description: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="cw-form-row">
+        <div className="cw-field full">
+          <label className="cw-label">Giải thưởng theo hạng</label>
+          <p className="cw-hint">
+            Thiết lập số người được thưởng và mức thưởng (VND) cho từng hạng.
+            Để trống nếu không có giải thưởng.
+          </p>
+          {prizeToast && <div className="cw-prize-toast">{prizeToast}</div>}
+          <div className="cw-prize-table-wrap">
+            <table className="cw-prize-table">
+              <thead>
+                <tr>
+                  <th>Hạng</th>
+                  <th>Mức thưởng (VND)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tiersOrDefault.map((row, idx) => (
+                  <tr key={idx}>
+                    <td>Hạng {idx + 1}</td>
+                    <td>
+                      <input
+                        className="cw-input cw-input-sm"
+                        type="number"
+                        min={0}
+                        placeholder="VD: 5000000"
+                        value={row.amount ?? ""}
+                        onChange={(e) => {
+                          const tiers = [...(data.prizeTiers || [])];
+                          if (!tiers[idx])
+                            tiers[idx] = { rankPosition: idx + 1, amount: "" };
+                          let val = Number(e.target.value || 0);
+                          if (val < 0) val = 0;
+                          let safe = val;
+                          if (idx > 0) {
+                            const prevAmt = Number(tiers[idx - 1]?.amount || 0);
+                            if (prevAmt > 0 && val > prevAmt) {
+                              safe = prevAmt;
+                              showPrizeToast(
+                                `Hạng ${idx + 1} không được cao hơn hạng ${idx}. Hệ thống đã điều chỉnh về ${prevAmt.toLocaleString("vi-VN")} VND.`,
+                              );
+                            }
+                          }
+                          tiers[idx] = {
+                            ...tiers[idx],
+                            amount: safe ? String(safe) : "",
+                          };
+                          const prizePool = recomputeTotalPrize(tiers);
+                          update({ prizeTiers: tiers, prizePool });
+                        }}
+                      />
+                    </td>
+                    <td>
+                      {(data.prizeTiers || []).length > 1 && (
+                        <button
+                          type="button"
+                          className="cw-btn-icon cw-btn-ghost"
+                          title="Xóa hạng"
+                          onClick={() => {
+                            const tiers = (data.prizeTiers || []).filter(
+                              (_, i) => i !== idx,
+                            );
+                            const normalized =
+                              tiers.length > 0
+                                ? tiers.map((t, i2) => ({
+                                    ...t,
+                                    rankPosition: i2 + 1,
+                                  }))
+                                : [{ rankPosition: 1, amount: "" }];
+                            const prizePool = recomputeTotalPrize(normalized);
+                            update({ prizeTiers: normalized, prizePool });
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button
+              type="button"
+              className="cw-btn cw-btn-ghost cw-add-tier-btn"
+              onClick={() => {
+                const tiers = [...(data.prizeTiers || tiersOrDefault)];
+                tiers.push({ rankPosition: tiers.length + 1, amount: "" });
+                const prizePool = recomputeTotalPrize(tiers);
+                update({ prizeTiers: tiers, prizePool });
+              }}
+            >
+              <Plus size={16} /> Thêm hạng
+            </button>
+          </div>
+          <div className="cw-form-row cols-2" style={{ marginTop: 16 }}>
+            <div className="cw-field">
+              <label className="cw-label">
+                Quỹ thưởng tổng (VND) – tự động
+              </label>
+              <input
+                className="cw-input"
+                type="text"
+                readOnly
+                value={
+                  data.prizePool
+                    ? Number(data.prizePool).toLocaleString("vi-VN")
+                    : ""
                 }
-              >
-                <Icon size={16} /> {getFormatLabel(f)}
-              </button>
-            );
-          })}
+              />
+            </div>
+            <div className="cw-field">
+              <label className="cw-label">Phí tham gia ($)</label>
+              <input
+                className="cw-input"
+                type="number"
+                min={0}
+                placeholder="0"
+                value={data.entryFee}
+                onChange={(e) => update({ entryFee: e.target.value })}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
-
-    <div className="cw-form-row">
-      <div className="cw-field full">
-        <label className="cw-label">Địa điểm</label>
-        <input
-          className="cw-input"
-          placeholder="VD: Nhà thi đấu Quận 1 (hoặc Online)"
-          value={data.location}
-          onChange={(e) => update({ location: e.target.value })}
-        />
-      </div>
-    </div>
-
-    <div className="cw-form-row">
-      <div className="cw-field full">
-        <label className="cw-label">Mô tả</label>
-        <textarea
-          className="cw-textarea"
-          placeholder="Mô tả chi tiết giải đấu…"
-          value={data.description}
-          onChange={(e) => update({ description: e.target.value })}
-        />
-      </div>
-    </div>
-
-    <div className="cw-form-row cols-2">
-      <div className="cw-field">
-        <label className="cw-label">Quỹ thưởng ($)</label>
-        <input
-          className="cw-input"
-          type="number"
-          min={0}
-          placeholder="10000"
-          value={data.prizePool}
-          onChange={(e) => update({ prizePool: e.target.value })}
-        />
-      </div>
-      <div className="cw-field">
-        <label className="cw-label">Phí tham gia ($)</label>
-        <input
-          className="cw-input"
-          type="number"
-          min={0}
-          placeholder="50"
-          value={data.entryFee}
-          onChange={(e) => update({ entryFee: e.target.value })}
-        />
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 /* ══════════════ Step 2: Schedule & Rules ══════════════ */
 
 const ScheduleRulesStep = ({ data, update }) => {
   const today = getTodayLocalDate();
   return (
-  <div>
-    <h3 className="cw-section-title">
-      <Calendar size={20} /> Lịch trình
-    </h3>
-    <div className="cw-form-row cols-2">
-      <div className="cw-field">
-        <label className="cw-label">
-          Hạn đăng ký <span className="req">*</span>
-        </label>
-        <input
-          className="cw-input"
-          type="date"
-          min={today}
-          max={data.startDate || undefined}
-          value={data.registrationDeadline}
-          onChange={(e) => update({ registrationDeadline: e.target.value })}
-        />
+    <div>
+      <h3 className="cw-section-title">
+        <Calendar size={20} /> Lịch trình
+      </h3>
+      <div className="cw-form-row cols-2">
+        <div className="cw-field">
+          <label className="cw-label">
+            Hạn đăng ký <span className="req">*</span>
+          </label>
+          <input
+            className="cw-input"
+            type="date"
+            min={today}
+            max={data.startDate || undefined}
+            value={data.registrationDeadline}
+            onChange={(e) => update({ registrationDeadline: e.target.value })}
+          />
+        </div>
+        <div className="cw-field">
+          <label className="cw-label">
+            Ngày bắt đầu <span className="req">*</span>
+          </label>
+          <input
+            className="cw-input"
+            type="date"
+            min={today}
+            max={data.endDate || undefined}
+            value={data.startDate}
+            onChange={(e) => update({ startDate: e.target.value })}
+          />
+        </div>
+        <div className="cw-field">
+          <label className="cw-label">
+            Ngày kết thúc <span className="req">*</span>
+          </label>
+          <input
+            className="cw-input"
+            type="date"
+            min={data.startDate || today}
+            value={data.endDate}
+            onChange={(e) => update({ endDate: e.target.value })}
+          />
+        </div>
       </div>
-      <div className="cw-field">
-        <label className="cw-label">
-          Ngày bắt đầu <span className="req">*</span>
-        </label>
-        <input
-          className="cw-input"
-          type="date"
-          min={today}
-          max={data.endDate || undefined}
-          value={data.startDate}
-          onChange={(e) => update({ startDate: e.target.value })}
-        />
-      </div>
-      <div className="cw-field">
-        <label className="cw-label">
-          Ngày kết thúc <span className="req">*</span>
-        </label>
-        <input
-          className="cw-input"
-          type="date"
-          min={data.startDate || today}
-          value={data.endDate}
-          onChange={(e) => update({ endDate: e.target.value })}
-        />
+
+      <div className="cw-divider" />
+
+      <h3 className="cw-section-title">Luật thi đấu</h3>
+
+      <div className="cw-form-row">
+        <div className="cw-field full">
+          <label className="cw-label">Luật &amp; Quy định</label>
+          <textarea
+            className="cw-textarea"
+            placeholder="Thời gian chuẩn FIDE: 90p + 30s&#10;Không xin hòa trước nước 30&#10;Cấm thiết bị điện tử"
+            value={data.rules}
+            onChange={(e) => update({ rules: e.target.value })}
+          />
+        </div>
       </div>
     </div>
-
-    <div className="cw-divider" />
-
-    <h3 className="cw-section-title">Luật thi đấu</h3>
-
-    <div className="cw-form-row">
-      <div className="cw-field full">
-        <label className="cw-label">Luật &amp; Quy định</label>
-        <textarea
-          className="cw-textarea"
-          placeholder="Thời gian chuẩn FIDE: 90p + 30s&#10;Không xin hòa trước nước 30&#10;Cấm thiết bị điện tử"
-          value={data.rules}
-          onChange={(e) => update({ rules: e.target.value })}
-        />
-      </div>
-    </div>
-  </div>
   );
 };
 
@@ -533,52 +675,51 @@ const RegistrationStep = ({ data, update }) => {
   const limits = getFormatPlayerLimits(data.format);
   const minForMax = Math.max(limits.min, Number(data.minPlayer) || limits.min);
   return (
-  <div>
-    <div className="cw-form-row">
-      <div className="cw-field full">
-        <label className="cw-label">Thể thức đã chọn</label>
-        <input
-          className="cw-input"
-          value={`${getFormatLabel(data.format || "Chưa chọn")} (${limits.min} - ${limits.max} người chơi)`}
-          readOnly
-        />
+    <div>
+      <div className="cw-form-row">
+        <div className="cw-field full">
+          <label className="cw-label">Thể thức đã chọn</label>
+          <input
+            className="cw-input"
+            value={`${getFormatLabel(data.format || "Chưa chọn")} (${limits.min} - ${limits.max} người chơi)`}
+            readOnly
+          />
+        </div>
+      </div>
+
+      <div className="cw-divider" />
+
+      <div className="cw-form-row cols-2">
+        <div className="cw-field">
+          <label className="cw-label">
+            Số người tối thiểu <span className="req">*</span>
+          </label>
+          <input
+            className="cw-input"
+            type="number"
+            min={limits.min}
+            max={limits.max}
+            placeholder={`${limits.min}`}
+            value={data.minPlayer}
+            onChange={(e) => update({ minPlayer: e.target.value })}
+          />
+        </div>
+        <div className="cw-field">
+          <label className="cw-label">
+            Số người tối đa <span className="req">*</span>
+          </label>
+          <input
+            className="cw-input"
+            type="number"
+            min={minForMax}
+            max={limits.max}
+            placeholder={`${limits.max}`}
+            value={data.maxPlayer}
+            onChange={(e) => update({ maxPlayer: e.target.value })}
+          />
+        </div>
       </div>
     </div>
-
-    <div className="cw-divider" />
-
-    <div className="cw-form-row cols-2">
-      <div className="cw-field">
-        <label className="cw-label">
-          Số người tối thiểu <span className="req">*</span>
-        </label>
-        <input
-          className="cw-input"
-          type="number"
-          min={limits.min}
-          max={limits.max}
-          placeholder={`${limits.min}`}
-          value={data.minPlayer}
-          onChange={(e) => update({ minPlayer: e.target.value })}
-        />
-      </div>
-      <div className="cw-field">
-        <label className="cw-label">
-          Số người tối đa <span className="req">*</span>
-        </label>
-        <input
-          className="cw-input"
-          type="number"
-          min={minForMax}
-          max={limits.max}
-          placeholder={`${limits.max}`}
-          value={data.maxPlayer}
-          onChange={(e) => update({ maxPlayer: e.target.value })}
-        />
-      </div>
-    </div>
-
-  </div>
   );
 };
 
@@ -615,14 +756,37 @@ const ReviewStep = ({ data }) => {
               </div>
               <div className="cw-review-row">
                 <span className="label">Thể thức</span>
-                <span className="value">{getFormatLabel(data.format) || "Không có"}</span>
+                <span className="value">
+                  {getFormatLabel(data.format) || "Không có"}
+                </span>
               </div>
               <div className="cw-review-row">
                 <span className="label">Địa điểm</span>
-                <span className="value">{data.location || "Chưa xác định"}</span>
+                <span className="value">
+                  {data.location || "Chưa xác định"}
+                </span>
               </div>
+              {(data.prizeTiers || []).filter(
+                (t) => t.amount !== "" && Number(t.amount) > 0,
+              ).length > 0 ? (
+                <div className="cw-review-row cw-review-prizes">
+                  <span className="label">Giải thưởng theo hạng</span>
+                  <span className="value">
+                    <ul className="cw-prize-review-list">
+                      {(data.prizeTiers || [])
+                        .filter((t) => t.amount !== "" && Number(t.amount) > 0)
+                        .map((t, i) => (
+                          <li key={i}>
+                            Hạng {i + 1}:{" "}
+                            {Number(t.amount || 0).toLocaleString("vi-VN")} VND
+                          </li>
+                        ))}
+                    </ul>
+                  </span>
+                </div>
+              ) : null}
               <div className="cw-review-row">
-                <span className="label">Quỹ thưởng</span>
+                <span className="label">Quỹ thưởng tổng ($)</span>
                 <span className="value">
                   ${Number(data.prizePool || 0).toLocaleString()}
                 </span>
@@ -685,27 +849,21 @@ const ReviewStep = ({ data }) => {
               <div className="cw-review-timeline">
                 <div className="cw-review-timeline-item">
                   <div className="cw-review-timeline-dot" />
-                  <div className="cw-review-timeline-label">
-                    Đóng đăng ký
-                  </div>
+                  <div className="cw-review-timeline-label">Đóng đăng ký</div>
                   <div className="cw-review-timeline-value">
                     {fmtDate(data.registrationDeadline)}
                   </div>
                 </div>
                 <div className="cw-review-timeline-item">
                   <div className="cw-review-timeline-dot" />
-                  <div className="cw-review-timeline-label">
-                    Bắt đầu giải
-                  </div>
+                  <div className="cw-review-timeline-label">Bắt đầu giải</div>
                   <div className="cw-review-timeline-value">
                     {fmtDate(data.startDate)}
                   </div>
                 </div>
                 <div className="cw-review-timeline-item">
                   <div className="cw-review-timeline-dot" />
-                  <div className="cw-review-timeline-label">
-                    Kết thúc giải
-                  </div>
+                  <div className="cw-review-timeline-label">Kết thúc giải</div>
                   <div className="cw-review-timeline-value">
                     {fmtDate(data.endDate)}
                   </div>
@@ -713,7 +871,6 @@ const ReviewStep = ({ data }) => {
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>
