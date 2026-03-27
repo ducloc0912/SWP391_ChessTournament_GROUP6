@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import MainHeader from "../../component/common/MainHeader";
@@ -23,6 +23,8 @@ const RefereeMatchDetailPage = () => {
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [resultForm, setResultForm] = useState({ result: "" });
 
+  const autoFinishCalledRef = useRef(false);
+
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
@@ -44,6 +46,17 @@ const RefereeMatchDetailPage = () => {
     fetchMatch();
   }, [matchId, navigate]);
 
+  // Auto-finish khi quá startTime + 24h mà trận chưa kết thúc
+  useEffect(() => {
+    if (!match) return;
+    if (match.status === "Completed" || match.status === "Cancelled") return;
+    if (!isMatchExpired(match.startTime)) return;
+    if (autoFinishCalledRef.current) return;
+    autoFinishCalledRef.current = true;
+    handleAutoFinish(match);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match]);
+
   const fetchMatch = async () => {
     setLoading(true);
     try {
@@ -64,6 +77,26 @@ const RefereeMatchDetailPage = () => {
       setMatch(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const isAfterStartTime = (startTime) => {
+    if (!startTime) return false;
+    return new Date() >= new Date(startTime);
+  };
+
+  const isMatchExpired = (startTime) => {
+    if (!startTime) return false;
+    return new Date() > new Date(new Date(startTime).getTime() + 24 * 60 * 60 * 1000);
+  };
+
+  const handleAutoFinish = async (m) => {
+    try {
+      const url = `${API_BASE}/api/referee/matches?action=autoFinish&matchId=${m.matchId}`;
+      await axios.post(url, null, { withCredentials: true });
+      await fetchMatch();
+    } catch (err) {
+      console.error("Auto finish error:", err);
     }
   };
 
@@ -327,7 +360,12 @@ const formatStatus = (s) => {
                     </p>
                     {match.status !== "Completed" && (
                       <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                        {!match.whiteAttendanceStatus && !match.blackAttendanceStatus && (
+                        {!isAfterStartTime(match.startTime) && (
+                          <p style={{ margin: 0, fontSize: "0.85rem", color: "#888" }}>
+                            Chưa đến thời gian bắt đầu — điểm danh sẽ mở lúc {formatStartTime(match.startTime)}
+                          </p>
+                        )}
+                        {isAfterStartTime(match.startTime) && !match.whiteAttendanceStatus && !match.blackAttendanceStatus && (
                           <button className="hpv-btn hpv-btn-primary" disabled={saving} onClick={() => openAttendanceModal(match, 1)}>
                             Điểm danh ván 1
                           </button>
@@ -370,7 +408,7 @@ const formatStatus = (s) => {
                     </p>
                     {match.status !== "Completed" && match.game1Status === "Completed" && (
                       <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                        {!match.whiteAttendanceStatus2 && !match.blackAttendanceStatus2 && (
+                        {isAfterStartTime(match.startTime) && !match.whiteAttendanceStatus2 && !match.blackAttendanceStatus2 && (
                           <button className="hpv-btn hpv-btn-primary" disabled={saving} onClick={() => openAttendanceModal(match, 2)}>
                             Điểm danh ván 2
                           </button>

@@ -1135,15 +1135,35 @@ throws ServletException, IOException {
             return;
         }
 
-        TournamentDTO tournament =
-                gson.fromJson(request.getReader(), TournamentDTO.class);
+        com.google.gson.JsonObject root =
+                gson.fromJson(request.getReader(), com.google.gson.JsonObject.class);
 
+        // Support both wrapped { tournament: {...}, prizeTemplates: [...] } and flat payload
+        com.google.gson.JsonObject tournamentJson =
+                root.has("tournament") ? root.getAsJsonObject("tournament") : root;
+        TournamentDTO tournament = gson.fromJson(tournamentJson, TournamentDTO.class);
         tournament.setTournamentId(id);
 
         boolean success = tournamentService.updateTournament(tournament);
 
         if (success) {
-            notificationService.notifyFollowers(id, "Tournament Updated", 
+            // Update prize templates if provided
+            if (root.has("prizeTemplates")) {
+                try {
+                    com.google.gson.JsonArray arr = root.getAsJsonArray("prizeTemplates");
+                    java.util.List<com.example.model.entity.PrizeTemplate> templates = new java.util.ArrayList<>();
+                    for (com.google.gson.JsonElement el : arr) {
+                        com.google.gson.JsonObject obj = el.getAsJsonObject();
+                        com.example.model.entity.PrizeTemplate pt = new com.example.model.entity.PrizeTemplate();
+                        pt.setRankPosition(obj.has("rankPosition") ? obj.get("rankPosition").getAsInt() : 0);
+                        pt.setFixedAmount(obj.has("fixedAmount") ? obj.get("fixedAmount").getAsBigDecimal() : java.math.BigDecimal.ZERO);
+                        pt.setLabel(obj.has("label") ? obj.get("label").getAsString() : "");
+                        templates.add(pt);
+                    }
+                    tournamentService.replacePrizeTemplates(id, templates);
+                } catch (Exception ignored) {}
+            }
+            notificationService.notifyFollowers(id, "Tournament Updated",
                 "The tournament organizer has updated the tournament information.", "INFO", "/tournaments/public");
         }
 

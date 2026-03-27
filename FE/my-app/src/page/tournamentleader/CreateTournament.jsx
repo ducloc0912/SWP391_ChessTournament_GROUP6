@@ -119,14 +119,19 @@ export default function CreateTournamentPage() {
         const limits = getFormatPlayerLimits(formData.format);
         const min = Number(formData.minPlayer);
         const max = Number(formData.maxPlayer);
+        const isKnockOut = formData.format === "KnockOut";
         if (!min || min < limits.min || min > limits.max)
           return setError(
             `Số người chơi tối thiểu cho thể thức ${getFormatLabel(formData.format)} phải từ ${limits.min} đến ${limits.max}.`
           ), false;
+        if (isKnockOut && min % 2 !== 0)
+          return setError("Số người tối thiểu ở thể thức Loại trực tiếp phải là số chẵn."), false;
         if (!max || max < limits.min || max > limits.max)
           return setError(
             `Số người chơi tối đa cho thể thức ${getFormatLabel(formData.format)} phải từ ${limits.min} đến ${limits.max}.`
           ), false;
+        if (isKnockOut && max % 2 !== 0)
+          return setError("Số người tối đa ở thể thức Loại trực tiếp phải là số chẵn."), false;
         if (!max || max < min)
           return setError("Số người chơi tối đa phải lớn hơn tối thiểu."), false;
         return true;

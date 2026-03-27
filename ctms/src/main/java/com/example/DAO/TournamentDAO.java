@@ -213,7 +213,8 @@ public class TournamentDAO extends DBContext {
                         registration_deadline = ?,
                         start_date = ?,
                         end_date = ?,
-                        notes = ?
+                        notes = ?,
+                        rules = ?
                     WHERE tournament_id = ?
                 """;
 
@@ -232,7 +233,8 @@ public class TournamentDAO extends DBContext {
             ps.setTimestamp(10, t.getStartDate());
             ps.setTimestamp(11, t.getEndDate());
             ps.setString(12, t.getNotes());
-            ps.setInt(13, t.getTournamentId());
+            ps.setString(13, t.getRules());
+            ps.setInt(14, t.getTournamentId());
 
             return ps.executeUpdate() > 0;
 
@@ -285,6 +287,8 @@ public class TournamentDAO extends DBContext {
         t.setCreateBy(rs.getInt("create_by"));
         t.setCreateAt(rs.getTimestamp("create_at"));
         t.setNotes(rs.getString("notes"));
+        t.setRules(rs.getString("rules"));
+        t.setTournamentImage(rs.getString("tournament_image"));
 
         return t;
     }

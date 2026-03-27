@@ -16,7 +16,7 @@ public class TournamentRefereeDAO extends DBContext {
     public List<TournamentRefereeDTO> getRefereesByTournament(int tournamentId) {
         List<TournamentRefereeDTO> list = new ArrayList<>();
         String sql = """
-            SELECT tr.referee_id, u.first_name, u.last_name, u.email, u.avatar,
+            SELECT tr.referee_id, u.first_name, u.last_name, u.email, u.phone_number, u.avatar,
                    tr.referee_role, tr.assigned_at, tr.note,
                    (SELECT COUNT(*) FROM Match_Referee mr
                     INNER JOIN Matches m ON mr.match_id = m.match_id
@@ -40,6 +40,7 @@ public class TournamentRefereeDAO extends DBContext {
                 dto.setFirstName(rs.getString("first_name"));
                 dto.setLastName(rs.getString("last_name"));
                 dto.setEmail(rs.getString("email"));
+                dto.setPhoneNumber(rs.getString("phone_number"));
                 dto.setAvatar(rs.getString("avatar"));
                 dto.setRefereeRole(rs.getString("referee_role"));
                 dto.setAssignedAt(rs.getTimestamp("assigned_at"));
@@ -56,7 +57,7 @@ public class TournamentRefereeDAO extends DBContext {
     public List<TournamentRefereeDTO> getAllRefereeUsers() {
         List<TournamentRefereeDTO> list = new ArrayList<>();
         String sql = """
-            SELECT u.user_id, u.first_name, u.last_name, u.email, u.avatar
+            SELECT u.user_id, u.first_name, u.last_name, u.email, u.phone_number, u.avatar
             FROM Users u
             JOIN User_Role ur ON u.user_id = ur.user_id
             JOIN Roles r ON ur.role_id = r.role_id
@@ -81,6 +82,7 @@ public class TournamentRefereeDAO extends DBContext {
                 dto.setFirstName(rs.getString("first_name"));
                 dto.setLastName(rs.getString("last_name"));
                 dto.setEmail(rs.getString("email"));
+                dto.setPhoneNumber(rs.getString("phone_number"));
                 dto.setAvatar(rs.getString("avatar"));
                 list.add(dto);
             }
@@ -98,7 +100,7 @@ public class TournamentRefereeDAO extends DBContext {
     public List<TournamentRefereeDTO> getAvailableRefereesForTournament(int tournamentId) {
         List<TournamentRefereeDTO> list = new ArrayList<>();
         String sql = """
-            SELECT u.user_id, u.first_name, u.last_name, u.email, u.avatar
+            SELECT u.user_id, u.first_name, u.last_name, u.email, u.phone_number, u.avatar
             FROM Users u
             JOIN User_Role ur ON u.user_id = ur.user_id
             JOIN Roles r ON ur.role_id = r.role_id
@@ -128,6 +130,7 @@ public class TournamentRefereeDAO extends DBContext {
                     dto.setFirstName(rs.getString("first_name"));
                     dto.setLastName(rs.getString("last_name"));
                     dto.setEmail(rs.getString("email"));
+                    dto.setPhoneNumber(rs.getString("phone_number"));
                     dto.setAvatar(rs.getString("avatar"));
                     list.add(dto);
                 }

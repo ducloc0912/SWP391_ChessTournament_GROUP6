@@ -1101,6 +1101,12 @@
 .referee-email {
   font-size: 0.875rem;
   color: #6b7280;
+  margin: 0 0 4px;
+}
+
+.referee-phone {
+  font-size: 0.875rem;
+  color: #6b7280;
   margin: 0 0 8px;
 }
 
@@ -1203,6 +1209,18 @@
 
 .td-referee-field .req {
   color: #ef4444;
+}
+
+.td-referee-field input.input-error {
+  border-color: #ef4444;
+  outline-color: #ef4444;
+}
+
+.td-referee-field .field-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #ef4444 !important;
 }
 
 .td-referee-create .td-add-icon {

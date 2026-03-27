@@ -114,6 +114,7 @@ public class TournamentService {
             t.setCurrentPlayers(participantDAO.countParticipantsByTournament(id));
             t.setTournamentImages(tournamentDAO.getTournamentImages(id));
             t.setBracketPublished(tournamentDAO.isBracketPublished(id));
+            t.setPrizeTiers(prizeTemplateDAO.getByTournamentId(id));
         }
         return t;
     }
@@ -703,6 +704,13 @@ public class TournamentService {
 
     public boolean savePrizeTemplates(int tournamentId, List<PrizeTemplate> templates) {
         if (tournamentId <= 0 || templates == null) return false;
+        return prizeTemplateDAO.insertAll(tournamentId, templates);
+    }
+
+    public boolean replacePrizeTemplates(int tournamentId, List<PrizeTemplate> templates) {
+        if (tournamentId <= 0) return false;
+        prizeTemplateDAO.deleteByTournamentId(tournamentId);
+        if (templates == null || templates.isEmpty()) return true;
         return prizeTemplateDAO.insertAll(tournamentId, templates);
     }
 
