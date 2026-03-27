@@ -8,7 +8,7 @@ public class DBContext {
 
     private static final String DB_URL =
             "jdbc:sqlserver://localhost:1433;"
-          + "databaseName=SWP_391;"
+          + "databaseName=SWP391;"
           + "encrypt=true;"
           + "trustServerCertificate=true;"
           + "sendStringParametersAsUnicode=true";
