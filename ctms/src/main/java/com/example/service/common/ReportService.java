@@ -36,6 +36,9 @@ public class ReportService {
         if (dto.getReporterId() == null) {
             throw new IllegalArgumentException("Reporter is required");
         }
+        if (dto.getAccusedId() != null && dto.getAccusedId().equals(dto.getReporterId())) {
+            throw new IllegalArgumentException("Bạn không thể tố cáo chính mình.");
+        }
         if (dto.getDescription() == null || dto.getDescription().trim().isEmpty()) {
             throw new IllegalArgumentException("Description is required");
         }
@@ -50,13 +53,13 @@ public class ReportService {
             dto.setEvidenceUrl(dto.getEvidenceUrl().trim());
         }
 
-        // Không cho phép 1 user gửi trùng report cho cùng 1 trận (violation)
+        // Không cho phép 1 user gửi trùng report cho cùng 1 trận và người bị tố cáo (violation)
         String type = dto.getType().trim();
         try {
-            if (dto.getMatchId() != null
+            if (dto.getMatchId() != null && dto.getAccusedId() != null
                     && ("Cheating".equalsIgnoreCase(type) || "Misconduct".equalsIgnoreCase(type))) {
-                if (reportDAO.existsByReporterAndMatch(dto.getReporterId(), dto.getMatchId())) {
-                    throw new IllegalArgumentException("Bạn đã gửi report cho trận đấu này rồi.");
+                if (reportDAO.existsByReporterMatchAndAccused(dto.getReporterId(), dto.getMatchId(), dto.getAccusedId())) {
+                    throw new IllegalArgumentException("Bạn đã gửi report cho người chơi này trong trận đấu này rồi.");
                 }
             }
 

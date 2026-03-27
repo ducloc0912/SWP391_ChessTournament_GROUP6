@@ -81,6 +81,14 @@ public class StaffSystemReportServlet extends HttpServlet {
             boolean valid = body.get("valid") != null && Boolean.TRUE.equals(body.get("valid"));
             String note = body.get("note") != null ? body.get("note").toString() : "";
 
+            if (note.trim().isEmpty()) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                result.put("success", false);
+                result.put("message", "Vui lòng nhập nội dung phản hồi trước khi gửi.");
+                response.getWriter().write(gson.toJson(result));
+                return;
+            }
+
             boolean ok = reportService.decideSystemReport(reportId, valid, note, staff.getUserId());
             if (ok) {
                 result.put("success", true);

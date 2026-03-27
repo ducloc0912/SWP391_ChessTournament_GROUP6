@@ -152,7 +152,7 @@ export default function StaffSystemReportPage() {
                 }}
               >
                 <option value="Pending">Đang chờ xử lý</option>
-                <option value="Investigating">Đang điều tra</option>
+
                 <option value="Resolved">Đã xử lý</option>
                 <option value="Dismissed">Đã từ chối</option>
                 <option value="">Tất cả trạng thái</option>
@@ -179,11 +179,16 @@ export default function StaffSystemReportPage() {
                   <tr>
                     <th style={{ textAlign: "left", padding: 8 }}>ID</th>
                     <th style={{ textAlign: "left", padding: 8 }}>Loại</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Reporter</th>
+                    <th style={{ textAlign: "left", padding: 8 }}>
+                      Người tố cáo
+                    </th>
                     <th style={{ textAlign: "left", padding: 8 }}>Mô tả</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Evidence</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Status</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Note</th>
+                    <th style={{ textAlign: "left", padding: 8 }}>
+                      Bằng chứng
+                    </th>
+                    <th style={{ textAlign: "left", padding: 8 }}>
+                      Trạng thái
+                    </th>
                     <th style={{ textAlign: "left", padding: 8 }}>Tạo lúc</th>
                     <th style={{ textAlign: "right", padding: 8 }}>Action</th>
                   </tr>
@@ -194,7 +199,9 @@ export default function StaffSystemReportPage() {
                     <tr key={r.reportId}>
                       <td style={{ padding: 8 }}>{r.reportId}</td>
                       <td style={{ padding: 8 }}>{typeLabel(r.type)}</td>
-                      <td style={{ padding: 8 }}>{r.reporterId ?? "—"}</td>
+                      <td style={{ padding: 8 }}>
+                        {r.reporterUsername ?? "—"}
+                      </td>
                       <td style={{ padding: 8 }}>
                         {r.description?.length > 80
                           ? `${r.description.slice(0, 80)}…`
@@ -214,11 +221,9 @@ export default function StaffSystemReportPage() {
                         )}
                       </td>
                       <td style={{ padding: 8 }}>{r.status}</td>
-                      <td style={{ padding: 8 }}>{r.note || "—"}</td>
                       <td style={{ padding: 8 }}>{formatTime(r.createAt)}</td>
                       <td style={{ padding: 8, textAlign: "right" }}>
-                        {r.status === "Pending" ||
-                        r.status === "Investigating" ? (
+                        {r.status === "Pending" ? (
                           <div
                             style={{
                               display: "flex",
