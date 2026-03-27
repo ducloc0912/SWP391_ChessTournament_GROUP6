@@ -19,6 +19,8 @@ import com.example.model.dto.TournamentRefereeDTO;
 import com.example.model.dto.TournamentReportDTO;
 import com.example.model.dto.TournamentSetupStateDTO;
 import com.example.model.enums.SetupStep;
+import com.example.model.entity.Participant;
+import com.example.model.enums.ParticipantStatus;
 import com.example.DAO.ParticipantDAO;
 import com.example.DAO.PrizeTemplateDAO;
 import com.example.model.entity.PrizeTemplate;
@@ -790,7 +792,23 @@ if (isBlank(t.getTournamentName())) return false;
         if (tournamentId <= 0) return false;
         if (reason == null || reason.trim().isEmpty()) return false;
         TournamentDTO existing = tournamentDAO.getTournamentById(tournamentId);
-        String name = existing != null ? existing.getTournamentName() : "Giải đấu #" + tournamentId;
+        if (existing == null) return false;
+        String name = existing.getTournamentName();
+
+        // Hoàn tiền cho người chơi đã thanh toán và leader
+        List<Integer> paidUserIds = participantDAO.getParticipantsByTournamentId(tournamentId)
+                .stream()
+                .filter(p -> p.getStatus() == ParticipantStatus.Active)
+                .map(Participant::getUserId)
+                .collect(Collectors.toList());
+
+        BigDecimal entryFee = existing.getEntryFee();
+        BigDecimal prizePool = existing.getPrizePool();
+        Integer leaderId = existing.getCreateBy();
+        if (leaderId != null) {
+            paymentDAO.refundTournamentCancellation(tournamentId, leaderId, prizePool, entryFee, paidUserIds);
+        }
+
         boolean ok = tournamentDAO.cancelTournament(tournamentId, reason);
         if (ok) {
             try {
@@ -798,6 +816,60 @@ if (isBlank(t.getTournamentName())) return false;
                         "Staff",
                         "Giải đấu đã bị hủy",
                         "Tournament Leader đã hủy giải đấu '" + name + "'.",
+                        "Tournament",
+                        "/staff/tournaments"
+                );
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return ok;
+    }
+
+    public String restoreTournament(int tournamentId, int requesterId) {
+        if (tournamentId <= 0) return "Invalid tournament id";
+        TournamentDTO existing = tournamentDAO.getTournamentById(tournamentId);
+        if (existing == null) return "Không tìm thấy giải đấu";
+        if (!Integer.valueOf(requesterId).equals(existing.getCreateBy())) return "Bạn không có quyền khôi phục giải này";
+        if (!"Cancelled".equalsIgnoreCase(existing.getStatus())) return "Chỉ có thể khôi phục giải ở trạng thái Cancelled";
+
+        // Trừ lại prizePool từ leader (đã hoàn khi cancel)
+        BigDecimal prizePool = existing.getPrizePool();
+        if (prizePool != null && prizePool.compareTo(BigDecimal.ZERO) > 0) {
+            boolean charged = paymentDAO.deductBalanceForTournamentCreation(requesterId, tournamentId, prizePool);
+            if (!charged) return "Số dư không đủ để khôi phục giải (cần " + prizePool + " cho prize pool)";
+        }
+
+        boolean ok = tournamentDAO.restoreTournament(tournamentId);
+        if (ok) {
+            try {
+                notificationDAO.createNotificationsForRole(
+                        "Staff",
+                        "Giải đấu chờ duyệt lại",
+                        "Tournament Leader đã khôi phục giải đấu '" + existing.getTournamentName() + "' từ trạng thái Cancelled.",
+                        "Tournament",
+                        "/staff/tournaments"
+                );
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return ok ? null : "Khôi phục giải thất bại";
+    }
+
+    public boolean resubmitTournament(int tournamentId, int requesterId) {
+        if (tournamentId <= 0) return false;
+        TournamentDTO existing = tournamentDAO.getTournamentById(tournamentId);
+        if (existing == null) return false;
+        if (!Integer.valueOf(requesterId).equals(existing.getCreateBy())) return false;
+        if (!"Rejected".equalsIgnoreCase(existing.getStatus())) return false;
+        boolean ok = tournamentDAO.resubmitTournament(tournamentId);
+        if (ok) {
+            try {
+                notificationDAO.createNotificationsForRole(
+                        "Staff",
+                        "Giải đấu chờ duyệt lại",
+                        "Tournament Leader đã nộp lại giải đấu '" + existing.getTournamentName() + "' để xét duyệt.",
                         "Tournament",
                         "/staff/tournaments"
                 );

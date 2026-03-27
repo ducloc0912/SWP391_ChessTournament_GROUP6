@@ -705,4 +705,36 @@ public class TournamentDAO extends DBContext {
         }
         return false;
     }
+
+    public boolean restoreTournament(int tournamentId) {
+        String sql = """
+                UPDATE Tournaments
+                SET status = 'Pending'
+                WHERE tournament_id = ? AND status = 'Cancelled'
+                """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean resubmitTournament(int tournamentId) {
+        String sql = """
+                UPDATE Tournaments
+                SET status = 'Pending'
+                WHERE tournament_id = ? AND status = 'Rejected'
+                """;
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }

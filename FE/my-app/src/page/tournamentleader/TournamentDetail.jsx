@@ -127,6 +127,7 @@ const TournamentDetail = () => {
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [bannerCacheBust, setBannerCacheBust] = useState(Date.now());
   const bannerInputRef = useRef(null);
   const [approvedPlayers, setApprovedPlayers] = useState([]);
   const [waitingPlayers, setWaitingPlayers] = useState([]);
@@ -134,6 +135,8 @@ const TournamentDetail = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [resubmitting, setResubmitting] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const handleCancelTournament = async () => {
     if (!cancelReason.trim()) return;
@@ -150,6 +153,46 @@ const TournamentDetail = () => {
       console.error("Error cancelling tournament:", err);
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    try {
+      const res = await axios.post(
+        `${API_BASE}/api/tournaments?action=restore&id=${tournament.tournamentId}`,
+        {},
+        { withCredentials: true }
+      );
+      if (res?.data?.success) {
+        await fetchTournament();
+      } else {
+        alert(res?.data?.message || "Khôi phục giải thất bại.");
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || "Khôi phục giải thất bại.");
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  const handleResubmit = async () => {
+    setResubmitting(true);
+    try {
+      const res = await axios.post(
+        `${API_BASE}/api/tournaments?action=resubmit&id=${tournament.tournamentId}`,
+        {},
+        { withCredentials: true }
+      );
+      if (res?.data?.success) {
+        await fetchTournament();
+      } else {
+        alert(res?.data?.message || "Nộp lại giải thất bại.");
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || "Nộp lại giải thất bại.");
+    } finally {
+      setResubmitting(false);
     }
   };
 
@@ -213,8 +256,9 @@ const TournamentDetail = () => {
         formData,
         { withCredentials: true },
       );
-      if (res?.data?.success) {
-        await fetchTournament();
+      if (res?.data?.success && res?.data?.imageUrl) {
+        setTournament((prev) => ({ ...prev, tournamentImage: res.data.imageUrl }));
+        setBannerCacheBust(Date.now());
       } else {
         alert(res?.data?.message || "Thay banner thất bại.");
       }
@@ -240,8 +284,11 @@ const TournamentDetail = () => {
     { label: "Feedback & Reviews", icon: <MessageSquare size={18} /> },
   ];
 
-  const displayBannerUrl =
-    resolveMediaUrl(tournament?.tournamentImage, API_BASE) || FALLBACK_BANNER;
+  const displayBannerUrl = (() => {
+    const base = resolveMediaUrl(tournament?.tournamentImage, API_BASE) || FALLBACK_BANNER;
+    if (!tournament?.tournamentImage) return base;
+    return base.includes("?") ? `${base}&_t=${bannerCacheBust}` : `${base}?_t=${bannerCacheBust}`;
+  })();
 
   if (loading) {
     return (
@@ -327,13 +374,43 @@ const TournamentDetail = () => {
             <button
               type="button"
               className="td-leader-btn-danger"
-              title={approvedPlayers.length > 0 ? "Không thể hủy giải khi đã có người tham gia" : "Hủy giải"}
-              onClick={() => approvedPlayers.length === 0 && setShowCancelModal(true)}
-              disabled={approvedPlayers.length > 0}
+              title={
+                !["Pending", "Upcoming", "Ongoing"].includes(tournament.status)
+                  ? `Không thể hủy giải ở trạng thái "${tournament.status}"`
+                  : "Hủy giải"
+              }
+              onClick={() =>
+                ["Pending", "Upcoming", "Ongoing"].includes(tournament.status) &&
+                setShowCancelModal(true)
+              }
+              disabled={!["Pending", "Upcoming", "Ongoing"].includes(tournament.status)}
             >
-              
               Hủy giải
             </button>
+            {tournament.status === "Rejected" && (
+              <button
+                type="button"
+                className="tdp-register-btn"
+                onClick={handleResubmit}
+                disabled={resubmitting}
+                title="Nộp lại giải để Staff xét duyệt"
+              >
+                <RefreshCw size={16} />
+                {resubmitting ? "Đang xử lý..." : "Nộp lại"}
+              </button>
+            )}
+            {tournament.status === "Cancelled" && (
+              <button
+                type="button"
+                className="tdp-register-btn"
+                onClick={handleRestore}
+                disabled={restoring}
+                title="Khôi phục giải về trạng thái Pending (sẽ trừ lại prize pool)"
+              >
+                <RefreshCw size={16} />
+                {restoring ? "Đang xử lý..." : "Khôi phục giải"}
+              </button>
+            )}
 
           </div>
           <div className="tdp-hero-content">
@@ -345,7 +422,7 @@ const TournamentDetail = () => {
             <div className="tdp-hero-meta">
               <span className="tdp-meta-item">
                 <Calendar size={14} />
-                {tournament.startDate} — {tournament.endDate}
+                {tournament.startDate?.split(" ")[0].replaceAll("-", "/") ?? tournament.startDate} — {tournament.endDate?.split(" ")[0].replaceAll("-", "/") ?? tournament.endDate}
               </span>
               <span className="tdp-meta-item">
                 <MapPin size={14} />
@@ -434,6 +511,11 @@ const TournamentDetail = () => {
           <div className="td-modal" onClick={(e) => e.stopPropagation()}>
             <h3>Hủy giải đấu</h3>
             <p>Vui lòng nhập lý do hủy giải <strong>{tournament.tournamentName}</strong>:</p>
+            {approvedPlayers.length > 0 && (
+              <p style={{ color: "#e67e22", marginBottom: 8 }}>
+                Có <strong>{approvedPlayers.length}</strong> người chơi đã thanh toán. Hệ thống sẽ tự động hoàn tiền phí tham gia cho họ.
+              </p>
+            )}
             <textarea
               className="td-modal-textarea"
               rows={4}
