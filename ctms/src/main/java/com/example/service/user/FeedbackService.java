@@ -42,21 +42,21 @@ public class FeedbackService {
     
     // 3. Thêm feedback mới
     public boolean addFeedback(FeedbackDTO feedback) {
-        try {
-            // Validate dữ liệu cơ bản
-            if (feedback.getUserId() == null) {
-                throw new IllegalArgumentException("User ID is required");
-            }
-            if (feedback.getTournamentId() == null) {
-                throw new IllegalArgumentException("Tournament ID is required");
-            }
-            if (feedback.getStarRating() == null || feedback.getStarRating() < 1 || feedback.getStarRating() > 5) {
-                throw new IllegalArgumentException("Star rating must be between 1 and 5");
-            }
-            if (feedback.getComment() == null || feedback.getComment().trim().isEmpty()) {
-                throw new IllegalArgumentException("Comment cannot be empty");
-            }
+        // Validate dữ liệu cơ bản
+        if (feedback.getUserId() == null) {
+            throw new IllegalArgumentException("User ID is required");
+        }
+        if (feedback.getTournamentId() == null) {
+            throw new IllegalArgumentException("Tournament ID is required");
+        }
+        if (feedback.getStarRating() == null || feedback.getStarRating() < 1 || feedback.getStarRating() > 5) {
+            throw new IllegalArgumentException("Star rating must be between 1 and 5");
+        }
+        if (feedback.getComment() == null || feedback.getComment().trim().isEmpty()) {
+            throw new IllegalArgumentException("Comment cannot be empty");
+        }
 
+        try {
             // Chỉ cho phép feedback khi giải đang thi đấu hoặc đã kết thúc
             TournamentDTO tournament = tournamentDAO.getTournamentById(feedback.getTournamentId());
             if (tournament == null) {
@@ -87,6 +87,9 @@ public class FeedbackService {
 
             feedbackDAO.addFeedback(feedback);
             return true;
+        } catch (IllegalArgumentException e) {
+            // Đẩy tiếp IllegalArgumentException để servlet xử lý và trả message cụ thể cho client
+            throw e;
         } catch (Exception e) {
             e.printStackTrace();
             return false;

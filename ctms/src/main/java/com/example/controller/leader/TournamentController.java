@@ -359,6 +359,64 @@ public class TournamentController extends HttpServlet {
         response.setCharacterEncoding("UTF-8");
 
         String action = request.getParameter("action");
+        if ("restore".equalsIgnoreCase(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+                return;
+            }
+            Integer currentUserId = getUserIdFromSession(request);
+            if (currentUserId == null) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("{\"success\": false, \"message\": \"Unauthorized\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(tid);
+                String error = tournamentService.restoreTournament(tournamentId, currentUserId);
+                if (error == null) {
+                    response.getWriter().write("{\"success\": true, \"message\": \"Đã khôi phục giải đấu thành công.\"}");
+                } else {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    response.getWriter().write(gson.toJson(Map.of("success", false, "message", error)));
+                }
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+            }
+            return;
+        }
+
+        if ("resubmit".equalsIgnoreCase(action)) {
+            String tid = request.getParameter("id");
+            if (tid == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Missing tournament id\"}");
+                return;
+            }
+            Integer currentUserId = getUserIdFromSession(request);
+            if (currentUserId == null) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("{\"success\": false, \"message\": \"Unauthorized\"}");
+                return;
+            }
+            try {
+                int tournamentId = Integer.parseInt(tid);
+                boolean ok = tournamentService.resubmitTournament(tournamentId, currentUserId);
+                if (ok) {
+                    response.getWriter().write("{\"success\": true, \"message\": \"Đã nộp lại giải đấu thành công.\"}");
+                } else {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    response.getWriter().write("{\"success\": false, \"message\": \"Không thể nộp lại giải. Giải phải ở trạng thái Rejected và bạn phải là người tạo giải.\"}");
+                }
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"success\": false, \"message\": \"Invalid tournament id\"}");
+            }
+            return;
+        }
+
         if ("autoSetup".equalsIgnoreCase(action) || "auto-setup".equalsIgnoreCase(action)) {
             String tid = request.getParameter("id");
             if (tid == null) {

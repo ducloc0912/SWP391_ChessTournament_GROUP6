@@ -5,7 +5,9 @@ import java.sql.Timestamp;
 public class ReportDTO {
     private Integer reportId;
     private Integer reporterId;
+    private String reporterUsername;
     private Integer accusedId;
+    private String accusedUsername;
     private Integer matchId;
     private String description;
     private String evidenceUrl;
@@ -32,12 +34,28 @@ public class ReportDTO {
         this.reporterId = reporterId;
     }
 
+    public String getReporterUsername() {
+        return reporterUsername;
+    }
+
+    public void setReporterUsername(String reporterUsername) {
+        this.reporterUsername = reporterUsername;
+    }
+
     public Integer getAccusedId() {
         return accusedId;
     }
 
     public void setAccusedId(Integer accusedId) {
         this.accusedId = accusedId;
+    }
+
+    public String getAccusedUsername() {
+        return accusedUsername;
+    }
+
+    public void setAccusedUsername(String accusedUsername) {
+        this.accusedUsername = accusedUsername;
     }
 
     public Integer getMatchId() {

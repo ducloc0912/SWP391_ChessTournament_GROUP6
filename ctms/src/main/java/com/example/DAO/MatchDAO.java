@@ -58,11 +58,15 @@ public class MatchDAO extends DBContext {
         String sql = """
             SELECT m.match_id, m.tournament_id, m.round_id, m.board_number,
                    m.player1_id, m.player2_id, m.result, m.status,
-                   m.start_time, m.end_time, t.tournament_name
+                   m.start_time, m.end_time, t.tournament_name,
+                   u1.username AS player1_username,
+                   u2.username AS player2_username
             FROM Matches m
             JOIN Round r ON r.round_id = m.round_id
             JOIN Bracket b ON b.bracket_id = r.bracket_id
             JOIN Tournaments t ON t.tournament_id = m.tournament_id
+            LEFT JOIN Users u1 ON u1.user_id = m.player1_id
+            LEFT JOIN Users u2 ON u2.user_id = m.player2_id
             WHERE b.status = 'Published'
             ORDER BY m.start_time
             """;
@@ -174,6 +178,14 @@ public class MatchDAO extends DBContext {
         try {
             String p2 = rs.getString("player2_name");
             if (p2 != null && !p2.isBlank()) row.put("player2Name", p2);
+        } catch (Exception ignored) {}
+        try {
+            String u1 = rs.getString("player1_username");
+            if (u1 != null && !u1.isBlank()) row.put("player1Username", u1);
+        } catch (Exception ignored) {}
+        try {
+            String u2 = rs.getString("player2_username");
+            if (u2 != null && !u2.isBlank()) row.put("player2Username", u2);
         } catch (Exception ignored) {}
         return row;
     }
