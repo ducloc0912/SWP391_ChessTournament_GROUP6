@@ -1029,6 +1029,61 @@ public class RefereeMatchDAO extends DBContext {
         }
     }
 
+    /**
+     * Tự động kết thúc trận khi quá 24h kể từ startTime mà chưa hoàn thành.
+     * Đánh dấu tất cả Mini_matches chưa Completed thành Completed với result='*',
+     * rồi set Matches: result='none', status='Completed', score=0-0.
+     */
+    public boolean autoFinishMatch(int matchId, int refereeId) {
+        if (getMatchForReferee(matchId, refereeId) == null) return false;
+
+        String checkSql = """
+                SELECT status, start_time FROM Matches WHERE match_id = ?
+                """;
+        String closeMiniSql = """
+                UPDATE Mini_matches
+                SET status = 'Completed', result = '*', end_time = GETDATE()
+                WHERE match_id = ? AND status <> 'Completed'
+                """;
+        String closeMatchSql = """
+                UPDATE Matches
+                SET player1_score = 0, player2_score = 0,
+                    result = 'none', winner_id = NULL, status = 'Completed'
+                WHERE match_id = ? AND status <> 'Completed'
+                """;
+
+        try (Connection conn = getConnection()) {
+            if (conn == null) return false;
+
+            // Kiểm tra trận chưa hoàn thành và đã qua startTime + 24h
+            try (PreparedStatement ps = conn.prepareStatement(checkSql)) {
+                ps.setInt(1, matchId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) return false;
+                    String status = rs.getString("status");
+                    if ("Completed".equals(status) || "Cancelled".equals(status)) return false;
+                    Timestamp startTime = rs.getTimestamp("start_time");
+                    if (startTime == null) return false;
+                    long deadline = startTime.getTime() + 24L * 60 * 60 * 1000;
+                    if (System.currentTimeMillis() <= deadline) return false;
+                }
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(closeMiniSql)) {
+                ps.setInt(1, matchId);
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement(closeMatchSql)) {
+                ps.setInt(1, matchId);
+                ps.executeUpdate();
+            }
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public boolean createTiebreakGame(int matchId, int refereeId) {
         Map<String, Object> match = getMatchForReferee(matchId, refereeId);
         if (match == null) return false;

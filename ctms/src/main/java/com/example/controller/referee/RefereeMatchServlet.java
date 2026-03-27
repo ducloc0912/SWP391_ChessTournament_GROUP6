@@ -113,6 +113,7 @@ public class RefereeMatchServlet extends HttpServlet {
             case "finishGame" -> handleFinishGame(request, response, userId, matchId);
             case "attendance" -> handleAttendance(request, response, userId, matchId);
             case "createTiebreak" -> handleCreateTiebreak(response, userId, matchId);
+            case "autoFinish" -> handleAutoFinish(response, userId, matchId);
             default -> {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 writeJson(response, false, "Action không hợp lệ.");
@@ -222,6 +223,16 @@ public class RefereeMatchServlet extends HttpServlet {
         payload.put("success", success);
         payload.put("message", message);
         response.getWriter().write(gson.toJson(payload));
+    }
+
+    private void handleAutoFinish(HttpServletResponse response, int refereeId, int matchId) throws IOException {
+        boolean ok = refereeMatchDAO.autoFinishMatch(matchId, refereeId);
+        if (!ok) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            writeJson(response, false, "Không thể tự kết thúc trận. Trận đã hoàn thành hoặc chưa quá 24h.");
+            return;
+        }
+        writeJson(response, true, "Trận đã tự động kết thúc: 2 thí sinh không thi đấu.");
     }
 
     private void handleCreateTiebreak(HttpServletResponse response, int refereeId, int matchId) throws IOException {
