@@ -65,8 +65,6 @@ const fullName = (item) => {
 /* Các trạng thái tiếp theo mà staff có thể chuyển, tùy theo status hiện tại */
 const ALLOWED_TRANSITIONS = {
     'Upcoming': [
-        { status: 'Ongoing', action: 'Start', label: 'Bắt đầu giải', icon: <Play size={16} />, color: '#2563eb' },
-        { status: 'Delayed', action: 'Delay', label: 'Tạm hoãn', icon: <AlertTriangle size={16} />, color: '#d97706' },
         { status: 'Cancelled', action: 'Cancel', label: 'Hủy giải', icon: <XCircle size={16} />, color: '#dc2626', isCancel: true }
     ],
     'Ongoing': [
@@ -74,7 +72,6 @@ const ALLOWED_TRANSITIONS = {
         { status: 'Cancelled', action: 'Cancel', label: 'Hủy giải', icon: <XCircle size={16} />, color: '#dc2626', isCancel: true }
     ],
     'Delayed': [
-        { status: 'Ongoing', action: 'Start', label: 'Tiếp tục giải', icon: <Play size={16} />, color: '#2563eb' },
         { status: 'Cancelled', action: 'Cancel', label: 'Hủy giải', icon: <XCircle size={16} />, color: '#dc2626', isCancel: true }
     ],
     'Rejected': [],
