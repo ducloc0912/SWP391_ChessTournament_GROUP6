@@ -657,7 +657,7 @@ public class PaymentDAO extends DBContext {
 
         String insertTxSql = """
             INSERT INTO Payment_Transaction (user_id, tournament_id, type, amount, balance_after, description, create_at)
-            VALUES (?, ?, 'PrizePayout', ?, (SELECT balance FROM Users WHERE user_id = ?), ?, GETDATE())
+            VALUES (?, ?, 'Prize', ?, (SELECT balance FROM Users WHERE user_id = ?), ?, GETDATE())
         """;
 
         String insertDistSql = """
