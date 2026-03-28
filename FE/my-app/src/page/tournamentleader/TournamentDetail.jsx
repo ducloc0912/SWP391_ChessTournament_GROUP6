@@ -414,18 +414,6 @@ const TournamentDetail = () => {
                 Chỉnh sửa giải đấu
               </button>
             )}
-            <button
-              type="button"
-              className="tdp-register-btn"
-              onClick={() =>
-                navigate(
-                  `/leader/tournaments/edit/${tournament.tournamentId ?? id}`,
-                )
-              }
-            >
-              <Edit2 size={18} />
-              Chỉnh sửa giải đấu
-            </button>
             {tournament.status === "Ongoing" && (
               <button
                 type="button"
