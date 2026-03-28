@@ -2,10 +2,12 @@
 package com.example.service.user;
 
 import com.example.DAO.FeedbackDAO;
+import com.example.DAO.NotificationDAO;
 import com.example.DAO.ParticipantDAO;
 import com.example.DAO.TournamentDAO;
 import com.example.model.dto.FeedbackDTO;
 import com.example.model.dto.TournamentDTO;
+import com.example.model.entity.Notification;
 
 import java.util.List;
 
@@ -13,11 +15,13 @@ public class FeedbackService {
     private FeedbackDAO feedbackDAO;
     private ParticipantDAO participantDAO;
     private TournamentDAO tournamentDAO;
+    private NotificationDAO notificationDAO;
 
     public FeedbackService() {
         this.feedbackDAO = new FeedbackDAO();
         this.participantDAO = new ParticipantDAO();
         this.tournamentDAO = new TournamentDAO();
+        this.notificationDAO = new NotificationDAO();
     }
     
     // 1. Lấy feedback cho trang chủ
@@ -86,6 +90,23 @@ public class FeedbackService {
             }
 
             feedbackDAO.addFeedback(feedback);
+
+            // Gửi thông báo cho tournament leader của giải đấu này
+            Integer leaderId = tournament.getCreateBy();
+            if (leaderId != null) {
+                try {
+                    Notification n = new Notification();
+                    n.setUserId(leaderId);
+                    n.setTitle("Đánh giá mới từ người chơi");
+                    n.setMessage("Giải đấu \"" + tournament.getTournamentName() + "\" vừa nhận được một đánh giá mới từ người chơi.");
+                    n.setType("Tournament");
+                    n.setActionUrl("/leader/tournaments/" + tournament.getTournamentId() + "?tab=feedback");
+                    notificationDAO.createNotification(n);
+                } catch (Exception ex) {
+                    ex.printStackTrace(); // không chặn luồng chính nếu gửi thông báo lỗi
+                }
+            }
+
             return true;
         } catch (IllegalArgumentException e) {
             // Đẩy tiếp IllegalArgumentException để servlet xử lý và trả message cụ thể cho client
@@ -142,7 +163,33 @@ public class FeedbackService {
             throw new IllegalArgumentException("Nội dung phản hồi không được để trống.");
         }
         try {
-            return feedbackDAO.updateFeedbackReply(feedbackId, reply.trim());
+            // Lấy feedback trước để biết player nào và giải đấu nào
+            FeedbackDTO feedback = feedbackDAO.getFeedbackById(feedbackId);
+
+            boolean ok = feedbackDAO.updateFeedbackReply(feedbackId, reply.trim());
+
+            if (ok && feedback != null && feedback.getUserId() != null) {
+                // Gửi thông báo cho player đã viết feedback này
+                try {
+                    TournamentDTO tournament = feedback.getTournamentId() != null
+                            ? tournamentDAO.getTournamentById(feedback.getTournamentId())
+                            : null;
+                    String tournamentName = tournament != null ? tournament.getTournamentName() : "giải đấu";
+                    Integer tournamentId = feedback.getTournamentId();
+
+                    Notification n = new Notification();
+                    n.setUserId(feedback.getUserId());
+                    n.setTitle("Tournament Leader đã phản hồi đánh giá của bạn");
+                    n.setMessage("Tournament Leader đã phản hồi đánh giá của bạn cho giải đấu \"" + tournamentName + "\".");
+                    n.setType("Tournament");
+                    n.setActionUrl(tournamentId != null ? "/tournaments/" + tournamentId : "/tournaments/public");
+                    notificationDAO.createNotification(n);
+                } catch (Exception ex) {
+                    ex.printStackTrace(); // không chặn luồng chính nếu gửi thông báo lỗi
+                }
+            }
+
+            return ok;
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {

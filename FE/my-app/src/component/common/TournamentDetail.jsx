@@ -523,58 +523,49 @@ export default function TournamentDetail() {
                       </p>
                       <div className="tdp-placement-rewards">
                         <h4>Giải thưởng theo thứ hạng</h4>
-                        <ul>
-                          <li>
-                            <span className="tdp-medal tdp-medal-gold" />
-                            <div>
-                              <strong>1st Place</strong>
-                              <span>
-                                {statusKey === "finished" && podium.championName
-                                  ? podium.championName
-                                  : "—"}{" "}
-                                ·{" "}
-                                {formatMoney(
-                                  tournament.prizePool
-                                    ? Math.round(tournament.prizePool * 0.5)
-                                    : 0,
-                                )}{" "}
-                                VND
-                              </span>
-                            </div>
-                          </li>
-                          <li>
-                            <span className="tdp-medal tdp-medal-silver" />
-                            <div>
-                              <strong>2nd Place</strong>
-                              <span>
-                                {statusKey === "finished" && podium.runnerUpName
-                                  ? podium.runnerUpName
-                                  : "—"}{" "}
-                                ·{" "}
-                                {formatMoney(
-                                  tournament.prizePool
-                                    ? Math.round(tournament.prizePool * 0.3)
-                                    : 0,
-                                )}{" "}
-                                VND
-                              </span>
-                            </div>
-                          </li>
-                          <li>
-                            <span className="tdp-medal tdp-medal-bronze" />
-                            <div>
-                              <strong>3rd Place</strong>
-                              <span>
-                                {formatMoney(
-                                  tournament.prizePool
-                                    ? Math.round(tournament.prizePool * 0.2)
-                                    : 0,
-                                )}{" "}
-                                VND
-                              </span>
-                            </div>
-                          </li>
-                        </ul>
+                        {Array.isArray(tournament.prizeTiers) && tournament.prizeTiers.length > 0 ? (
+                          <ul>
+                            {tournament.prizeTiers.map((tier, idx) => {
+                              const medalClass =
+                                idx === 0 ? "tdp-medal-gold"
+                                : idx === 1 ? "tdp-medal-silver"
+                                : "tdp-medal-bronze";
+                              return (
+                                <li key={idx}>
+                                  <span className={`tdp-medal ${medalClass}`} />
+                                  <div>
+                                    <strong>{tier.label || `Hạng ${tier.rankPosition ?? idx + 1}`}</strong>
+                                    <span>{formatMoney(tier.fixedAmount ?? 0)} VND</span>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : (
+                          <ul>
+                            <li>
+                              <span className="tdp-medal tdp-medal-gold" />
+                              <div>
+                                <strong>Champion</strong>
+                                <span>{formatMoney(0)} VND</span>
+                              </div>
+                            </li>
+                            <li>
+                              <span className="tdp-medal tdp-medal-silver" />
+                              <div>
+                                <strong>Runner-up</strong>
+                                <span>{formatMoney(0)} VND</span>
+                              </div>
+                            </li>
+                            <li>
+                              <span className="tdp-medal tdp-medal-bronze" />
+                              <div>
+                                <strong>3rd</strong>
+                                <span>{formatMoney(0)} VND</span>
+                              </div>
+                            </li>
+                          </ul>
+                        )}
                       </div>
                     </article>
 
@@ -623,46 +614,6 @@ export default function TournamentDetail() {
                         )}{" "}
                         người đã đăng ký
                       </p>
-                      <ul className="tdp-participants-list">
-                        {participantsPreview.length === 0 ? (
-                          <li
-                            key="empty"
-                            className="tdp-participant-item tdp-participant-empty"
-                          >
-                            Chưa có người tham gia.
-                          </li>
-                        ) : (
-                          participantsPreview.map((p, index) => (
-                            <li
-                              key={
-                                p.participantId ??
-                                p.participant_id ??
-                                p.userId ??
-                                p.user_id ??
-                                `p-${index}`
-                              }
-                              className="tdp-participant-item"
-                            >
-                              <span className="tdp-player-avatar" />
-                              <span>{participantFullName(p)}</span>
-                            </li>
-                          ))
-                        )}
-                        {hasMoreParticipants && (
-                          <li
-                            key="show-all"
-                            className="tdp-participant-item tdp-participants-show-all-wrap"
-                          >
-                            <button
-                              type="button"
-                              className="tdp-participants-show-all"
-                              onClick={() => setActiveTab("participant")}
-                            >
-                              Xem tất cả ({participants.length} người)
-                            </button>
-                          </li>
-                        )}
-                      </ul>
                       <div className="tdp-participants-info">
                         <p>
                           <MapPin size={14} /> {tournament.location || "Online"}
@@ -670,16 +621,52 @@ export default function TournamentDetail() {
                         <p>
                           <Calendar size={14} /> {dateRangeStr}
                         </p>
-                        {canRegisterByStatus && (
-                          <p>
-                            <Clock3 size={14} /> Hạn đăng ký:{" "}
-                            {formatDateTime(tournament.registrationDeadline)}
-                          </p>
-                        )}
+                        <p>
+                          <Clock3 size={14} /> Hạn đăng ký:{" "}
+                          {formatDateTime(tournament.registrationDeadline)}
+                        </p>
                         <p>
                           <Trophy size={14} /> Quỹ thưởng:{" "}
                           {formatMoney(tournament.prizePool)} VND
                         </p>
+                      </div>
+                      <div className="tdp-reg-progress-wrap">
+                        <div className="td-reg-progress-bar">
+                          <div
+                            className="td-reg-progress-fill"
+                            style={{
+                              width: `${
+                                (tournament.maxPlayer ?? tournament.max_player ?? 0) > 0
+                                  ? Math.round(
+                                      ((tournament.currentPlayers ?? tournament.current_players ?? 0) /
+                                        (tournament.maxPlayer ?? tournament.max_player)) *
+                                        100,
+                                    )
+                                  : 0
+                              }%`,
+                            }}
+                          />
+                        </div>
+                        <p className="td-reg-progress-footer">
+                          <strong>
+                            {Number(tournament.currentPlayers ?? tournament.current_players ?? 0)}
+                          </strong>{" "}
+                          / {Number(tournament.maxPlayer ?? tournament.max_player ?? 0)} người chơi
+                        </p>
+                      </div>
+                      <div className="tdp-timeline-wrap">
+                        <h4>Timeline</h4>
+                        {[
+                          { label: "Mở đăng ký", date: formatDate(tournament.createAt ?? tournament.create_at) },
+                          { label: "Đóng đăng ký", date: formatDate(tournament.registrationDeadline) },
+                          { label: "Bắt đầu giải", date: formatDate(tournament.startDate) },
+                          { label: "Kết thúc giải", date: formatDate(tournament.endDate) },
+                        ].map((item, idx) => (
+                          <div key={idx} className="td-timeline-item">
+                            <span>{item.label}</span>
+                            <span>{item.date}</span>
+                          </div>
+                        ))}
                       </div>
                     </article>
                   </div>
