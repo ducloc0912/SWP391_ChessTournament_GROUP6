@@ -90,13 +90,29 @@ export default function HomePage() {
         });
         if (res?.data?.authenticated && res.data.user) {
           const role = (res.data.role || "").toString().toUpperCase();
-          localStorage.setItem("user", JSON.stringify(res.data.user));
+          let userData = res.data.user;
           if (role) {
             localStorage.setItem("role", role);
           } else {
             localStorage.removeItem("role");
           }
-          setUser(res.data.user);
+          // Fetch fresh balance từ profile để tránh session trả về balance cũ
+          try {
+            const profileRes = await axios.get(`${API_BASE}/api/profile/me`, {
+              withCredentials: true,
+            });
+            if (profileRes.data?.success) {
+              const payload =
+                profileRes.data.data?.user ?? profileRes.data.user;
+              if (payload?.balance !== undefined) {
+                userData = { ...userData, balance: payload.balance };
+              }
+            }
+          } catch {
+            // ignore, dùng balance từ session
+          }
+          localStorage.setItem("user", JSON.stringify(userData));
+          setUser(userData);
         } else {
           localStorage.removeItem("user");
           localStorage.removeItem("role");

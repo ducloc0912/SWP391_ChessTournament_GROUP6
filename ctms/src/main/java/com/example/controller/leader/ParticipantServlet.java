@@ -2,6 +2,7 @@ package com.example.controller.leader;
 
 import com.example.DAO.NotificationDAO;
 import com.example.DAO.ParticipantDAO;
+import com.example.DAO.PaymentDAO;
 import com.example.DAO.TournamentDAO;
 import com.example.model.dto.TournamentDTO;
 import com.example.model.dto.TournamentPlayerDTO;
@@ -23,6 +24,7 @@ public class ParticipantServlet extends HttpServlet {
 
     private ParticipantDAO dao = new ParticipantDAO();
     private TournamentDAO tournamentDAO = new TournamentDAO();
+    private PaymentDAO paymentDAO = new PaymentDAO();
     private Gson gson;
 
     @Override
@@ -234,10 +236,32 @@ public class ParticipantServlet extends HttpServlet {
         if (session != null && session.getAttribute("user") != null) {
             Integer currentUserId = ((User) session.getAttribute("user")).getUserId();
             if (currentUserId != null && p.getUserId() != null && p.getUserId() == currentUserId) {
+                // Kiểm tra hoàn tiền: chỉ hoàn khi giải chưa diễn ra (Upcoming) và đã thanh toán
+                boolean refunded = false;
+                java.math.BigDecimal refundAmount = java.math.BigDecimal.ZERO;
+                TournamentDTO tournament = p.getTournamentId() != null
+                        ? tournamentDAO.getTournamentById(p.getTournamentId()) : null;
+                if (tournament != null
+                        && "Upcoming".equalsIgnoreCase(tournament.getStatus())
+                        && Boolean.TRUE.equals(p.getIsPaid())
+                        && tournament.getEntryFee() != null
+                        && tournament.getEntryFee().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                    refunded = paymentDAO.refundPlayerWithdrawal(
+                            p.getTournamentId(), currentUserId, tournament.getEntryFee());
+                    if (refunded) refundAmount = tournament.getEntryFee();
+                }
+
                 p.setStatus(ParticipantStatus.Withdrawn);
                 p.setRemovedAt(new Timestamp(System.currentTimeMillis()));
                 boolean ok = dao.updateParticipant(p);
-                resp.getWriter().write("{\"success\": " + ok + ", \"message\": \"Đã hủy đăng ký\"}");
+
+                String msg = "Đã hủy đăng ký";
+                if (refunded) {
+                    msg = "Đã hủy đăng ký và hoàn " + refundAmount.toPlainString() + " VND vào ví của bạn";
+                }
+                resp.getWriter().write("{\"success\": " + ok + ", \"refunded\": " + refunded
+                        + ", \"refundAmount\": " + refundAmount.toPlainString()
+                        + ", \"message\": \"" + msg + "\"}");
                 return;
             }
         }

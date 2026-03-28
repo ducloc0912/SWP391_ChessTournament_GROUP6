@@ -281,6 +281,7 @@ public class ParticipantDAO extends DBContext {
             FROM Participants p
             JOIN Users u ON p.user_id = u.user_id
             WHERE p.tournament_id = ?
+              AND (p.status IS NULL OR p.status = 'Active')
             ORDER BY p.registration_date
         """;
         try (Connection conn = getConnection();
