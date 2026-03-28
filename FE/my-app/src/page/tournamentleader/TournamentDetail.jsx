@@ -400,6 +400,20 @@ const TournamentDetail = () => {
               <ImagePlus size={16} />
               {uploadingBanner ? "Đang tải..." : "Sửa banner"}
             </button>
+            {["Pending", "Rejected", "Cancelled"].includes(tournament.status) && (
+              <button
+                type="button"
+                className="tdp-register-btn"
+                onClick={() =>
+                  navigate(
+                    `/leader/tournaments/edit/${tournament.tournamentId ?? id}`,
+                  )
+                }
+              >
+                <Edit2 size={18} />
+                Chỉnh sửa giải đấu
+              </button>
+            )}
             <button
               type="button"
               className="tdp-register-btn"

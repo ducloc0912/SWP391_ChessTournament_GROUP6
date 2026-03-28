@@ -781,9 +781,14 @@ public class TournamentService {
 
         if (t == null) return false;
         if (t.getTournamentId() <= 0) return false;
-if (isBlank(t.getTournamentName())) return false;
+        if (isBlank(t.getTournamentName())) return false;
         if (t.getMinPlayer() == null || t.getMaxPlayer() == null) return false;
         if (t.getMinPlayer() > t.getMaxPlayer()) return false;
+
+        TournamentDTO existing = tournamentDAO.getTournamentById(t.getTournamentId());
+        if (existing == null) return false;
+        String status = existing.getStatus();
+        if (!java.util.List.of("Pending", "Rejected", "Cancelled").contains(status)) return false;
 
         return tournamentDAO.updateTournament(t);
     }
