@@ -571,6 +571,11 @@ public class RefereeMatchDAO extends DBContext {
                     checkByeInNextRound(conn, roundId, boardNumber);
                 }
 
+                // Cập nhật standing cho RoundRobin dù cả 2 vắng mặt (trận vẫn Completed)
+                if (fmt.equalsIgnoreCase("RoundRobin")) {
+                    new StandingDAO().updateStandingsForTournament(conn, tournamentId);
+                }
+
                 return;
             }
 

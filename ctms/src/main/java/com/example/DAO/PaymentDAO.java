@@ -549,6 +549,68 @@ public class PaymentDAO extends DBContext {
     }
 
     /**
+     * Hoàn tiền Prize Pool cho leader khi giải đấu bị staff từ chối duyệt.
+     * Giải đang ở trạng thái Pending nên chưa có người chơi nào đăng ký/thanh toán.
+     */
+    public boolean refundLeaderForRejection(int tournamentId, int leaderId, java.math.BigDecimal prizePool) {
+        if (prizePool == null || prizePool.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            return true; // Không có gì để hoàn
+        }
+
+        String addBalanceSql = "UPDATE Users SET balance = ISNULL(balance, 0) + ? WHERE user_id = ?";
+        String getBalanceSql = "SELECT balance FROM Users WHERE user_id = ?";
+        String insertTxSql = "INSERT INTO Payment_Transaction (user_id, tournament_id, type, amount, balance_after, description, create_at) "
+                + "VALUES (?, ?, 'Refund', ?, ?, ?, GETDATE())";
+
+        Connection conn = null;
+        try {
+            conn = DBContext.getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps = conn.prepareStatement(addBalanceSql)) {
+                ps.setBigDecimal(1, prizePool);
+                ps.setInt(2, leaderId);
+                ps.executeUpdate();
+            }
+
+            java.math.BigDecimal balanceAfter = java.math.BigDecimal.ZERO;
+            try (PreparedStatement ps = conn.prepareStatement(getBalanceSql)) {
+                ps.setInt(1, leaderId);
+                try (java.sql.ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) balanceAfter = rs.getBigDecimal("balance");
+                }
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(insertTxSql)) {
+                ps.setInt(1, leaderId);
+                ps.setInt(2, tournamentId);
+                ps.setBigDecimal(3, prizePool);
+                ps.setBigDecimal(4, balanceAfter);
+                ps.setString(5, "Hoàn tiền Prize Pool do giải đấu bị từ chối duyệt");
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            e.printStackTrace();
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Kiểm tra giải thưởng của giải đã được chia hay chưa.
      */
     public boolean isPrizesAlreadyDistributed(int tournamentId) {
@@ -567,7 +629,7 @@ public class PaymentDAO extends DBContext {
 
     /**
      * Tự động chia giải thưởng cho người chơi khi giải kết thúc.
-     * Dựa vào Prize_Template (% theo hạng) + Standing (bảng xếp hạng) + prize_pool.
+     * Dựa vào Prize_Template (fixed_amount theo hạng) + Standing (bảng xếp hạng).
      * Ghi vào Prize_Distribution, Payment_Transaction, và cộng balance cho từng người chơi.
      */
     public boolean distributePrizes(int tournamentId, BigDecimal prizePool) {
@@ -575,11 +637,18 @@ public class PaymentDAO extends DBContext {
             return true; // Không có giải thưởng để chia
         }
 
-        // Lấy danh sách Prize_Template kèm user_id từ Standing theo rank
+        // Lấy Prize_Template kèm user_id từ Standing theo rank.
+        // Dùng LEFT JOIN để vẫn lấy được template dù Standing chưa có đủ.
+        // Ưu tiên fixed_amount; nếu = 0 thì fallback sang percentage * prizePool / 100.
         String querySql = """
-            SELECT pt.rank_position, pt.percentage, pt.label, s.user_id
+            SELECT pt.rank_position, pt.fixed_amount, pt.percentage, pt.label, s.user_id
             FROM Prize_Template pt
-            INNER JOIN Standing s ON s.tournament_id = pt.tournament_id AND s.current_rank = pt.rank_position
+            LEFT JOIN (
+                SELECT tournament_id, user_id, current_rank,
+                       ROW_NUMBER() OVER (PARTITION BY tournament_id, current_rank ORDER BY point DESC, tie_break DESC) AS rn
+                FROM Standing
+                WHERE tournament_id = ?
+            ) s ON s.tournament_id = pt.tournament_id AND s.current_rank = pt.rank_position AND s.rn = 1
             WHERE pt.tournament_id = ?
             ORDER BY pt.rank_position ASC
         """;
@@ -588,7 +657,7 @@ public class PaymentDAO extends DBContext {
 
         String insertTxSql = """
             INSERT INTO Payment_Transaction (user_id, tournament_id, type, amount, balance_after, description, create_at)
-            VALUES (?, ?, 'Prize', ?, (SELECT balance FROM Users WHERE user_id = ?), ?, GETDATE())
+            VALUES (?, ?, 'PrizePayout', ?, (SELECT balance FROM Users WHERE user_id = ?), ?, GETDATE())
         """;
 
         String insertDistSql = """
@@ -605,13 +674,17 @@ public class PaymentDAO extends DBContext {
             List<Map<String, Object>> winners = new ArrayList<>();
             try (PreparedStatement ps = conn.prepareStatement(querySql)) {
                 ps.setInt(1, tournamentId);
+                ps.setInt(2, tournamentId);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
+                        int userId = rs.getInt("user_id");
+                        if (rs.wasNull() || userId == 0) continue; // Chưa có standing cho rank này
                         Map<String, Object> winner = new HashMap<>();
                         winner.put("rankPosition", rs.getInt("rank_position"));
-                        winner.put("percentage", rs.getBigDecimal("percentage"));
-                        winner.put("label", rs.getString("label"));
-                        winner.put("userId", rs.getInt("user_id"));
+                        winner.put("fixedAmount",  rs.getBigDecimal("fixed_amount"));
+                        winner.put("percentage",   rs.getBigDecimal("percentage"));
+                        winner.put("label",        rs.getString("label"));
+                        winner.put("userId",       userId);
                         winners.add(winner);
                     }
                 }
@@ -625,13 +698,21 @@ public class PaymentDAO extends DBContext {
             // 2. Tính tiền và chia thưởng cho từng người
             for (Map<String, Object> winner : winners) {
                 int userId = (int) winner.get("userId");
-                BigDecimal percentage = (BigDecimal) winner.get("percentage");
+                BigDecimal fixedAmount = (BigDecimal) winner.get("fixedAmount");
+                BigDecimal percentage  = (BigDecimal) winner.get("percentage");
                 int rankPosition = (int) winner.get("rankPosition");
                 String label = (String) winner.get("label");
 
-                // Tính tiền thưởng = prizePool * percentage / 100
-                BigDecimal prizeAmount = prizePool.multiply(percentage)
-                        .divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+                // Ưu tiên fixed_amount; fallback sang percentage nếu fixed_amount = 0
+                BigDecimal prizeAmount;
+                if (fixedAmount != null && fixedAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    prizeAmount = fixedAmount;
+                } else if (percentage != null && percentage.compareTo(BigDecimal.ZERO) > 0) {
+                    prizeAmount = prizePool.multiply(percentage)
+                            .divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+                } else {
+                    continue; // Không có giá trị nào hợp lệ
+                }
 
                 if (prizeAmount.compareTo(BigDecimal.ZERO) <= 0) continue;
 
