@@ -649,6 +649,19 @@ public class TournamentService {
             }
         }
 
+        // Thông báo cho tournament leader vừa tạo giải
+        try {
+            com.example.model.entity.Notification n = new com.example.model.entity.Notification();
+            n.setUserId(creatorId);
+            n.setType("Tournament");
+            n.setTitle("Tạo giải đấu thành công");
+            n.setMessage("Giải đấu '" + t.getTournamentName() + "' đã được tạo thành công và đang chờ Staff phê duyệt.");
+            n.setActionUrl("/leader/tournaments/" + tournamentId);
+            notificationDAO.createNotification(n);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         return CreateTournamentResult.ok(tournamentId);
     }
 

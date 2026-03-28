@@ -113,6 +113,36 @@ public class UserServlet extends HttpServlet {
             return;
         }
 
+        if (parts.length >= 3 && "referee-tournaments".equalsIgnoreCase(parts[2])) {
+            List<Map<String, Object>> items = profileDAO.getRefereeTournaments(userId);
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("items", items);
+
+            Map<String, Object> out = new HashMap<>();
+            out.put("success", true);
+            out.put("data", data);
+
+            resp.setStatus(HttpServletResponse.SC_OK);
+            resp.getWriter().print(gson.toJson(out));
+            return;
+        }
+
+        if (parts.length >= 3 && "leader-tournaments".equalsIgnoreCase(parts[2])) {
+            List<Map<String, Object>> items = profileDAO.getLeaderTournaments(userId);
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("items", items);
+
+            Map<String, Object> out = new HashMap<>();
+            out.put("success", true);
+            out.put("data", data);
+
+            resp.setStatus(HttpServletResponse.SC_OK);
+            resp.getWriter().print(gson.toJson(out));
+            return;
+        }
+
         if (parts.length == 2) {
             Map<String, Object> user = profileDAO.getUserBasic(userId);
             if (user == null) {

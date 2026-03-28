@@ -345,6 +345,7 @@ public class ProfileDAO {
                 t.tournament_name AS tournamentName,
                 t.status          AS tournamentStatus,
                 t.start_date      AS startDate,
+                t.end_date        AS endDate,
                 tr.assigned_at    AS assignedAt
             FROM Tournament_Referee tr
             INNER JOIN Tournaments t ON t.tournament_id = tr.tournament_id
@@ -363,6 +364,7 @@ public class ProfileDAO {
                     t.put("tournamentName", EncodingUtil.fixUtf8Mojibake(rs.getString("tournamentName")));
                     t.put("tournamentStatus", rs.getString("tournamentStatus"));
                     t.put("startDate", rs.getTimestamp("startDate"));
+                    t.put("endDate", rs.getTimestamp("endDate"));
                     t.put("assignedAt", rs.getTimestamp("assignedAt"));
                     list.add(t);
                 }
