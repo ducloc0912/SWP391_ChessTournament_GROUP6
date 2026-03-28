@@ -109,21 +109,32 @@ public class TournamentStaffService {
         if (t == null) return false;
         boolean ok = tournamentStaffDAO.updateTournamentStatusAndLog(
                 tournamentId, staffId, t.getStatus(), newStatus, action, note);
-        if (ok && t.getCreateBy() != null) {
-            try {
-                boolean approved = (action == ApprovalAction.Approve);
-                Notification n = new Notification();
-                n.setTitle(approved ? "Giải đấu của bạn đã được duyệt" : "Giải đấu của bạn không được duyệt");
-                n.setMessage(approved
-                        ? "Giải đấu '" + t.getTournamentName() + "' đã được staff chấp thuận. Giải đấu sẵn sàng mở đăng ký."
-                        : "Giải đấu '" + t.getTournamentName() + "' chưa được chấp thuận."
-                            + (note != null && !note.isBlank() ? " Lý do: " + note : ""));
-                n.setType("Tournament");
-                n.setActionUrl("/leader/tournaments");
-                n.setUserId(t.getCreateBy());
-                notificationDAO.createNotification(n);
-            } catch (Exception e) {
-                e.printStackTrace();
+        if (ok) {
+            // Hoàn tiền Prize Pool cho leader khi giải bị từ chối
+            if (action == ApprovalAction.Reject && t.getCreateBy() != null && t.getPrizePool() != null) {
+                try {
+                    paymentDAO.refundLeaderForRejection(tournamentId, t.getCreateBy(), t.getPrizePool());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if (t.getCreateBy() != null) {
+                try {
+                    boolean approved = (action == ApprovalAction.Approve);
+                    Notification n = new Notification();
+                    n.setTitle(approved ? "Giải đấu của bạn đã được duyệt" : "Giải đấu của bạn không được duyệt");
+                    n.setMessage(approved
+                            ? "Giải đấu '" + t.getTournamentName() + "' đã được staff chấp thuận. Giải đấu sẵn sàng mở đăng ký."
+                            : "Giải đấu '" + t.getTournamentName() + "' chưa được chấp thuận. Tiền Prize Pool đã được hoàn trả."
+                                + (note != null && !note.isBlank() ? " Lý do: " + note : ""));
+                    n.setType("Tournament");
+                    n.setActionUrl("/leader/tournaments");
+                    n.setUserId(t.getCreateBy());
+                    notificationDAO.createNotification(n);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
         return ok;
