@@ -4,8 +4,6 @@ import { useNavigate } from "react-router-dom";
 import Dashboard from "../../component/admin/Dashboard";
 import AccountListScreen from "../../component/admin/Accounlist";
 import UserProfile from "../../component/admin/UserProfile";
-import EditProfile from "../../component/admin/EditProfile";
-import EditRole from "../../component/admin/EditRole";
 import AdminSystemReports from "../../component/admin/AdminSystemReports";
 import CreateAccount from "../../component/admin/CreateAccount";
 
@@ -32,8 +30,6 @@ export const AdminLayout = () => {
 
   const activeLabel = useMemo(() => {
     if (activeTab === "user_profile") return "Thông tin tài khoản";
-    if (activeTab === "edit_user") return "Sửa hồ sơ người dùng";
-    if (activeTab === "edit_role") return "Phân quyền người dùng";
     if (activeTab === "reports") return "System Reports";
     if (activeTab === "create_account") return "Tạo người dùng";
     if (activeTab === "accounts") return "Quản lý tài khoản";
@@ -52,14 +48,6 @@ export const AdminLayout = () => {
               setSelectedUserId(userId);
               setActiveTab("user_profile");
             }}
-            onEditAccount={(userId) => {
-              setSelectedUserId(userId);
-              setActiveTab("edit_user");
-            }}
-            onEditRole={(userId) => {
-              setSelectedUserId(userId);
-              setActiveTab("edit_role");
-            }}
           />
         );
 
@@ -69,22 +57,6 @@ export const AdminLayout = () => {
       case "user_profile":
         return (
           <UserProfile
-            userId={selectedUserId}
-            onBack={() => setActiveTab("accounts")}
-          />
-        );
-
-      case "edit_user":
-        return (
-          <EditProfile
-            userId={selectedUserId}
-            onBack={() => setActiveTab("accounts")}
-          />
-        );
-
-      case "edit_role":
-        return (
-          <EditRole
             userId={selectedUserId}
             onBack={() => setActiveTab("accounts")}
           />
@@ -160,8 +132,6 @@ export const AdminLayout = () => {
             {activeTab === "reports"}
             {activeTab === "user_profile" &&
               "Xem thông tin chi tiết người dùng"}
-            {activeTab === "edit_user" && "Chỉnh sửa thông tin người dùng"}
-            {activeTab === "edit_role" && "Phân quyền và quản lý vai trò"}
           </p>
         </div>
 

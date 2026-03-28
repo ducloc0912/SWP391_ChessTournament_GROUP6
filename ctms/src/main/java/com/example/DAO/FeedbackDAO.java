@@ -183,6 +183,25 @@ public class FeedbackDAO {
         }
     }
 
+    // 8b. Lấy feedback theo feedbackId
+    public FeedbackDTO getFeedbackById(int feedbackId) throws SQLException {
+        String sql = "SELECT f.feedback_id, f.user_id, f.tournament_id, f.match_id, " +
+                "f.star_rating, f.comment, f.status, f.reply, f.create_at, " +
+                "u.first_name, u.last_name, u.avatar, u.email " +
+                "FROM Feedback f " +
+                "LEFT JOIN Users u ON f.user_id = u.user_id " +
+                "WHERE f.feedback_id = ?";
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, feedbackId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return mapResultSetToFeedbackDTO(rs);
+            }
+        }
+        return null;
+    }
+
     // 8. Cập nhật reply của tournament leader
     public boolean updateFeedbackReply(int feedbackId, String reply) throws SQLException {
         String sql = "UPDATE Feedback SET reply = ? WHERE feedback_id = ?";

@@ -1393,3 +1393,51 @@
 
 .tdp-standing-won  { color: #16a34a; font-weight: 600; }
 .tdp-standing-lost { color: #dc2626; font-weight: 600; }
+
+/* ===== PROGRESS BAR & TIMELINE (matches tournament-leader view) ===== */
+.tdp-reg-progress-wrap {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+.tdp-reg-progress-wrap .td-reg-progress-bar {
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 0;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.tdp-reg-progress-wrap .td-reg-progress-fill {
+  height: 100%;
+  background: #ff4655;
+  transition: width 0.2s ease;
+}
+.tdp-reg-progress-wrap .td-reg-progress-footer {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+.tdp-reg-progress-wrap .td-reg-progress-footer strong {
+  color: #0f172a;
+}
+.tdp-timeline-wrap {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+.tdp-timeline-wrap h4 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.tdp-timeline-wrap .td-timeline-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: #4b5563;
+}

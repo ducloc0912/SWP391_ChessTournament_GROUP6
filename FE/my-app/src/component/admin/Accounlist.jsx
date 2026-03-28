@@ -216,8 +216,6 @@ const ROLE_OPTIONS = [
 export const AccountListScreen = ({
   searchKeyword = "",
   onViewAccount,
-  onEditAccount,
-  onEditRole,
 }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -312,14 +310,6 @@ export const AccountListScreen = ({
 
   const handleView = (id) => {
     if (typeof onViewAccount === "function") onViewAccount(id);
-  };
-
-  const handleEdit = (id) => {
-    if (typeof onEditAccount === "function") onEditAccount(id);
-  };
-
-  const handleEditRole = (id) => {
-    if (typeof onEditRole === "function") onEditRole(id);
   };
 
   return (
@@ -687,22 +677,6 @@ export const AccountListScreen = ({
                             onClick={() => handleView(id)}
                           >
                             <IconEye />
-                          </button>
-
-                          <button
-                            className="al-iconBtn"
-                            title="Sửa"
-                            onClick={() => handleEdit(id)}
-                          >
-                            <IconEdit />
-                          </button>
-
-                          <button
-                            className="al-iconBtn"
-                            title="Phân quyền"
-                            onClick={() => handleEditRole(id)}
-                          >
-                            <IconShield />
                           </button>
                         </td>
                       </tr>
