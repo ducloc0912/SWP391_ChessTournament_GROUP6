@@ -62,12 +62,15 @@ public class UserWithdrawServlet extends HttpServlet {
         }
 
         User user = (User) session.getAttribute("user");
+       
+
         try {
             Map<String, Object> body = gson.fromJson(req.getReader(), Map.class);
             if (body == null || !body.containsKey("amount") || !body.containsKey("bankName") || !body.containsKey("bankAccountNumber") || !body.containsKey("bankAccountName")) {
                 resp.getWriter().write("{\"success\": false, \"message\": \"Thiếu thông tin rút tiền\"}");
                 return;
             }
+            
 
             BigDecimal amount = new BigDecimal(body.get("amount").toString());
             String bankName = (String) body.get("bankName");
@@ -79,15 +82,12 @@ public class UserWithdrawServlet extends HttpServlet {
                 return;
             }
 
-            if (user.getBalance() == null || user.getBalance().compareTo(amount) < 0) {
-                resp.getWriter().write("{\"success\": false, \"message\": \"Số dư không đủ để thực hiện rút tiền\"}");
-                return;
-            }
+          
 
             boolean success = paymentDAO.createWithdrawalRequest(user.getUserId(), amount, bankName, bankAccountNumber, bankAccountName);
             Map<String, Object> responseData = new HashMap<>();
             if (success) {
-                user.setBalance(user.getBalance().subtract(amount)); // Cập nhật balance trên session
+                user.setBalance(user.getBalance());
                 session.setAttribute("user", user);
 
                 responseData.put("success", true);

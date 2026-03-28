@@ -22,9 +22,6 @@ public class TournamentSchedulerDAO extends DBContext {
                 "WHERE status = 'Upcoming' AND start_date <= GETDATE()";
         String updateSql = "UPDATE Tournaments SET status = 'Ongoing' " +
                 "WHERE tournament_id = ?";
-        String logSql = "INSERT INTO Tournament_Approval_Log " +
-                "(tournament_id, staff_id, action, from_status, to_status, note, create_at) " +
-                "VALUES (?, ?, 'Start', 'Upcoming', 'Ongoing', N'Tự động bắt đầu giải theo lịch', GETDATE())";
 
         Connection conn = null;
         try {
@@ -45,13 +42,6 @@ public class TournamentSchedulerDAO extends DBContext {
                 try (PreparedStatement psUpdate = conn.prepareStatement(updateSql)) {
                     psUpdate.setInt(1, tournamentId);
                     psUpdate.executeUpdate();
-                }
-
-                // Ghi log (staff_id = NULL cho hành động tự động)
-                try (PreparedStatement psLog = conn.prepareStatement(logSql)) {
-                    psLog.setInt(1, tournamentId);
-                    psLog.setNull(2, java.sql.Types.INTEGER);
-                    psLog.executeUpdate();
                 }
 
                 updatedIds.add(tournamentId);
@@ -83,9 +73,7 @@ public class TournamentSchedulerDAO extends DBContext {
                 "WHERE status = 'Ongoing' AND end_date <= GETDATE()";
         String updateSql = "UPDATE Tournaments SET status = 'Completed' " +
                 "WHERE tournament_id = ?";
-        String logSql = "INSERT INTO Tournament_Approval_Log " +
-                "(tournament_id, staff_id, action, from_status, to_status, note, create_at) " +
-                "VALUES (?, ?, 'Complete', 'Ongoing', 'Completed', N'Tự động kết thúc giải theo lịch', GETDATE())";
+
 
         Connection conn = null;
         try {
@@ -104,12 +92,6 @@ public class TournamentSchedulerDAO extends DBContext {
                 try (PreparedStatement psUpdate = conn.prepareStatement(updateSql)) {
                     psUpdate.setInt(1, tournamentId);
                     psUpdate.executeUpdate();
-                }
-
-                try (PreparedStatement psLog = conn.prepareStatement(logSql)) {
-                    psLog.setInt(1, tournamentId);
-                    psLog.setNull(2, java.sql.Types.INTEGER);
-                    psLog.executeUpdate();
                 }
 
                 updatedIds.add(tournamentId);

@@ -81,15 +81,14 @@ public class PayOSController extends HttpServlet {
         }
         
         String requestBody = sb.toString();
-        // Return 2xx immediately as per webhook best practices, but for simplicity here we process synchronously
+        
         Map<String, Object> result = payOSService.handleWebhook(requestBody);
         
         if ((Boolean) result.getOrDefault("success", false)) {
             resp.setStatus(HttpServletResponse.SC_OK);
             resp.getWriter().write(gson.toJson(Map.of("success", true)));
         } else {
-            // Even if verification failed, we should probably return 200 so PayOS stops retrying,
-            // or return 400 if it's completely malformed.
+            
             resp.setStatus(HttpServletResponse.SC_OK);
             resp.getWriter().write(gson.toJson(result));
         }

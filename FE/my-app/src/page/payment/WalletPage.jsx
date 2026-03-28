@@ -125,8 +125,10 @@ const WalletPage = () => {
     const cancel = params.get("cancel");
     if (status === "PAID" && code === "00") {
       setTopupToast("success");
+      setTimeout(() => setTopupToast(null), 3000);
     } else if (cancel === "true" || status === "CANCELLED") {
       setTopupToast("cancel");
+      setTimeout(() => setTopupToast(null), 3000);
     }
     // Clean URL — hide PayOS query params
     if (params.toString()) {
@@ -143,6 +145,7 @@ const WalletPage = () => {
     navigate("/login");
   };
 
+  
   /* ── Topup ── */
   const handleTopup = async () => {
     const topupAmount = parseInt(amount, 10);
@@ -517,6 +520,7 @@ const WalletPage = () => {
               <div>
                 <h3 className="wallet-modal-title">Tạo yêu cầu rút tiền</h3>
                 <p className="wallet-modal-sub">Số tiền sẽ bị trừ và tạm giữ cho đến khi staff duyệt</p>
+                <p className="wallet-modal-sub">Phí rút tiền: 3000đ</p>
               </div>
               <button className="wallet-modal-close" onClick={() => setShowWithdrawModal(false)}>
                 <i className="fa-solid fa-xmark" />

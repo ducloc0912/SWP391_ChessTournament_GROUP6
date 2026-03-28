@@ -79,10 +79,8 @@ export default function PendingTournamentRegistrations() {
       setRows((prev) =>
         prev.filter((x) => x.participantId !== confirmTarget.participantId),
       );
-      setFeedback({
-        type: "success",
-        text: res?.data?.message || "Xóa đăng ký thành công.",
-      });
+      const msg = res?.data?.message || "Hủy đăng ký thành công.";
+      setFeedback({ type: "success", text: msg });
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
@@ -507,11 +505,15 @@ export default function PendingTournamentRegistrations() {
               Bạn có chắc muốn hủy đăng ký giải{" "}
               <b>{confirmTarget.tournamentName}</b>?
             </p>
-            {confirmTarget.entryFee > 0 && confirmTarget.isPaid && (
-              <p style={{ marginTop: 8, lineHeight: 1.6, color: "#4b5563" }}>
-                Phí tham gia sẽ được hoàn sau vài ngày làm việc kể từ khi bạn hủy đăng ký.
+            {confirmTarget.entryFee > 0 && confirmTarget.isPaid && confirmTarget.tournamentStatus === "Upcoming" ? (
+              <p style={{ marginTop: 8, lineHeight: 1.6, padding: "10px 12px", background: "#d1fae5", borderRadius: 8, border: "1px solid #6ee7b7", color: "#065f46" }}>
+                Phí tham gia <b>{Number(confirmTarget.entryFee).toLocaleString("vi-VN")} VND</b> sẽ được hoàn ngay vào ví của bạn.
               </p>
-            )}
+            ) : confirmTarget.entryFee > 0 && confirmTarget.isPaid ? (
+              <p style={{ marginTop: 8, lineHeight: 1.6, padding: "10px 12px", background: "#fef3c7", borderRadius: 8, border: "1px solid #fcd34d", color: "#92400e" }}>
+                Lưu ý: Giải đấu này không còn ở trạng thái Upcoming nên phí tham gia sẽ không được hoàn lại.
+              </p>
+            ) : null}
             <div
               style={{
                 marginTop: 16,

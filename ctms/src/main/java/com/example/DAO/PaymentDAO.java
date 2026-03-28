@@ -487,6 +487,68 @@ public class PaymentDAO extends DBContext {
     }
 
     /**
+     * Hoàn phí tham gia cho người chơi khi họ tự hủy đăng ký trước khi giải diễn ra.
+     * @return true nếu hoàn tiền thành công, false nếu lỗi.
+     */
+    public boolean refundPlayerWithdrawal(int tournamentId, int userId, java.math.BigDecimal entryFee) {
+        if (entryFee == null || entryFee.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            return true;
+        }
+
+        String addBalanceSql = "UPDATE Users SET balance = ISNULL(balance, 0) + ? WHERE user_id = ?";
+        String getBalanceSql = "SELECT balance FROM Users WHERE user_id = ?";
+        String insertTxSql = "INSERT INTO Payment_Transaction (user_id, tournament_id, type, amount, balance_after, description, create_at) "
+                + "VALUES (?, ?, 'Refund', ?, ?, ?, GETDATE())";
+
+        Connection conn = null;
+        try {
+            conn = getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps = conn.prepareStatement(addBalanceSql)) {
+                ps.setBigDecimal(1, entryFee);
+                ps.setInt(2, userId);
+                ps.executeUpdate();
+            }
+
+            java.math.BigDecimal balanceAfter = java.math.BigDecimal.ZERO;
+            try (PreparedStatement ps = conn.prepareStatement(getBalanceSql)) {
+                ps.setInt(1, userId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) balanceAfter = rs.getBigDecimal("balance");
+                }
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(insertTxSql)) {
+                ps.setInt(1, userId);
+                ps.setInt(2, tournamentId);
+                ps.setBigDecimal(3, entryFee);
+                ps.setBigDecimal(4, balanceAfter);
+                ps.setString(5, "Hoàn phí tham gia do người chơi hủy đăng ký giải đấu #" + tournamentId);
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            e.printStackTrace();
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Kiểm tra giải thưởng của giải đã được chia hay chưa.
      */
     public boolean isPrizesAlreadyDistributed(int tournamentId) {
