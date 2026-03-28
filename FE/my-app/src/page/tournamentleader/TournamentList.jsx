@@ -183,27 +183,6 @@ const TournamentList = () => {
     setShowConfirm(true);
   };
 
-  const handleConfirmCancel = async () => {
-    if (!cancelReason.trim()) {
-      alert("Vui lòng nhập lý do hủy giải!");
-      return;
-    }
-    try {
-      await axios.delete(`${API_BASE}/api/tournaments`, {
-        params: { id: selectedTournament.tournamentId, reason: cancelReason },
-        withCredentials: true,
-      });
-      setShowConfirm(false);
-      setSelectedTournament(null);
-      setCancelReason("");
-      alert("Hủy giải thành công!");
-      fetchTournaments();
-    } catch (err) {
-      console.error(err);
-      alert("Hủy giải thất bại!");
-    }
-  };
-
   if (loading) {
     return (
       <div className="tl-page">
@@ -337,20 +316,6 @@ const TournamentList = () => {
                           >
                             QUẢN LÝ
                           </button>
-                          {CANCELLED_ABLE.includes(t.status) && (
-                            <button
-                              type="button"
-                              className="tl-card-cancel-link"
-                              title="Hủy giải"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenConfirm(t);
-                              }}
-                            >
-                              <XCircle size={14} />
-                              Hủy giải
-                            </button>
-                          )}
                         </div>
                       </div>
                     );
@@ -403,41 +368,6 @@ const TournamentList = () => {
             )}
         </div>
       </div>
-
-      {/* Cancel Modal */}
-      {showConfirm && (
-        <div className="tl-modal-overlay">
-          <div className="tl-modal">
-            <h3>Hủy giải đấu</h3>
-            <p>
-              Bạn chắc chắn muốn hủy giải{" "}
-              <strong>{selectedTournament?.tournamentName}</strong>?
-            </p>
-            <label className="tl-modal-label">Lý do hủy giải</label>
-            <textarea
-              className="tl-modal-textarea"
-              rows={4}
-              placeholder="Nhập lý do hủy giải..."
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-            />
-            <div className="tl-modal-actions">
-              <button
-                className="tl-btn-cancel"
-                onClick={() => {
-                  setShowConfirm(false);
-                  setSelectedTournament(null);
-                }}
-              >
-                Hủy
-              </button>
-              <button className="tl-btn-confirm" onClick={handleConfirmCancel}>
-                Đồng ý
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
