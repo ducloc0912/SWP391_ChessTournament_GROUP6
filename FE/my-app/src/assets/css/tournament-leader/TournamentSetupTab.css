@@ -362,14 +362,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 16px 8px 0;
-  cursor: pointer;
-}
-.tsu-step-item:hover .tsu-step-num {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
-}
-.tsu-step-item:hover .tsu-step-label {
-  color: #475569;
+  cursor: default;
 }
 
 .tsu-step-num {
@@ -400,6 +393,54 @@
 
 .tsu-step-item.active .tsu-step-label {
   color: #0f172a;
+}
+
+.tsu-step-item.completed .tsu-step-num {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+.tsu-step-item.completed .tsu-step-label {
+  color: #374151;
+}
+
+.tsu-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+  gap: 12px;
+}
+.tsu-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.tsu-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.tsu-error-inline {
+  font-size: 13px;
+  color: #b91c1c;
+  font-weight: 600;
+  white-space: normal;
+  word-break: break-word;
+}
+.tsu-btn-ghost {
+  background: transparent;
+  border: 1.5px solid #d1d5db;
+  color: #374151;
+}
+.tsu-btn-ghost:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
 }
 
 .tsu-step-connector {

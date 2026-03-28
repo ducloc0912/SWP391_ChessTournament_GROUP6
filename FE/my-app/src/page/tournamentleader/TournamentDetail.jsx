@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   FileText,
   ChevronRight,
+  ChevronLeft,
   UserPlus,
   ArrowRight,
   Search,
@@ -39,6 +40,7 @@ import {
   ImagePlus,
   MessageSquare,
   Flag,
+  Check,
 } from "lucide-react";
 
 import TournamentFeedbackSection from "../../component/common/TournamentFeedbackSection";
@@ -1739,7 +1741,6 @@ const BracketTab = ({
   const [rowErrors, setRowErrors] = useState({});
   const [tournamentReferees, setTournamentReferees] = useState([]);
   const [toast, setToast] = useState("");
-  const [finalizeResult, setFinalizeResult] = useState(null);
   const [publishingBracket, setPublishingBracket] = useState(false);
 
   useEffect(() => {
@@ -2182,10 +2183,10 @@ const BracketTab = ({
       });
       return;
     }
-    if (bracketPublished && field === "startTime" && isScheduleChangeLocked) {
+    if (bracketPublished && field === "startTime") {
       setServerBanner({
         type: "error",
-        text: "Không thể chỉnh lịch: vòng đấu kế tiếp diễn ra trong vòng 24 giờ tới.",
+        text: "Bracket đã publish. Không thể thay đổi lịch thi đấu.",
       });
       return;
     }
@@ -2505,9 +2506,8 @@ const BracketTab = ({
     if (laneStep === "referee") {
       if (stepStatuses?.SCHEDULE !== "FINALIZED") {
         const msg =
-          "Bạn cần hoàn tất Schedule (nhấn Finalize Schedule) trước khi gán trọng tài.";
+          "Bạn cần hoàn tất Schedule trước khi gán trọng tài.";
         setServerBanner({ type: "error", text: msg });
-        setFinalizeResult({ success: false, message: msg });
         return;
       }
       // Kiểm tra trọng tài trùng lịch ở FE trước khi gọi API
@@ -2518,7 +2518,6 @@ const BracketTab = ({
         if (refTimeMap[key]) {
           const msg = `Trọng tài bị phân công 2 trận cùng giờ (${m.startTime}). Vui lòng phân công lại.`;
           setServerBanner({ type: "error", text: msg });
-          setFinalizeResult({ success: false, message: msg });
           return;
         }
         refTimeMap[key] = true;
@@ -2534,7 +2533,6 @@ const BracketTab = ({
         const msg =
           "Vui lòng chọn ít nhất một trọng tài cho các trận đấu trước khi Finalize.";
         setServerBanner({ type: "error", text: msg });
-        setFinalizeResult({ success: false, message: msg });
         return;
       }
       try {
@@ -2551,7 +2549,6 @@ const BracketTab = ({
         if (!res?.data?.success) {
           const errMsg = res?.data?.message || "Lưu gán trọng tài thất bại.";
           setServerBanner({ type: "error", text: errMsg });
-          setFinalizeResult({ success: false, message: errMsg });
           return;
         }
         const finalizeRes = await axios.post(
@@ -2565,10 +2562,9 @@ const BracketTab = ({
         const successMsg =
           finalizeRes?.data?.message ||
           res?.data?.message ||
-          "Lưu và công bố thành công.";
+          "Lưu trọng tài thành công.";
         setServerBanner({ type: "success", text: successMsg });
         setToast(successMsg);
-        setFinalizeResult({ success: true, message: successMsg });
         setServerSetupStep("COMPLETED");
         setRowErrors({});
         // Refresh data in isolation — must NOT overwrite finalizeResult on failure
@@ -2615,7 +2611,6 @@ const BracketTab = ({
           err?.message ??
           "Lưu trọng tài thất bại.";
         setServerBanner({ type: "error", text: msg });
-        setFinalizeResult({ success: false, message: msg });
       } finally {
         setSaving(false);
       }
@@ -2717,64 +2712,7 @@ const BracketTab = ({
     );
   };
 
-  const handleSaveScheduleDraft = async () => {
-    if (laneStep !== "schedule") return;
-    if (bracketPublished && isScheduleChangeLocked) {
-      setServerBanner({
-        type: "error",
-        text: "Không thể chỉnh lịch: vòng đấu kế tiếp diễn ra trong vòng 24 giờ tới.",
-      });
-      return;
-    }
-    try {
-      setSaving(true);
-      const scheduleStage = (r) => {
-        if (r.stage === "RoundRobin" || r.stage === "KnockOut") return r.stage;
-        return r.stage || effectiveFormat;
-      };
-      const payload = {
-        format: effectiveFormat,
-        matches: rows.map((r) => ({
-          stage: scheduleStage(r),
-          roundName: r.roundName || `Round ${Number(r.roundIndex || 1)}`,
-          roundIndex: Number(r.roundIndex || 1),
-          boardNumber: Number(r.boardNumber || 1),
-          player1Id: r.player1Id ? Number(r.player1Id) : null,
-          player2Id: r.player2Id ? Number(r.player2Id) : null,
-          startTime: toSqlDateTime(r.startTime),
-        })),
-      };
-      const res = await axios.post(
-        `${API_BASE}/api/tournaments?action=saveScheduleDraft&id=${tournamentId}`,
-        payload,
-        {
-          withCredentials: true,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-      if (!res?.data?.success) {
-        const errMsg = res?.data?.message || "Lưu tạm thất bại.";
-        setServerBanner({ type: "error", text: errMsg });
-        setToast(errMsg);
-        return;
-      }
-      const msg = res?.data?.message || "Đã lưu tạm lịch thi đấu.";
-      setServerBanner({ type: "success", text: msg });
-      setToast(msg);
-    } catch (err) {
-      const msg =
-        err?.response?.data?.message ??
-        err?.message ??
-        "Không thể lưu tạm lịch.";
-      setServerBanner({ type: "error", text: msg });
-      setToast(msg);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handlePublishBracket = async () => {
-    if (laneStep !== "referee") return;
     try {
       setPublishingBracket(true);
       const res = await axios.post(
@@ -2788,7 +2726,6 @@ const BracketTab = ({
       const msg = res?.data?.message || "Publish bracket thành công.";
       setServerBanner({ type: "success", text: msg });
       setToast(msg);
-      setFinalizeResult({ success: true, message: msg });
       if (typeof onBracketPublished === "function") {
         onBracketPublished();
       }
@@ -2800,21 +2737,29 @@ const BracketTab = ({
         "Không thể publish bracket.";
       setServerBanner({ type: "error", text: msg });
       setToast(msg);
-      setFinalizeResult({ success: false, message: msg });
     } finally {
       setPublishingBracket(false);
     }
   };
 
+  const handleBack = () => {
+    const order = ["structure", "players", "schedule", "referee"];
+    const idx = order.indexOf(laneStep);
+    if (idx > 0) {
+      setLaneStep(order[idx - 1]);
+      setServerBanner(null);
+    }
+  };
+
   const handleFinalizeCurrentStep = async () => {
-    if (
-      bracketPublished &&
-      (laneStep === "structure" || laneStep === "players")
-    ) {
-      setServerBanner({
-        type: "error",
-        text: "Bracket đã publish. Không thể thay đổi cấu trúc hay người chơi.",
-      });
+    // After publish: structure/players/schedule are locked — just navigate forward
+    if (bracketPublished) {
+      const order = ["structure", "players", "schedule", "referee"];
+      const idx = order.indexOf(laneStep);
+      if (idx >= 0 && idx < order.length - 1) {
+        setLaneStep(order[idx + 1]);
+        setServerBanner(null);
+      }
       return;
     }
     if (laneStep === "structure") {
@@ -2824,6 +2769,7 @@ const BracketTab = ({
         setToast(structureErrors[0]);
         return;
       }
+      setSaving(true);
       try {
         if (rows.length === 0) {
           setServerBanner({
@@ -2865,7 +2811,6 @@ const BracketTab = ({
         setLaneStep("players");
         setServerBanner({ type: "success", text: successMsg });
         setToast(successMsg);
-        setFinalizeResult({ success: true, message: successMsg });
         setRowErrors({});
         axios
           .get(
@@ -2883,10 +2828,11 @@ const BracketTab = ({
           "Không thể hoàn tất bước Structure.";
         setServerBanner({
           type: "error",
-          text: `${errMsg} Bạn có thể nhấn vào bước 2 (Gán người chơi), 3 (Lịch) hoặc 4 (Trọng tài) trên thanh tiến trình để chuyển tab.`,
+          text: errMsg,
         });
         setToast(errMsg);
-        setFinalizeResult({ success: false, message: errMsg });
+      } finally {
+        setSaving(false);
       }
       return;
     }
@@ -2898,6 +2844,7 @@ const BracketTab = ({
         setToast(errors[0]);
         return;
       }
+      setSaving(true);
       try {
         const resolveStage = (r) => {
           if (r.stage === "RoundRobin" || r.stage === "KnockOut")
@@ -2927,7 +2874,6 @@ const BracketTab = ({
         setLaneStep("schedule");
         setServerBanner({ type: "success", text: successMsg });
         setToast(successMsg);
-        setFinalizeResult({ success: true, message: successMsg });
         setRowErrors({});
         axios
           .get(
@@ -2944,7 +2890,146 @@ const BracketTab = ({
           "Không thể hoàn tất bước Add Players.";
         setServerBanner({ type: "error", text: errMsg });
         setToast(errMsg);
-        setFinalizeResult({ success: false, message: errMsg });
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    if (laneStep === "schedule") {
+      if (errors.length > 0) {
+        applyRowErrors(errors);
+        setServerBanner({ type: "error", text: errors[0] });
+        setToast(errors[0]);
+        return;
+      }
+      const tStart = tournamentStartDate ? new Date(tournamentStartDate) : null;
+      const tEnd = tournamentEndDate ? new Date(tournamentEndDate) : null;
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r.startTime) {
+          const msg = `Trận ${i + 1}: Chưa có giờ bắt đầu. Vui lòng điền đủ lịch trước khi Finalize.`;
+          setServerBanner({ type: "error", text: msg });
+          setToast(msg);
+          return;
+        }
+        const st = new Date(r.startTime);
+        if (tStart && st < tStart) {
+          const msg = `Trận ${i + 1}: Giờ thi đấu phải sau ngày bắt đầu giải (${tStart.toLocaleDateString("vi-VN")}).`;
+          setServerBanner({ type: "error", text: msg });
+          setToast(msg);
+          return;
+        }
+        if (tEnd && st > tEnd) {
+          const msg = `Trận ${i + 1}: Giờ thi đấu phải trước ngày kết thúc giải (${tEnd.toLocaleDateString("vi-VN")}).`;
+          setServerBanner({ type: "error", text: msg });
+          setToast(msg);
+          return;
+        }
+      }
+
+      // Soft validation: khoảng cách tối thiểu 4 giờ giữa các round liên tiếp
+      const MIN_GAP_MS = 4 * 60 * 60 * 1000;
+      const roundMap = {};
+      for (const r of rows) {
+        const key = `${r.stage}__${r.roundIndex}`;
+        if (!roundMap[key]) {
+          roundMap[key] = {
+            stage: r.stage,
+            roundIndex: Number(r.roundIndex),
+            times: [],
+          };
+        }
+        if (r.startTime) roundMap[key].times.push(new Date(r.startTime).getTime());
+      }
+      const sortedRounds = Object.values(roundMap)
+        .filter((g) => g.times.length > 0)
+        .sort((a, b) => Math.min(...a.times) - Math.min(...b.times));
+      const gapWarnings = [];
+      for (let i = 0; i < sortedRounds.length - 1; i++) {
+        const latestInCurrent = Math.max(...sortedRounds[i].times);
+        const earliestInNext = Math.min(...sortedRounds[i + 1].times);
+        const gapMs = earliestInNext - latestInCurrent;
+        if (gapMs < MIN_GAP_MS) {
+          const gapH = (gapMs / (60 * 60 * 1000)).toFixed(1);
+          gapWarnings.push(
+            `• Round ${sortedRounds[i].roundIndex} → Round ${sortedRounds[i + 1].roundIndex}: khoảng cách chỉ ${gapH}h (tối thiểu 4h)`,
+          );
+        }
+      }
+      if (gapWarnings.length > 0) {
+        const msg = `Khoảng cách giữa các round phải tối thiểu 4 giờ:\n${gapWarnings.join("\n")}`;
+        setServerBanner({ type: "error", text: msg });
+        setToast(msg);
+        return;
+      }
+
+      try {
+        setSaving(true);
+        const scheduleStage = (r) => {
+          if (r.stage === "RoundRobin" || r.stage === "KnockOut") return r.stage;
+          return r.stage || effectiveFormat;
+        };
+        const payload = {
+          format: effectiveFormat,
+          matches: rows.map((r) => ({
+            stage: scheduleStage(r),
+            roundName: r.roundName || `Round ${Number(r.roundIndex || 1)}`,
+            roundIndex: Number(r.roundIndex || 1),
+            boardNumber: Number(r.boardNumber || 1),
+            player1Id: r.player1Id ? Number(r.player1Id) : null,
+            player2Id: r.player2Id ? Number(r.player2Id) : null,
+            startTime: toSqlDateTime(r.startTime),
+          })),
+        };
+        const res = await axios.post(
+          `${API_BASE}/api/tournaments?action=finalizeStep&id=${tournamentId}&step=SCHEDULE`,
+          payload,
+          { withCredentials: true, headers: { "Content-Type": "application/json" } },
+        );
+        if (!res?.data?.success) {
+          const errMsg = res?.data?.message || "Finalize Schedule thất bại.";
+          setServerBanner({ type: "error", text: errMsg });
+          setToast(errMsg);
+          setStepStatuses((prev) => ({ ...prev, SCHEDULE: "DRAFT" }));
+          return;
+        }
+        const successMsg = res?.data?.message || "Lưu lịch thành công.";
+        setServerBanner({ type: "success", text: successMsg });
+        setToast(successMsg);
+        try {
+          const [schedRes, stateRes] = await Promise.all([
+            axios.get(`${API_BASE}/api/tournaments?action=schedule&id=${tournamentId}`, { withCredentials: true }),
+            axios.get(`${API_BASE}/api/tournaments?action=setupState&id=${tournamentId}`, { withCredentials: true }),
+          ]);
+          const statuses = stateRes?.data?.stepStatuses || {};
+          setStepStatuses(statuses);
+          setServerSetupStep(stateRes?.data?.currentStep || stateRes?.data?.step || "REFEREES");
+          setLaneStep("referee");
+          const list = Array.isArray(schedRes.data) ? schedRes.data : [];
+          setRows(list.map((m, idx) => ({
+            id: `sv-${m.matchId || idx + 1}`,
+            matchId: m.matchId,
+            stage: m.stage || stageOptions[0] || "RoundRobin",
+            roundName: m.roundName || "",
+            roundIndex: Number(m.roundIndex || 1),
+            boardNumber: Number(m.boardNumber || idx + 1),
+            player1Id: String(m.player1Id ?? ""),
+            player2Id: String(m.player2Id ?? ""),
+            startTime: toDateTimeLocal(m.startTime),
+            refereeId: m.refereeId ? String(m.refereeId) : "",
+          })));
+        } catch (_) { /* refresh failed, finalize was still successful */ }
+      } catch (err) {
+        const msg =
+          err?.response?.data?.message ??
+          (typeof err?.response?.data === "string" ? err.response.data : null) ??
+          err?.message ?? "Không thể lưu lịch.";
+        setServerBanner({ type: "error", text: msg });
+        setToast(msg);
+        setStepStatuses((prev) => ({ ...prev, SCHEDULE: "DRAFT" }));
+      } finally {
+        setSaving(false);
       }
     }
   };
@@ -3447,10 +3532,7 @@ const BracketTab = ({
               className="tsu-server-banner tsu-server-banner-info"
               style={{ marginBottom: 8 }}
             >
-              Bracket đã được publish. Chỉ có thể chỉnh lịch thi đấu
-              {isScheduleChangeLocked
-                ? " — không thể chỉnh lịch vì vòng kế tiếp diễn ra trong vòng 24 giờ tới."
-                : " và trọng tài."}
+              Bracket đã được publish. Chỉ có thể chỉnh trọng tài.
             </div>
           )}
           <div className="tsu-stepper tsu-stepper-hpv">
@@ -3464,43 +3546,26 @@ const BracketTab = ({
                       ? "SCHEDULE"
                       : "REFEREES";
               const finalized = stepStatuses?.[stepKey] === "FINALIZED";
-              const disabled =
-                bracketPublished && (key === "structure" || key === "players");
+              const isActive = laneStep === key;
+              const isCompleted = finalized && !isActive;
               return (
-                <div
-                  key={key}
-                  role="button"
-                  tabIndex={disabled ? -1 : 0}
-                  className={`tsu-step-item ${laneStep === key ? "active" : ""} ${disabled ? "disabled" : ""}`}
-                  onClick={(e) => {
-                    if (disabled) return;
-                    setLaneStep(key);
-                  }}
-                  onKeyDown={(e) => {
-                    if (disabled) return;
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setLaneStep(key);
-                    }
-                  }}
-                >
-                  <span className="tsu-step-num">{step}</span>
-                  <span className="tsu-step-label">{label}</span>
-                  {finalized && (
-                    <span className="tsu-step-label"> (Finalized)</span>
-                  )}
+                <React.Fragment key={key}>
+                  <div
+                    className={`tsu-step-item${isActive ? " active" : ""}${isCompleted ? " completed" : ""}`}
+                  >
+                    <span className="tsu-step-num">
+                      {isCompleted ? <Check size={14} /> : step}
+                    </span>
+                    <span className="tsu-step-label">{label}</span>
+                  </div>
                   {step < 4 && <span className="tsu-step-connector" />}
-                </div>
+                </React.Fragment>
               );
             })}
           </div>
-          <p className="tsu-stepper-hint">
-            Nhấn vào từng bước trên để chuyển tab (Cấu trúc → Gán người chơi →
-            Lịch → Trọng tài).
-          </p>
 
+          {/* Auto buttons — shown in content area, step-specific */}
           <div className="tsu-actions">
-            {/* Auto buttons - step-specific */}
             {laneStep === "structure" && !bracketPublished && (
               <button
                 className="tsu-btn tsu-btn-primary tsu-btn-hpv-primary"
@@ -3519,273 +3584,13 @@ const BracketTab = ({
                 {autoSetupLoading ? "Đang điền..." : "Auto Add Players"}
               </button>
             )}
-            {laneStep === "schedule" && (
+            {laneStep === "schedule" && !bracketPublished && (
               <button
                 className="tsu-btn tsu-btn-primary tsu-btn-hpv-primary"
                 onClick={runAutoSchedule}
-                disabled={
-                  autoSetupLoading ||
-                  saving ||
-                  (bracketPublished && isScheduleChangeLocked)
-                }
-                title={
-                  bracketPublished && isScheduleChangeLocked
-                    ? "Không thể chỉnh lịch: vòng kế tiếp diễn ra trong 24 giờ tới"
-                    : undefined
-                }
+                disabled={autoSetupLoading || saving}
               >
                 {autoSetupLoading ? "Đang phân bổ..." : "Auto Schedule"}
-              </button>
-            )}
-
-            {/* Finalize buttons - always clickable (acts as re-validator) */}
-            {laneStep === "structure" && !bracketPublished && (
-              <button
-                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                onClick={handleFinalizeCurrentStep}
-                disabled={saving}
-                title={
-                  stepStatuses?.BRACKET === "FINALIZED"
-                    ? "Bấm để kiểm tra lại tính hợp lệ của Structure"
-                    : "Finalize bước Structure"
-                }
-              >
-                {stepStatuses?.BRACKET === "FINALIZED"
-                  ? "✓ Re-validate Structure"
-                  : "Finalize Structure"}
-              </button>
-            )}
-            {laneStep === "players" && !bracketPublished && (
-              <button
-                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                onClick={handleFinalizeCurrentStep}
-                disabled={saving}
-                title={
-                  stepStatuses?.PLAYERS === "FINALIZED"
-                    ? "Bấm để kiểm tra lại tính hợp lệ của Players"
-                    : "Finalize bước Players"
-                }
-              >
-                {stepStatuses?.PLAYERS === "FINALIZED"
-                  ? "✓ Re-validate Players"
-                  : "Finalize Players"}
-              </button>
-            )}
-
-            {laneStep === "schedule" && (
-              <button
-                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                onClick={handleSaveScheduleDraft}
-                disabled={
-                  saving || (bracketPublished && isScheduleChangeLocked)
-                }
-                title={
-                  bracketPublished && isScheduleChangeLocked
-                    ? "Không thể chỉnh lịch: vòng kế tiếp diễn ra trong 24 giờ tới"
-                    : "Lưu tạm lịch thi đấu mà không Finalize"
-                }
-              >
-                {saving ? "Đang lưu..." : "Lưu tạm"}
-              </button>
-            )}
-            {laneStep === "schedule" && (
-              <button
-                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                disabled={
-                  saving || (bracketPublished && isScheduleChangeLocked)
-                }
-                title={
-                  stepStatuses?.SCHEDULE === "FINALIZED"
-                    ? "Bấm để kiểm tra lại tính hợp lệ của Schedule"
-                    : "Finalize bước Schedule"
-                }
-                onClick={async () => {
-                  if (bracketPublished && isScheduleChangeLocked) {
-                    const msg =
-                      "Không thể chỉnh lịch: vòng đấu kế tiếp diễn ra trong vòng 24 giờ tới.";
-                    setServerBanner({ type: "error", text: msg });
-                    setToast(msg);
-                    return;
-                  }
-                  if (errors.length > 0) {
-                    applyRowErrors(errors);
-                    setServerBanner({ type: "error", text: errors[0] });
-                    setToast(errors[0]);
-                    return;
-                  }
-                  // Validate all matches have startTime within tournament date range
-                  const tStart = tournamentStartDate
-                    ? new Date(tournamentStartDate)
-                    : null;
-                  const tEnd = tournamentEndDate
-                    ? new Date(tournamentEndDate)
-                    : null;
-                  for (let i = 0; i < rows.length; i++) {
-                    const r = rows[i];
-                    if (!r.startTime) {
-                      const msg = `Trận ${i + 1}: Chưa có giờ bắt đầu. Vui lòng điền đủ lịch trước khi Finalize.`;
-                      setServerBanner({ type: "error", text: msg });
-                      setToast(msg);
-                      return;
-                    }
-                    const st = new Date(r.startTime);
-                    if (tStart && st < tStart) {
-                      const msg = `Trận ${i + 1}: Giờ thi đấu phải sau ngày bắt đầu giải (${tStart.toLocaleDateString("vi-VN")}).`;
-                      setServerBanner({ type: "error", text: msg });
-                      setToast(msg);
-                      return;
-                    }
-                    if (tEnd && st > tEnd) {
-                      const msg = `Trận ${i + 1}: Giờ thi đấu phải trước ngày kết thúc giải (${tEnd.toLocaleDateString("vi-VN")}).`;
-                      setServerBanner({ type: "error", text: msg });
-                      setToast(msg);
-                      return;
-                    }
-                  }
-                  try {
-                    setSaving(true);
-                    const scheduleStage = (r) => {
-                      if (r.stage === "RoundRobin" || r.stage === "KnockOut")
-                        return r.stage;
-                      return r.stage || effectiveFormat;
-                    };
-                    const payload = {
-                      format: effectiveFormat,
-                      matches: rows.map((r) => ({
-                        stage: scheduleStage(r),
-                        roundName:
-                          r.roundName || `Round ${Number(r.roundIndex || 1)}`,
-                        roundIndex: Number(r.roundIndex || 1),
-                        boardNumber: Number(r.boardNumber || 1),
-                        player1Id: r.player1Id ? Number(r.player1Id) : null,
-                        player2Id: r.player2Id ? Number(r.player2Id) : null,
-                        startTime: toSqlDateTime(r.startTime),
-                      })),
-                    };
-                    const res = await axios.post(
-                      `${API_BASE}/api/tournaments?action=finalizeStep&id=${tournamentId}&step=SCHEDULE`,
-                      payload,
-                      {
-                        withCredentials: true,
-                        headers: { "Content-Type": "application/json" },
-                      },
-                    );
-                    if (!res?.data?.success) {
-                      const errMsg =
-                        res?.data?.message || "Finalize Schedule thất bại.";
-                      setServerBanner({ type: "error", text: errMsg });
-                      setToast(errMsg);
-                      setFinalizeResult({ success: false, message: errMsg });
-                      setStepStatuses((prev) => ({
-                        ...prev,
-                        SCHEDULE: "DRAFT",
-                      }));
-                      return;
-                    }
-                    const successMsg =
-                      res?.data?.message || "Lưu lịch thành công.";
-                    setServerBanner({ type: "success", text: successMsg });
-                    setToast(successMsg);
-                    setFinalizeResult({ success: true, message: successMsg });
-                    // Refresh data in isolation — must NOT overwrite finalizeResult on failure
-                    try {
-                      const [schedRes, stateRes] = await Promise.all([
-                        axios.get(
-                          `${API_BASE}/api/tournaments?action=schedule&id=${tournamentId}`,
-                          { withCredentials: true },
-                        ),
-                        axios.get(
-                          `${API_BASE}/api/tournaments?action=setupState&id=${tournamentId}`,
-                          { withCredentials: true },
-                        ),
-                      ]);
-                      const statuses = stateRes?.data?.stepStatuses || {};
-                      setStepStatuses(statuses);
-                      setServerSetupStep(
-                        stateRes?.data?.currentStep ||
-                          stateRes?.data?.step ||
-                          "REFEREES",
-                      );
-                      setLaneStep("referee");
-                      const list = Array.isArray(schedRes.data)
-                        ? schedRes.data
-                        : [];
-                      setRows(
-                        list.map((m, idx) => ({
-                          id: `sv-${m.matchId || idx + 1}`,
-                          matchId: m.matchId,
-                          stage: m.stage || stageOptions[0] || "RoundRobin",
-                          roundName: m.roundName || "",
-                          roundIndex: Number(m.roundIndex || 1),
-                          boardNumber: Number(m.boardNumber || idx + 1),
-                          player1Id: String(m.player1Id ?? ""),
-                          player2Id: String(m.player2Id ?? ""),
-                          startTime: toDateTimeLocal(m.startTime),
-                          refereeId: m.refereeId ? String(m.refereeId) : "",
-                        })),
-                      );
-                    } catch (_) {
-                      /* refresh failed, finalize was still successful */
-                    }
-                  } catch (err) {
-                    const msg =
-                      err?.response?.data?.message ??
-                      (typeof err?.response?.data === "string"
-                        ? err.response.data
-                        : null) ??
-                      err?.message ??
-                      "Không thể lưu lịch.";
-                    setServerBanner({ type: "error", text: msg });
-                    setToast(msg);
-                    setFinalizeResult({ success: false, message: msg });
-                    setStepStatuses((prev) => ({ ...prev, SCHEDULE: "DRAFT" }));
-                  } finally {
-                    setSaving(false);
-                  }
-                }}
-              >
-                {stepStatuses?.SCHEDULE === "FINALIZED"
-                  ? "✓ Re-validate Schedule"
-                  : "Finalize Schedule"}
-              </button>
-            )}
-            {laneStep === "referee" && (
-              <button
-                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                onClick={() => setLaneStep("schedule")}
-              >
-                Quay lại Schedule
-              </button>
-            )}
-            {laneStep === "referee" && (
-              <button
-                className="tsu-btn tsu-btn-primary ui-btn ui-btn-primary"
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving
-                  ? "Đang lưu..."
-                  : stepStatuses?.REFEREES === "FINALIZED"
-                    ? "✓ Re-validate Referees"
-                    : "Finalize Referees"}
-              </button>
-            )}
-            {laneStep === "referee" && (
-              <button
-                type="button"
-                className="tsu-btn tsu-btn-outline ui-btn ui-btn-secondary"
-                onClick={handlePublishBracket}
-                disabled={
-                  publishingBracket ||
-                  stepStatuses?.REFEREES !== "FINALIZED" ||
-                  bracketPublished
-                }
-              >
-                {publishingBracket
-                  ? "Đang publish..."
-                  : bracketPublished
-                    ? "Published"
-                    : "Publish"}
               </button>
             )}
           </div>
@@ -3888,35 +3693,62 @@ const BracketTab = ({
               </div>
             )}
           </div>
+
+          {/* Wizard footer — Back / Next / Publish */}
+          <div className="tsu-footer">
+            <div className="tsu-footer-left">
+              <button
+                className="tsu-btn tsu-btn-ghost"
+                onClick={handleBack}
+                disabled={laneStep === "structure" || saving}
+              >
+                <ChevronLeft size={16} /> Quay lại
+              </button>
+              {serverBanner?.type === "error" && (
+                <span className="tsu-error-inline">{serverBanner.text}</span>
+              )}
+            </div>
+            <div className="tsu-footer-right">
+              {laneStep !== "referee" && (
+                <button
+                  className="tsu-btn tsu-btn-primary"
+                  onClick={handleFinalizeCurrentStep}
+                  disabled={saving || autoSetupLoading}
+                >
+                  {saving ? "Đang xử lý..." : <>Tiếp theo <ChevronRight size={16} /></>}
+                </button>
+              )}
+              {laneStep === "referee" && (
+                <>
+                  <button
+                    className="tsu-btn tsu-btn-outline"
+                    onClick={handleSave}
+                    disabled={saving}
+                  >
+                    {saving ? "Đang lưu..." : "Finalize Referees"}
+                  </button>
+                  <button
+                    type="button"
+                    className="tsu-btn tsu-btn-primary"
+                    onClick={handlePublishBracket}
+                    disabled={
+                      publishingBracket ||
+                      stepStatuses?.REFEREES !== "FINALIZED"
+                    }
+                  >
+                    {publishingBracket
+                      ? "Đang publish..."
+                      : bracketPublished
+                        ? "Re-publish"
+                        : "Publish"}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         </>
       )}
       {toast && <div className="ti-toast">{toast}</div>}
-
-      {finalizeResult && (
-        <div className="tsu-finalize-overlay">
-          <div
-            className={`tsu-finalize-modal ${finalizeResult.success ? "tsu-finalize-success" : "tsu-finalize-error"}`}
-          >
-            <div className="tsu-finalize-icon">
-              {finalizeResult.success ? (
-                <CheckCircle2 size={52} />
-              ) : (
-                <AlertCircle size={52} />
-              )}
-            </div>
-            <h3 className="tsu-finalize-title">
-              {finalizeResult.success ? "Thành công!" : "Thất bại"}
-            </h3>
-            <p className="tsu-finalize-message">{finalizeResult.message}</p>
-            <button
-              className="tsu-finalize-ok-btn"
-              onClick={() => setFinalizeResult(null)}
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

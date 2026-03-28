@@ -65,13 +65,18 @@ public class ChangePasswordServlet extends HttpServlet {
                 return;
             }
 
-            // 2. Mật khẩu mới bắt buộc, tối thiểu 6 ký tự
+            // 2. Mật khẩu mới bắt buộc, đáp ứng BR03
             if (newPassword == null || newPassword.isBlank()) {
                 write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "Vui lòng nhập mật khẩu mới.", null);
                 return;
             }
-            if (newPassword.length() < 6) {
-                write(resp, HttpServletResponse.SC_BAD_REQUEST, false, "Mật khẩu mới phải có ít nhất 6 ký tự.", null);
+            // BR03: min 8 chars, at least 1 uppercase, 1 lowercase, 1 digit
+            if (newPassword.length() < 8
+                    || !newPassword.matches(".*[A-Z].*")
+                    || !newPassword.matches(".*[a-z].*")
+                    || !newPassword.matches(".*\\d.*")) {
+                write(resp, HttpServletResponse.SC_BAD_REQUEST, false,
+                        "Mật khẩu mới phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường và số (BR03).", null);
                 return;
             }
 

@@ -83,6 +83,7 @@ public class ProfileService {
     }
     private static final java.util.regex.Pattern USERNAME_PATTERN = java.util.regex.Pattern.compile("^[a-zA-Z0-9_]{3,50}$");
     private static final java.util.regex.Pattern PHONE_VN_PATTERN = java.util.regex.Pattern.compile("^0[0-9]{9}$");
+    private static final java.util.regex.Pattern NAME_DIGITS_PATTERN = java.util.regex.Pattern.compile(".*\\d.*");
 
      public Map<String, Object> updateProfile(int userId, String role,
                                             String username,
@@ -115,10 +116,15 @@ public class ProfileService {
                 }
             }
 
-            // 2. First name / Last name: not blank when provided
+            // 2. First name / Last name validation
             if (firstName != null && firstName.trim().isBlank()) {
                 res.put("success", false);
                 res.put("message", "Họ không được để trống.");
+                return res;
+            }
+            if (firstName != null && NAME_DIGITS_PATTERN.matcher(firstName.trim()).matches()) {
+                res.put("success", false);
+                res.put("message", "Họ không được chứa chữ số.");
                 return res;
             }
             if (firstName != null && firstName.trim().length() > 50) {
@@ -131,10 +137,24 @@ public class ProfileService {
                 res.put("message", "Tên không được để trống.");
                 return res;
             }
+            if (lastName != null && NAME_DIGITS_PATTERN.matcher(lastName.trim()).matches()) {
+                res.put("success", false);
+                res.put("message", "Tên không được chứa chữ số.");
+                return res;
+            }
             if (lastName != null && lastName.trim().length() > 50) {
                 res.put("success", false);
                 res.put("message", "Tên không được quá 50 ký tự.");
                 return res;
+            }
+            // BR01: Display name (firstName + " " + lastName) must not exceed 50 chars
+            if (firstName != null && lastName != null) {
+                String displayName = firstName.trim() + " " + lastName.trim();
+                if (displayName.length() > 50) {
+                    res.put("success", false);
+                    res.put("message", "Họ và tên hiển thị không được quá 50 ký tự (BR01).");
+                    return res;
+                }
             }
 
             // 3. Phone: format VN 10 digits (0xxxxxxxxx) and unique

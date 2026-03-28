@@ -205,6 +205,7 @@ function EditProfileModal({
     phoneNumber: "",
     address: "",
   });
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (!open) return;
@@ -215,14 +216,82 @@ function EditProfileModal({
       phoneNumber: initialValues?.phoneNumber || "",
       address: initialValues?.address || "",
     });
+    setErrors({});
   }, [open, initialValues]);
 
   if (!open) return null;
 
-  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const set = (k) => (e) => {
+    setForm((p) => ({ ...p, [k]: e.target.value }));
+    setErrors((p) => ({ ...p, [k]: "", displayName: "" }));
+  };
+
+  const validate = (f) => {
+    const e = {};
+    const trimFirst = (f.firstName || "").trim();
+    const trimLast = (f.lastName || "").trim();
+
+    // TC-UP-01/03: firstName required, no digits, max 50
+    if (!trimFirst) {
+      e.firstName = "Họ không được để trống.";
+    } else if (/\d/.test(trimFirst)) {
+      e.firstName = "Họ không được chứa chữ số.";
+    } else if (trimFirst.length > 50) {
+      e.firstName = "Họ không được quá 50 ký tự.";
+    }
+
+    // TC-UP-01/03: lastName required, no digits, max 50
+    if (!trimLast) {
+      e.lastName = "Tên không được để trống.";
+    } else if (/\d/.test(trimLast)) {
+      e.lastName = "Tên không được chứa chữ số.";
+    } else if (trimLast.length > 50) {
+      e.lastName = "Tên không được quá 50 ký tự.";
+    }
+
+    // TC-UP-02 — BR01: Display name (firstName + " " + lastName) max 50 chars
+    if (!e.firstName && !e.lastName) {
+      const displayName = trimFirst + " " + trimLast;
+      if (displayName.length > 50) {
+        e.displayName =
+          "Họ và tên hiển thị (họ + tên) không được quá 50 ký tự (BR01).";
+      }
+    }
+
+    // TC-UP-04/05/06: username optional but if provided must be valid
+    const trimUser = (f.username || "").trim();
+    if (trimUser) {
+      if (trimUser.length < 3) {
+        e.username = "Username phải có ít nhất 3 ký tự.";
+      } else if (!/^[a-zA-Z0-9_]+$/.test(trimUser)) {
+        e.username = "Username chỉ được dùng chữ cái, số và gạch dưới (_).";
+      } else if (trimUser.length > 50) {
+        e.username = "Username không được quá 50 ký tự.";
+      }
+    }
+
+    // TC-UP-08/09: phone optional but if provided must match VN format
+    const trimPhone = (f.phoneNumber || "").trim();
+    if (trimPhone && !/^0\d{9}$/.test(trimPhone)) {
+      e.phoneNumber =
+        "Số điện thoại không hợp lệ. VD: 0901234567 (10 số, bắt đầu bằng 0).";
+    }
+
+    // TC-UP-11/12: address max 255
+    if ((f.address || "").length > 255) {
+      e.address = "Địa chỉ không được quá 255 ký tự.";
+    }
+
+    return e;
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const errs = validate(form);
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
     onSubmit(form);
   };
 
@@ -253,12 +322,15 @@ function EditProfileModal({
             <div className="up-field up-field--full">
               <div className="up-field__label">Username</div>
               <input
-                className="up-input"
+                className={`up-input${errors.username ? " up-input--error" : ""}`}
                 value={form.username}
                 onChange={set("username")}
                 placeholder="Chữ cái, số, gạch dưới; 3–50 ký tự"
                 maxLength={50}
               />
+              {errors.username && (
+                <div className="up-field__error">{errors.username}</div>
+              )}
               <div className="up-field__hint">
                 Username phải là duy nhất, không dấu và ký tự đặc biệt.
               </div>
@@ -267,46 +339,64 @@ function EditProfileModal({
             <div className="up-field">
               <div className="up-field__label">First name</div>
               <input
-                className="up-input"
+                className={`up-input${errors.firstName ? " up-input--error" : ""}`}
                 value={form.firstName}
                 onChange={set("firstName")}
                 placeholder="Bắt buộc"
                 maxLength={50}
               />
+              {errors.firstName && (
+                <div className="up-field__error">{errors.firstName}</div>
+              )}
             </div>
 
             <div className="up-field">
               <div className="up-field__label">Last name</div>
               <input
-                className="up-input"
+                className={`up-input${errors.lastName ? " up-input--error" : ""}`}
                 value={form.lastName}
                 onChange={set("lastName")}
                 placeholder="Bắt buộc"
                 maxLength={50}
               />
+              {errors.lastName && (
+                <div className="up-field__error">{errors.lastName}</div>
+              )}
             </div>
+
+            {errors.displayName && (
+              <div className="up-field up-field--full">
+                <div className="up-field__error">{errors.displayName}</div>
+              </div>
+            )}
 
             <div className="up-field">
               <div className="up-field__label">Phone</div>
               <input
-                className="up-input"
+                className={`up-input${errors.phoneNumber ? " up-input--error" : ""}`}
                 type="tel"
                 value={form.phoneNumber}
                 onChange={set("phoneNumber")}
                 placeholder="VD: 0901234567 (10 số)"
                 maxLength={20}
               />
+              {errors.phoneNumber && (
+                <div className="up-field__error">{errors.phoneNumber}</div>
+              )}
             </div>
 
             <div className="up-field up-field--full">
               <div className="up-field__label">Address</div>
               <input
-                className="up-input"
+                className={`up-input${errors.address ? " up-input--error" : ""}`}
                 value={form.address}
                 onChange={set("address")}
                 placeholder="Tối đa 255 ký tự"
                 maxLength={255}
               />
+              {errors.address && (
+                <div className="up-field__error">{errors.address}</div>
+              )}
             </div>
           </div>
 
@@ -334,6 +424,13 @@ function EditProfileModal({
 }
 
 /** ===== Modal: Đổi mật khẩu (old, new, confirm) ===== */
+// BR03: min 8 chars, at least 1 uppercase, 1 lowercase, 1 digit
+function isPasswordComplex(p) {
+  return (
+    p.length >= 8 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /\d/.test(p)
+  );
+}
+
 function ChangePasswordModal({
   open,
   onClose,
@@ -345,12 +442,14 @@ function ChangePasswordModal({
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (!open) {
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      setErrors({});
     }
   }, [open]);
 
@@ -358,14 +457,37 @@ function ChangePasswordModal({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const err = [];
-    if (!oldPassword.trim()) err.push("Vui lòng nhập mật khẩu hiện tại.");
-    if (!newPassword.trim()) err.push("Vui lòng nhập mật khẩu mới.");
-    else if (newPassword.length < 6)
-      err.push("Mật khẩu mới phải có ít nhất 6 ký tự.");
-    if (newPassword !== confirmPassword)
-      err.push("Mật khẩu xác nhận không khớp.");
-    if (err.length) return;
+    const errs = {};
+
+    // TC-UP-18: All three fields required
+    if (!oldPassword.trim())
+      errs.oldPassword = "Vui lòng nhập mật khẩu hiện tại.";
+
+    if (!newPassword.trim()) {
+      errs.newPassword = "Vui lòng nhập mật khẩu mới.";
+    } else if (!isPasswordComplex(newPassword)) {
+      // TC-UP-15: BR03 complexity
+      errs.newPassword =
+        "Mật khẩu mới phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường và số (BR03).";
+    } else if (oldPassword.trim() && oldPassword === newPassword) {
+      // TC-UP-17: new password must differ from old
+      errs.newPassword = "Mật khẩu mới phải khác mật khẩu hiện tại.";
+    }
+
+    if (!confirmPassword.trim()) {
+      // TC-UP-18: confirm field required
+      errs.confirmPassword = "Vui lòng xác nhận mật khẩu mới.";
+    } else if (newPassword !== confirmPassword) {
+      // TC-UP-16: confirm must match
+      errs.confirmPassword = "Mật khẩu xác nhận không khớp.";
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
+
+    setErrors({});
     onSubmit({
       oldPassword: oldPassword.trim(),
       newPassword: newPassword.trim(),
@@ -401,36 +523,53 @@ function ChangePasswordModal({
             <div className="up-field up-field--full">
               <div className="up-field__label">Mật khẩu hiện tại</div>
               <input
-                className="up-input"
+                className={`up-input${errors.oldPassword ? " up-input--error" : ""}`}
                 type="password"
                 value={oldPassword}
-                onChange={(e) => setOldPassword(e.target.value)}
+                onChange={(e) => {
+                  setOldPassword(e.target.value);
+                  setErrors((p) => ({ ...p, oldPassword: "" }));
+                }}
                 placeholder="Nhập mật khẩu hiện tại"
                 autoComplete="current-password"
               />
+              {errors.oldPassword && (
+                <div className="up-field__error">{errors.oldPassword}</div>
+              )}
             </div>
             <div className="up-field up-field--full">
               <div className="up-field__label">Mật khẩu mới</div>
               <input
-                className="up-input"
+                className={`up-input${errors.newPassword ? " up-input--error" : ""}`}
                 type="password"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Ít nhất 6 ký tự"
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  setErrors((p) => ({ ...p, newPassword: "" }));
+                }}
+                placeholder="Ít nhất 8 ký tự, có chữ hoa, chữ thường, số"
                 autoComplete="new-password"
-                minLength={6}
               />
+              {errors.newPassword && (
+                <div className="up-field__error">{errors.newPassword}</div>
+              )}
             </div>
             <div className="up-field up-field--full">
               <div className="up-field__label">Xác nhận mật khẩu mới</div>
               <input
-                className="up-input"
+                className={`up-input${errors.confirmPassword ? " up-input--error" : ""}`}
                 type="password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setErrors((p) => ({ ...p, confirmPassword: "" }));
+                }}
                 placeholder="Nhập lại mật khẩu mới"
                 autoComplete="new-password"
               />
+              {errors.confirmPassword && (
+                <div className="up-field__error">{errors.confirmPassword}</div>
+              )}
             </div>
           </div>
           <div className="up-modal__foot">
