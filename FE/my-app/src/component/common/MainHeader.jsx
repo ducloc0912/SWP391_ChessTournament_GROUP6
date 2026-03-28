@@ -548,11 +548,6 @@ export default function MainHeader({
                           ))}
                         </ul>
                       )}
-                      <div className="notification-footer" style={{ textAlign: 'center', padding: '10px', borderTop: '1px solid #334155' }}>
-                         <button type="button" style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '13px', cursor: 'pointer' }} onClick={() => navigate('/notifications')}>
-                           Xem tất cả
-                         </button>
-                      </div>
                     </div>
                   )}
                 </div>

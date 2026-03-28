@@ -75,6 +75,13 @@ const UserProfile = ({ userId, onBack }) => {
   const [history, setHistory] = useState([]);
   const [historyFilter, setHistoryFilter] = useState("ALL"); // ALL | Ongoing | Completed
 
+  // resolved role after user data loaded
+  const resolvedRole = String(role || "").trim();
+  const isStaff = resolvedRole === ROLES.STAFF;
+  const isReferee = resolvedRole === ROLES.REFEREE;
+  const isLeader = resolvedRole === ROLES.TOURNAMENT_LEADER;
+  const showHistory = !isStaff;
+
   useEffect(() => {
     if (!userId) return;
 
@@ -109,9 +116,10 @@ const UserProfile = ({ userId, onBack }) => {
     return () => controller.abort();
   }, [userId]);
 
-  // fetch tournament history whenever userId/filter changes
+  // fetch tournament history whenever userId/role/filter changes
   useEffect(() => {
     if (!userId) return;
+    if (isStaff) { setHistory([]); return; }
 
     const controller = new AbortController();
 
@@ -120,17 +128,21 @@ const UserProfile = ({ userId, onBack }) => {
         setHisLoading(true);
         setHisError("");
 
-        const statusParam =
-          historyFilter === "ALL" ? "" : encodeURIComponent(historyFilter);
+        let endpoint;
+        if (isReferee) {
+          endpoint = `/api/admin/users/${userId}/referee-tournaments`;
+        } else if (isLeader) {
+          endpoint = `/api/admin/users/${userId}/leader-tournaments`;
+        } else {
+          const statusParam = historyFilter === "ALL" ? "" : encodeURIComponent(historyFilter);
+          const qs = statusParam ? `?status=${statusParam}` : "";
+          endpoint = `/api/admin/users/${userId}/tournament-history${qs}`;
+        }
 
-        const qs = statusParam ? `?status=${statusParam}` : "";
-        const json = await apiFetch(
-          `/api/admin/users/${userId}/tournament-history${qs}`,
-          {
-            method: "GET",
-            signal: controller.signal,
-          }
-        );
+        const json = await apiFetch(endpoint, {
+          method: "GET",
+          signal: controller.signal,
+        });
 
         // BE trả { success:true, data:{ items:[...] } }
         const items = json?.data?.items ?? json?.items ?? json?.data ?? [];
@@ -146,7 +158,7 @@ const UserProfile = ({ userId, onBack }) => {
 
     fetchHistory();
     return () => controller.abort();
-  }, [userId, historyFilter]);
+  }, [userId, role, historyFilter]);
 
   const displayName = useMemo(() => {
     if (!user) return "";
@@ -615,88 +627,106 @@ const UserProfile = ({ userId, onBack }) => {
           </div>
 
           {/* ===== LỊCH SỬ GIẢI ĐẤU ===== */}
-          <div className="up-historyCard">
-            <div className="up-historyHeader">
-              <div className="up-historyTitle">Lịch sử giải đấu</div>
+          {showHistory && (
+            <div className="up-historyCard">
+              <div className="up-historyHeader">
+                <div className="up-historyTitle">
+                  {isReferee
+                    ? "Giải đấu trọng tài"
+                    : isLeader
+                    ? "Giải đấu đã tạo"
+                    : "Lịch sử giải đấu"}
+                </div>
 
-              <div className="up-filter">
-                <span className="up-muted">Lọc:</span>
-                <select
-                  className="up-select"
-                  value={historyFilter}
-                  onChange={(e) => setHistoryFilter(e.target.value)}
-                >
-                  <option value="ALL">Tất cả</option>
-                  <option value="Ongoing">Đang diễn ra</option>
-                  <option value="Completed">Đã kết thúc</option>
-                </select>
+                {!isReferee && !isLeader && (
+                  <div className="up-filter">
+                    <span className="up-muted">Lọc:</span>
+                    <select
+                      className="up-select"
+                      value={historyFilter}
+                      onChange={(e) => setHistoryFilter(e.target.value)}
+                    >
+                      <option value="ALL">Tất cả</option>
+                      <option value="Ongoing">Đang diễn ra</option>
+                      <option value="Completed">Đã kết thúc</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {hisError ? (
+                <div className="up-error" style={{ margin: 14 }}>
+                  Lỗi lịch sử: {hisError}
+                </div>
+              ) : null}
+
+              <div className="up-tableWrap">
+                <table className="up-table">
+                  <thead>
+                    <tr>
+                      <th>Tên giải đấu</th>
+                      <th>Trạng thái</th>
+                      {!isReferee && !isLeader && <th>Thứ hạng</th>}
+                      <th>Ngày bắt đầu</th>
+                      <th>Ngày kết thúc</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {hisLoading ? (
+                      <tr>
+                        <td colSpan={isReferee || isLeader ? 4 : 5} className="up-muted">
+                          Đang tải...
+                        </td>
+                      </tr>
+                    ) : history.length === 0 ? (
+                      <tr>
+                        <td colSpan={isReferee || isLeader ? 4 : 5} className="up-muted">
+                          {isReferee
+                            ? "Chưa có giải đấu trọng tài."
+                            : isLeader
+                            ? "Chưa có giải đấu nào được tạo."
+                            : "Chưa có lịch sử tham gia giải đấu."}
+                        </td>
+                      </tr>
+                    ) : (
+                      history.map((it, idx) => {
+                        const st = String(
+                          it?.status || it?.tournamentStatus || ""
+                        ).trim();
+                        const showRank = !isReferee && !isLeader && st === "Completed";
+                        const rankVal =
+                          it?.ranking === null || it?.ranking === undefined
+                            ? "-"
+                            : `#${it.ranking}`;
+
+                        return (
+                          <tr key={it?.tournamentId ?? idx}>
+                            <td style={{ fontWeight: 900 }}>
+                              {it?.tournamentName || "-"}
+                            </td>
+
+                            <td>
+                              <span className={`up-statusBadge ${statusTone(st)}`}>
+                                {statusLabel(st)}
+                              </span>
+                            </td>
+
+                            {!isReferee && !isLeader && (
+                              <td className="up-rank">{showRank ? rankVal : "-"}</td>
+                            )}
+
+                            <td>{formatDateOnly(it?.startDate)}</td>
+                            <td>{formatDateOnly(it?.endDate)}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
-
-            {hisError ? (
-              <div className="up-error" style={{ margin: 14 }}>
-                Lỗi lịch sử: {hisError}
-              </div>
-            ) : null}
-
-            <div className="up-tableWrap">
-              <table className="up-table">
-                <thead>
-                  <tr>
-                    <th>Tên giải đấu</th>
-                    <th>Trạng thái</th>
-                    <th>Thứ hạng</th>
-                    <th>Ngày bắt đầu</th>
-                    <th>Ngày kết thúc</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {hisLoading ? (
-                    <tr>
-                      <td colSpan={5} className="up-muted">
-                        Đang tải lịch sử...
-                      </td>
-                    </tr>
-                  ) : history.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="up-muted">
-                        Chưa có lịch sử tham gia giải đấu.
-                      </td>
-                    </tr>
-                  ) : (
-                    history.map((it, idx) => {
-                      const st = String(it?.status || "").trim();
-                      const showRank = st === "Completed";
-                      const rankVal =
-                        it?.ranking === null || it?.ranking === undefined
-                          ? "-"
-                          : `#${it.ranking}`;
-
-                      return (
-                        <tr key={it?.tournamentId ?? idx}>
-                          <td style={{ fontWeight: 900 }}>
-                            {it?.tournamentName || "-"}
-                          </td>
-
-                          <td>
-                            <span className={`up-statusBadge ${statusTone(st)}`}>
-                              {statusLabel(st)}
-                            </span>
-                          </td>
-
-                          <td className="up-rank">{showRank ? rankVal : "-"}</td>
-
-                          <td>{formatDateOnly(it?.startDate)}</td>
-                          <td>{formatDateOnly(it?.endDate)}</td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          )}
           {/* ===== END HISTORY ===== */}
         </div>
       </div>
