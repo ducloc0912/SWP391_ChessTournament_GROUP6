@@ -114,6 +114,7 @@ export default function TournamentDetail() {
     localStorage.removeItem("user");
     localStorage.removeItem("role");
     setUser(null);
+    setUserRole("");
     navigate("/login");
   };
 
@@ -211,10 +212,12 @@ export default function TournamentDetail() {
     return () => window.removeEventListener("focus", onFocus);
   }, [id, fetchDetail]);
 
-  const role =
-    typeof window !== "undefined"
-      ? localStorage.getItem("role") || ""
-      : "";
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    const role = localStorage.getItem("role") || "";
+    setUserRole(role);
+  }, [user]);
 
   const statusKey = useMemo(
     () => normalizeStatus(tournament?.status),
@@ -223,6 +226,9 @@ export default function TournamentDetail() {
   const bracketPublished = Boolean(tournament?.bracketPublished);
   const showMatches = bracketPublished;
   const canRegisterByStatus = statusKey === "registering";
+  
+  // Normalize role for comparison (handle "Player", "PLAYER", "player")
+  const isPlayer = userRole?.toLowerCase() === "player";
 
   const statusPillLabel = useMemo(() => {
     const m = {
@@ -364,7 +370,7 @@ export default function TournamentDetail() {
                   </span>
                 </div>
                 <div className="tdp-follow-cta" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  {canRegisterByStatus && !isJoined && (
+                  {canRegisterByStatus && !isJoined && isPlayer && (
                     <button
                       type="button"
                       className="tdp-register-btn"
@@ -373,7 +379,7 @@ export default function TournamentDetail() {
                       Đăng ký giải
                     </button>
                   )}
-                  {canRegisterByStatus && isJoined && (
+                  {canRegisterByStatus && isJoined && isPlayer && (
                     <span className="tdp-register-text-joined">
                       Bạn đã đăng ký giải này
                     </span>
@@ -594,7 +600,7 @@ export default function TournamentDetail() {
                       <TournamentFeedbackSection
                         tournamentId={tournament.tournamentId}
                         user={user}
-                        role={role}
+                        role={userRole}
                         isParticipant={isJoined}
                       />
                     </article>
