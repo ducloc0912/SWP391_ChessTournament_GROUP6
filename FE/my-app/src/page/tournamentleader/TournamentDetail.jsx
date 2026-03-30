@@ -2190,6 +2190,10 @@ const BracketTab = ({
       });
       return;
     }
+    // Khi thay đổi trọng tài sau publish, đánh dấu REFEREES cần finalize lại
+    if (field === "refereeId") {
+      setStepStatuses((prev) => ({ ...prev, REFEREES: "DRAFT" }));
+    }
     setRowErrors((prev) => {
       if (!prev[id]) return prev;
       const copy = { ...prev };
