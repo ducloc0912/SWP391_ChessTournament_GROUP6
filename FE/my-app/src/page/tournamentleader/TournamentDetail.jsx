@@ -2526,19 +2526,23 @@ const BracketTab = ({
         }
         refTimeMap[key] = true;
       }
-      const assignments = rows
-        .filter((r) => r.matchId && r.refereeId)
-        .map((r) => ({
-          matchId: Number(r.matchId),
-          refereeId: Number(r.refereeId),
-          startTime: r.startTime ? toSqlDateTime(r.startTime) : null,
-        }));
-      if (assignments.length === 0) {
-        const msg =
-          "Vui lòng chọn ít nhất một trọng tài cho các trận đấu trước khi Finalize.";
+      const matchRows = rows.filter((r) => r.matchId);
+      const emptyRefereeRows = matchRows.filter((r) => !r.refereeId);
+      if (emptyRefereeRows.length > 0) {
+        const msg = `Còn ${emptyRefereeRows.length} trận chưa được gán trọng tài. Vui lòng gán đủ trước khi Finalize.`;
         setServerBanner({ type: "error", text: msg });
         return;
       }
+      if (matchRows.length === 0) {
+        const msg = "Không có trận đấu nào để gán trọng tài.";
+        setServerBanner({ type: "error", text: msg });
+        return;
+      }
+      const assignments = matchRows.map((r) => ({
+        matchId: Number(r.matchId),
+        refereeId: Number(r.refereeId),
+        startTime: r.startTime ? toSqlDateTime(r.startTime) : null,
+      }));
       try {
         setSaving(true);
         setServerBanner(null);
@@ -3698,6 +3702,19 @@ const BracketTab = ({
             )}
           </div>
 
+          {/* Error popup centered */}
+          {serverBanner?.type === "error" && (
+            <div className="tsu-popup-overlay" onClick={() => setServerBanner(null)}>
+              <div className="tsu-popup-box" onClick={(e) => e.stopPropagation()}>
+                <div className="tsu-popup-header">
+                  <span className="tsu-popup-title">Lỗi</span>
+                  <button className="tsu-popup-close" onClick={() => setServerBanner(null)}>✕</button>
+                </div>
+                <div className="tsu-popup-body">{serverBanner.text}</div>
+              </div>
+            </div>
+          )}
+
           {/* Wizard footer — Back / Next / Publish */}
           <div className="tsu-footer">
             <div className="tsu-footer-left">
@@ -3708,9 +3725,6 @@ const BracketTab = ({
               >
                 <ChevronLeft size={16} /> Quay lại
               </button>
-              {serverBanner?.type === "error" && (
-                <span className="tsu-error-inline">{serverBanner.text}</span>
-              )}
             </div>
             <div className="tsu-footer-right">
               {laneStep !== "referee" && (

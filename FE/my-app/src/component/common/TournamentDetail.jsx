@@ -162,8 +162,9 @@ export default function TournamentDetail() {
         : [];
       setParticipants(participantList);
 
-      // Fetch standings for Round Robin tournaments that are ongoing
-      if (detailData?.format === "RoundRobin" && normalizeStatus(detailData?.status) === "ongoing") {
+      // Fetch standings for Round Robin tournaments that are ongoing or finished
+      const detailStatusForStanding = normalizeStatus(detailData?.status);
+      if (detailData?.format === "RoundRobin" && (detailStatusForStanding === "ongoing" || detailStatusForStanding === "finished")) {
         const standingsRes = await axios
           .get(`${API_BASE}/api/public/tournaments?action=standing&id=${id}`)
           .catch(() => null);
@@ -433,7 +434,7 @@ export default function TournamentDetail() {
               >
                 PARTICIPANT
               </button>
-              {statusKey === "ongoing" && tournament?.format === "RoundRobin" && (
+              {(statusKey === "ongoing" || statusKey === "finished") && tournament?.format === "RoundRobin" && (
                 <button
                   type="button"
                   className={`tdp-tab ${activeTab === "standing" ? "active" : ""}`}

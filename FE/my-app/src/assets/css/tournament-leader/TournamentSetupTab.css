@@ -433,6 +433,61 @@
   white-space: normal;
   word-break: break-word;
 }
+
+/* ── Centered error popup ─────────────────────────────────── */
+.tsu-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tsu-popup-box {
+  background: #f8f9fa;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18);
+  min-width: 320px;
+  max-width: 480px;
+  width: 90%;
+  overflow: hidden;
+}
+.tsu-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.tsu-popup-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #b91c1c;
+}
+.tsu-popup-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #6b7280;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.tsu-popup-close:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+.tsu-popup-body {
+  padding: 16px 18px 20px;
+  font-size: 14px;
+  color: #1f2937;
+  white-space: pre-line;
+  line-height: 1.6;
+}
+/* ─────────────────────────────────────────────────────────── */
+
 .tsu-btn-ghost {
   background: transparent;
   border: 1.5px solid #d1d5db;
