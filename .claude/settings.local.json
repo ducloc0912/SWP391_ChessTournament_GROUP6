@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(grep -rn \"CREATE TABLE.*Users\\\\|ALTER TABLE.*Users\" /d/SWP391/SWP391_ChessTournament_GROUP6 --include=*.sql)",
-      "Bash(grep -E \"\\\\.\\(java|jsx|js\\)$\")",
-      "Bash(grep -E \"\\\\.\\(jsx|js|tsx|tsx\\)$\")"
-    ]
-  }
-}
