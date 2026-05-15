@@ -21,7 +21,7 @@ public class StandingDAO extends DBContext {
         Map<Integer, double[]> stats = new LinkedHashMap<>(); // userId -> [won, drawn, lost, points]
         String participantSql = """
                 SELECT user_id FROM Participants
-                WHERE tournament_id = ? AND status = 'Approved'
+                WHERE tournament_id = ? AND status = 'Active'
                 """;
         try (PreparedStatement ps = conn.prepareStatement(participantSql)) {
             ps.setInt(1, tournamentId);

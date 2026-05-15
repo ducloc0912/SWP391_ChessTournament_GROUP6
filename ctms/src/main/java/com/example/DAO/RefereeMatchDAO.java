@@ -146,10 +146,10 @@ public class RefereeMatchDAO extends DBContext {
 
                 LEFT JOIN Round r ON r.round_id = m.round_id
                 LEFT JOIN Tournament_Group g ON g.group_id = m.group_id 
-                LEFT JOIN Users uw1 ON uw1.user_id = mm1.white_player_id
-                LEFT JOIN Users ub1 ON ub1.user_id = mm1.black_player_id
-                LEFT JOIN Users uw2 ON uw2.user_id = mm2.white_player_id
-                LEFT JOIN Users ub2 ON ub2.user_id = mm2.black_player_id
+                LEFT JOIN Users uw1 ON uw1.user_id = COALESCE(mm1.white_player_id, m.player1_id)
+                LEFT JOIN Users ub1 ON ub1.user_id = COALESCE(mm1.black_player_id, m.player2_id)
+                LEFT JOIN Users uw2 ON uw2.user_id = COALESCE(mm2.white_player_id, m.player2_id)
+                LEFT JOIN Users ub2 ON ub2.user_id = COALESCE(mm2.black_player_id, m.player1_id)
                 WHERE m.tournament_id = ?
                 ORDER BY ISNULL(r.round_index, 9999), ISNULL(m.board_number, 9999), m.match_id
                 """;
@@ -243,7 +243,6 @@ public class RefereeMatchDAO extends DBContext {
             FROM Mini_matches
             WHERE match_id = ?
             AND game_number = ?
-            AND is_tiebreak = 0
         """;
 
         String updateGame = """
@@ -566,6 +565,12 @@ public class RefereeMatchDAO extends DBContext {
                     ps.executeUpdate();
                 }
 
+                // For KO: check if next round can be auto-completed as bye
+                String fmt = format != null ? format : "";
+                if (fmt.equalsIgnoreCase("KnockOut")) {
+                    checkByeInNextRound(conn, roundId, boardNumber);
+                }
+
                 return;
             }
 
@@ -666,6 +671,8 @@ public class RefereeMatchDAO extends DBContext {
 
             if (isKnockout && winnerId != null && "Completed".equals(newStatus)) {
                 propagateKoWinner(conn, roundId, boardNumber, winnerId);
+                // Also check if next round now has a bye (other feeder both-absent)
+                checkByeInNextRound(conn, roundId, boardNumber);
             }
 
             if (isRoundRobin && "Completed".equals(newStatus)) {
@@ -726,6 +733,148 @@ public class RefereeMatchDAO extends DBContext {
             ps.setInt(3, nextBoard);
             ps.executeUpdate();
         }
+    }
+
+    /**
+     * After any KO match completes, check if the next round match is now a bye.
+     * A bye occurs when one feeder match has a winner and the other feeder match
+     * completed with result="none" (both players absent).
+     * Also handles cascading: if both feeders are absent, marks next match as absent too.
+     */
+    private void checkByeInNextRound(Connection conn, int roundId, int boardNumber) throws SQLException {
+        // Get current round info
+        String roundSql = """
+                SELECT r.round_index, r.tournament_id
+                FROM Round r
+                WHERE r.round_id = ?
+                """;
+        int currentRoundIndex, tournamentId;
+        try (PreparedStatement ps = conn.prepareStatement(roundSql)) {
+            ps.setInt(1, roundId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return;
+                currentRoundIndex = rs.getInt("round_index");
+                tournamentId = rs.getInt("tournament_id");
+            }
+        }
+
+        // Find next round
+        String nextRoundSql = """
+                SELECT r.round_id
+                FROM Round r
+                WHERE r.tournament_id = ? AND r.round_index = ?
+                """;
+        int nextRoundId;
+        try (PreparedStatement ps = conn.prepareStatement(nextRoundSql)) {
+            ps.setInt(1, tournamentId);
+            ps.setInt(2, currentRoundIndex + 1);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return; // final round
+                nextRoundId = rs.getInt("round_id");
+            }
+        }
+
+        int nextBoard = (int) Math.ceil(boardNumber / 2.0);
+        int feederBoard1 = (nextBoard * 2) - 1; // odd feeder → player1 slot
+        int feederBoard2 = nextBoard * 2;        // even feeder → player2 slot
+
+        // Check status of both feeder boards
+        String feederSql = """
+                SELECT m.board_number, m.status, m.winner_id
+                FROM Matches m
+                WHERE m.round_id = ? AND m.board_number IN (?, ?)
+                """;
+        boolean feeder1Done = false, feeder2Done = false;
+        Integer feeder1Winner = null, feeder2Winner = null;
+        try (PreparedStatement ps = conn.prepareStatement(feederSql)) {
+            ps.setInt(1, roundId);
+            ps.setInt(2, feederBoard1);
+            ps.setInt(3, feederBoard2);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int bn = rs.getInt("board_number");
+                    boolean done = "Completed".equals(rs.getString("status"));
+                    Integer winner = (Integer) rs.getObject("winner_id");
+                    if (bn == feederBoard1) {
+                        feeder1Done = done;
+                        feeder1Winner = winner;
+                    } else {
+                        feeder2Done = done;
+                        feeder2Winner = winner;
+                    }
+                }
+            }
+        }
+
+        // Both feeders must be done before we can decide
+        if (!feeder1Done || !feeder2Done) return;
+
+        // Get the next round match
+        String nextMatchSql = """
+                SELECT m.match_id, m.status
+                FROM Matches m
+                WHERE m.round_id = ? AND m.board_number = ?
+                """;
+        int nextMatchId;
+        try (PreparedStatement ps = conn.prepareStatement(nextMatchSql)) {
+            ps.setInt(1, nextRoundId);
+            ps.setInt(2, nextBoard);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return;
+                nextMatchId = rs.getInt("match_id");
+                if ("Completed".equals(rs.getString("status"))) return;
+            }
+        }
+
+        if (feeder1Winner == null && feeder2Winner == null) {
+            // Both feeders had both-absent → cascade absence to next round
+            String updateSql = """
+                    UPDATE Matches SET player1_score = 0, player2_score = 0,
+                        result = 'none', winner_id = NULL, status = 'Completed'
+                    WHERE match_id = ?
+                    """;
+            try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
+                ps.setInt(1, nextMatchId);
+                ps.executeUpdate();
+            }
+            // Recurse in case further rounds are also affected
+            checkByeInNextRound(conn, nextRoundId, nextBoard);
+
+        } else if (feeder1Winner != null && feeder2Winner == null) {
+            // Feeder1 winner advances by bye into player1 slot
+            String updateSql = """
+                    UPDATE Matches SET player1_id = ?,
+                        player1_score = 1, player2_score = 0,
+                        result = 'player1', winner_id = ?, status = 'Completed'
+                    WHERE match_id = ?
+                    """;
+            try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
+                ps.setInt(1, feeder1Winner);
+                ps.setInt(2, feeder1Winner);
+                ps.setInt(3, nextMatchId);
+                ps.executeUpdate();
+            }
+            propagateKoWinner(conn, nextRoundId, nextBoard, feeder1Winner);
+            checkByeInNextRound(conn, nextRoundId, nextBoard);
+
+        } else if (feeder1Winner == null && feeder2Winner != null) {
+            // Feeder2 winner advances by bye into player2 slot
+            String updateSql = """
+                    UPDATE Matches SET player2_id = ?,
+                        player1_score = 0, player2_score = 1,
+                        result = 'player2', winner_id = ?, status = 'Completed'
+                    WHERE match_id = ?
+                    """;
+            try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
+                ps.setInt(1, feeder2Winner);
+                ps.setInt(2, feeder2Winner);
+                ps.setInt(3, nextMatchId);
+                ps.executeUpdate();
+            }
+            propagateKoWinner(conn, nextRoundId, nextBoard, feeder2Winner);
+            checkByeInNextRound(conn, nextRoundId, nextBoard);
+        }
+        // else: both have winners → normal match, no auto-complete needed
     }
 
     /**

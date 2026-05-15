@@ -67,6 +67,10 @@ const RefereeMatchListPage = () => {
     };
 
     fetchMatches();
+
+    // Tự động refresh mỗi 30 giây để cập nhật trận mới (KO format)
+    const interval = setInterval(fetchMatches, 30000);
+    return () => clearInterval(interval);
   }, [user, tournamentId, navigate]);
 
   const handleLogout = () => {

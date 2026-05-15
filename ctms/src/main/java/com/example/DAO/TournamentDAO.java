@@ -706,6 +706,18 @@ public class TournamentDAO extends DBContext {
         return false;
     }
 
+    public boolean completeTournament(int tournamentId) {
+        String sql = "UPDATE Tournaments SET status = 'Completed' WHERE tournament_id = ? AND status = 'Ongoing'";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, tournamentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     public boolean restoreTournament(int tournamentId) {
         String sql = """
                 UPDATE Tournaments
